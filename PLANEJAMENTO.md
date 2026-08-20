@@ -48,6 +48,22 @@ Metas iniciais propostas:
 
 Essas metas são hipóteses de pré-produção. O protótipo técnico deverá medi-las e ajustá-las.
 
+### Uso da GPU pelo navegador
+
+WebGL 2 e WebGPU enviam a renderização 3D para a GPU quando a aceleração gráfica do navegador está ativa. A CPU continua responsável por regras do jogo, IA, parte da física, preparação de comandos e carregamento de dados.
+
+Em notebooks com vídeo híbrido, Chrome e navegadores Chromium não combinam a GPU integrada com a dedicada para executar o mesmo jogo. O navegador escolhe um adaptador e, por economia de energia, pode escolher a Intel UHD 620 em vez da NVIDIA MX130.
+
+Antes dos benchmarks:
+
+1. manter ativa a opção de aceleração gráfica nas configurações de sistema do Chrome ou Edge;
+2. nas configurações de gráficos do Windows 11, cadastrar o executável do navegador e escolher o perfil de alto desempenho/NVIDIA MX130;
+3. encerrar todas as janelas e processos do navegador e abri-lo novamente;
+4. no Chrome, abrir `chrome://gpu` e confirmar que WebGL e, quando testado, WebGPU aparecem como acelerados por hardware;
+5. conferir o adaptador/renderizador mostrado no relatório e validar no Gerenciador de Tarefas qual GPU está executando a carga 3D.
+
+O jogo deverá exibir um diagnóstico simples do renderizador e avisar quando detectar renderização por software. WebGPU não deve ser forçado por flags para usuários finais; se estiver indisponível ou bloqueado pelo driver, o jogo deverá usar WebGL 2.
+
 ## 3. Visão do produto
 
 ### Fantasia central
@@ -593,6 +609,8 @@ Somente depois dessas decisões deverá começar a configuração do projeto e o
 - [Especificações do Babylon.js](https://www.babylonjs.com/specifications/)
 - [Repositório e licença Apache 2.0 do Babylon.js](https://github.com/BabylonJS/Babylon.js)
 - [WebGPURenderer e fallback WebGL 2 do Three.js](https://threejs.org/manual/en/webgpurenderer)
+- [WebGL e aceleração gráfica por hardware](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API)
+- [Diagnóstico de WebGPU e seleção de GPU no Chrome](https://developer.chrome.com/docs/web-platform/webgpu/troubleshooting-tips)
 - [Limitações atuais da exportação web do Godot (documentação estável)](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_web.html)
 - [Condições atuais do Unity Personal](https://unity.com/products/unity-personal)
 
