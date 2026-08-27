@@ -130,6 +130,33 @@ describe('sessão de encontro', () => {
     expect(snapshot.enemy.hullPercent).toBeLessThan(hullBefore);
   });
 
+  it('mantém o torpedo em trajetória inercial quando o contato entra em memória', () => {
+    const harness = createHarness();
+    identifyContact(harness);
+    harness.setShip(
+      createInitialShipState({
+        x: TRAINING_ARENA.enemyPosition.x,
+        y: TRAINING_ARENA.enemyPosition.y,
+        z: TRAINING_ARENA.enemyPosition.z + 10,
+      }),
+    );
+    harness.advance();
+    harness.command({ equipmentId: 'tractor', type: 'use-equipment' });
+    let snapshot = harness.command({ equipmentId: 'torpedo', type: 'use-equipment' });
+    const hullBefore = snapshot.enemy.hullPercent;
+
+    harness.setShip(createInitialShipState({ x: 0, y: 0, z: 170 }));
+    for (let index = 0; index < 30 && snapshot.projectileCount > 0; index += 1) {
+      snapshot = harness.advance();
+    }
+
+    expect(snapshot.contact.observedNow).toBe(false);
+    expect(snapshot.contact.awareness).toBe('identified');
+    expect(snapshot.projectileCount).toBe(0);
+    expect(snapshot.feedback).toContain('Torpedo impactou');
+    expect(snapshot.enemy.hullPercent).toBeLessThan(hullBefore);
+  });
+
   it('encerra com vitória e reinicia o encontro sem recarregar estado externo', () => {
     const harness = createHarness();
     identifyContact(harness);
@@ -166,10 +193,20 @@ describe('sessão de encontro', () => {
     expect(snapshot.activeScan).toBe(false);
   });
 
+  it('preserva uma janela de reação para escanear e executar a primeira ação tática', () => {
+    const harness = createHarness();
+    let snapshot = harness.session.getSnapshot();
+    for (let index = 0; index < 360; index += 1) snapshot = harness.advance();
+
+    expect(snapshot.phase).toBe('active');
+    expect(snapshot.playerHullPercent).toBe(100);
+    expect(snapshot.playerDamage.subsystems.sensors).toBe(1);
+  });
+
   it('encerra com derrota sob ataques e permite reinício seguro', () => {
     const harness = createHarness();
     let snapshot = harness.session.getSnapshot();
-    for (let index = 0; index < 3_000 && snapshot.phase === 'active'; index += 1) {
+    for (let index = 0; index < 8_000 && snapshot.phase === 'active'; index += 1) {
       snapshot = harness.advance();
     }
     expect(snapshot.phase).toBe('defeat');

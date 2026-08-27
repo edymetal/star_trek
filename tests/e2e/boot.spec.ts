@@ -41,6 +41,7 @@ async function approachAndBrake(page: Page, maximumDistance: number): Promise<vo
 async function alignSelectedTarget(page: Page): Promise<void> {
   const marker = page.locator('[data-target-tracker]');
   await expect(marker).toBeVisible();
+  await page.locator('#game-canvas').click({ position: { x: 640, y: 360 } });
   for (let attempt = 0; attempt < 50; attempt += 1) {
     const box = await marker.boundingBox();
     if (box === null) throw new Error('Marcador de alvo deixou de estar visível.');
@@ -282,12 +283,7 @@ test('feixe, torpedo e raio trator têm resultados e restrições distintos', as
   await page.getByRole('button', { name: /Raio trator/ }).click();
   await expect(page.locator('[data-combat-feedback]')).toContainText('fora do alcance');
 
-  await page.locator('#game-canvas').click({ position: { x: 640, y: 360 } });
-  await page.keyboard.down('KeyW');
-  await expect
-    .poll(async () => Number(await root.getAttribute('data-contact-distance')), { timeout: 8_000 })
-    .toBeLessThan(68);
-  await page.keyboard.up('KeyW');
+  await approachAndBrake(page, 68);
   await page.getByRole('button', { name: /Raio trator/ }).click();
   if ((await root.getAttribute('data-tractor-active')) !== 'true') {
     await alignSelectedTarget(page);
@@ -650,6 +646,7 @@ test('mantém todos os painéis dentro do viewport nos estados de apresentação
     await expectHudInsideViewport(page);
     await page.getByRole('button', { name: /Retomar/ }).click();
 
+    await page.locator('#game-canvas').click({ position: { x: 640, y: 360 } });
     await page.keyboard.press('KeyT');
     await page.keyboard.down('KeyS');
     await expect(page.locator('[data-app-root]')).toHaveAttribute(

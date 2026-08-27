@@ -1,8 +1,8 @@
 # Progresso do projeto
 
 Atualizado em: 27 de agosto de 2026  
-Etapa atual: UI-GFX — Polimento gráfico de apresentação  
-Estado do código: UI-1 ciclo 2 e apresentação UI-GFX implementadas; fluxo gráfico-combate e P0.4 continuam bloqueados  
+Etapa atual: P0.4 — Estabilização do encontro tático  
+Estado do código: correções do ciclo 2 concluídas e matriz técnica verde; revisão formal do P0.4 pendente  
 Próximo responsável: Product Architect / Reviewer
 
 Legenda:
@@ -61,8 +61,8 @@ Legenda:
 - [x] Feixe, torpedo e raio trator
 - [x] Escudos, casco e subsistemas
 - [x] IA básica e condições de encontro
-- [!] Correções do ciclo 2 parcialmente integradas; fluxo E2E terminal ainda instável em Chrome/Edge
-- [ ] Revisão do Product Architect e gate completo
+- [x] Correções do ciclo 2 integradas; fluxo crítico e matriz E2E estáveis em Chrome/Edge
+- [~] Revisão do Product Architect e gate completo
 
 ### UI-1 Apresentação tática prioritária
 
@@ -149,7 +149,7 @@ A câmera apresenta a nave no terço inferior com aproximadamente 23,8% da largu
 
 ### Problemas encontrados
 
-O ciclo 2 de correções do P0.4 foi interrompido pela prioridade explícita UI-1 e continua sem aprovação. A matriz E2E completa mantém duas falhas do mesmo fluxo terminal, uma por navegador: dano nos sensores durante o scan/combate torna o roteiro de vitória dependente da carga do navegador. O teste continua ativo; não foi removido nem marcado como skip. Permanecem os avisos conhecidos do Vite sobre o chunk lazy do PlayCanvas e workers internos não usados pela cena.
+Naquele ciclo, o P0.4 foi interrompido pela prioridade explícita UI-1 e permaneceu sem aprovação. A matriz E2E então mantinha duas falhas do mesmo fluxo terminal, uma por navegador. O teste permaneceu ativo, sem `skip`; a instabilidade foi resolvida posteriormente no relatório P0.4 mais recente. Permanecem os avisos conhecidos do Vite sobre o chunk lazy do PlayCanvas e workers internos não usados pela cena.
 
 ### Problemas corrigidos
 
@@ -161,20 +161,20 @@ O EnergyDrawer deixou de cobrir o objetivo em 1280×720 ao iniciar recolhido. O 
 - formatação, lint, TypeScript e build Vite: aprovados;
 - Vitest: 111 testes aprovados em 17 arquivos;
 - Playwright focado em UI-1: 18/18 aprovados em Chrome/Edge, cobrindo boot, hierarquia de dados, quatro setores de escudo, ordem semântica/landmarks, pausa/comandos, memória explícita e idempotente, ocultação perceptual da malha remota, layout nos dois viewports, foco, tela cheia e rejeições do navegador;
-- Playwright completo: 30/32 aprovados; duas falhas ativas do fluxo terminal P0.4 descritas acima;
+- Playwright completo naquele ciclo: 30/32 aprovados; resultado histórico substituído pela matriz 38/38 do relatório P0.4 mais recente;
 - inspeção visual: zero scroll/overlap em 1280×720 e 1600×900, nave entre 22–30% da largura e centro tático livre;
 - diagnóstico de cena no preset baixo: 15 draw calls e 96 asteroides instanciados; essa leitura não é benchmark;
 - auditoria npm: zero vulnerabilidade conhecida.
 
 ### Pendências
 
-A apresentação UI-1 foi validada pelo coordenador. As correções e o gate completo P0.4, inclusive o fluxo terminal instável e os achados ainda não formalmente aprovados sobre memória sensorial, integridade, LOS, terminal e pausa, permanecem pausados até nova solicitação do usuário. A seleção física da MX130 e o benchmark representativo continuam reservados ao P0.5.
+A apresentação UI-1 foi validada pelo coordenador. Os achados sobre memória sensorial, integridade, LOS, terminal e pausa permaneceram cobertos pelos testes; a instabilidade integrada foi resolvida em `DECISION-024`. A revisão formal do P0.4 e a seleção física da MX130 ainda estão pendentes.
 
 ### Próxima etapa
 
-UI-1 está encerrada como fatia de apresentação. P0.4 e P0.5 permanecem bloqueados; quando o usuário retomar a lógica, o próximo trabalho será concluir o ciclo 2 do P0.4.
+UI-1 está encerrada como fatia de apresentação. O ciclo técnico P0.4 está verde e aguarda revisão formal; depois disso, a próxima implementação é o cenário determinístico e benchmark P0.5.
 
-## Último relatório — UI-GFX
+## Relatório anterior — UI-GFX
 
 **ETAPA:** UI-GFX — Polimento gráfico de apresentação  
 **STATUS:** implementação, inspeção gráfica do coordenador e gates focados concluídos
@@ -201,10 +201,37 @@ Feixe do jogador/inimigo, torpedo, raio trator, impactos e escudo usam um pool f
 - Vitest: 121 testes aprovados em 18 arquivos;
 - Playwright de apresentação UI pura: 20/20 em Chrome/Edge;
 - adaptador de apresentação/VFX: 10/10 testes unitários aprovados;
-- fluxo gráfico-combate de feixe, torpedo e trator: 0/2 na repetição final do coordenador, inclusive com um worker; o marcador deixou de ficar visível antes do alinhamento. O teste permanece ativo, sem `skip`, e a falha foi absorvida pelo bloqueio P0.4;
+- fluxo gráfico-combate de feixe, torpedo e trator: 0/2 na repetição daquele ciclo; o teste permaneceu ativo, sem `skip`, e passou após as correções registradas em `DECISION-024`;
 - auditoria npm: zero vulnerabilidade conhecida;
-- matriz P0.4 não foi reclassificada nem mascarada: permanece registrada em 30/32, com duas falhas terminais ativas e nenhum skip.
+- matriz P0.4 naquele ciclo: 30/32, sem `skip`; o resultado atual é 38/38 no relatório seguinte.
 
 ### Limites e próxima etapa
 
-UI-GFX não contém asset final, partículas complexas, sombras, pós-processamento, benchmark físico ou mudança de regra. As capturas e a apresentação pura foram aprovadas pelo coordenador, mas o gate integrado não está verde. P0.5 continua bloqueado. Quando o usuário solicitar a retomada da lógica, o próximo trabalho será concluir o ciclo 2 do P0.4 e estabilizar tanto o fluxo terminal quanto a perda do marcador no fluxo gráfico-combate antes do gate completo.
+UI-GFX não contém asset final, partículas complexas, sombras, pós-processamento ou benchmark físico. As capturas e a apresentação pura foram aprovadas pelo coordenador; o fluxo integrado foi estabilizado depois em `DECISION-024`. P0.5 ainda depende da revisão formal do P0.4 e continua responsável pelos assets e pelo benchmark físico.
+
+## Último relatório — P0.4 ciclo 2
+
+**ETAPA:** P0.4 — Sensores, armas e IA  
+**STATUS:** correções técnicas concluídas; revisão formal do Product Architect pendente
+
+### Implementado
+
+O torpedo deixou de interpolar apenas a distância inicial e passou a manter posição física própria. Enquanto o contato está observado, ele atualiza a solução; durante memória, segue inercialmente a última solução pública. O dano só é aplicado se o segmento percorrido interceptar o raio físico da nave inimiga. Perda da solução ou alcance encerrado produz falha sem dano, e a posição oculta do alvo não orienta nem é publicada pelo projétil.
+
+Os fluxos E2E agora devolvem foco ao canvas antes de comandos de pilotagem posteriores a cliques em botões. Isso preserva a regra acessível que impede atalhos de voo sobre controles interativos e elimina o falso alinhamento em que A/D era ignorado. A cadência do feixe inimigo recebeu multiplicador provisório 3×, oferecendo seis segundos testados para selecionar, escanear e executar a primeira decisão sem impedir derrota posterior.
+
+### Evidência e testes
+
+- `npm run verify`: aprovado;
+- Vitest: 123/123 testes aprovados em 18 arquivos;
+- regressão nova: torpedo continua inercial durante memória e só acerta por interseção física;
+- balanceamento: casco e sensores permanecem íntegros durante a janela inicial de seis segundos;
+- fluxo crítico feixe/torpedo/trator mais vitória/reinício: 12/12 em três repetições sequenciais por navegador;
+- Playwright completo: 38/38 em Chrome/Edge, um worker, nenhum `skip`;
+- inspeção no navegador real: boot, seleção, scan e identificação funcionais com o HUD aprovado;
+- auditoria npm: zero vulnerabilidade conhecida;
+- avisos Vite/PlayCanvas sobre workers não usados e chunk lazy permanecem conhecidos e não bloqueantes.
+
+### Próxima etapa
+
+O bloqueio técnico do ciclo 2 foi removido. Falta a revisão formal do P0.4; após esse gate, o próximo trabalho é P0.5: cenário determinístico, perfis baixo/médio/alto, efeitos de dano limitados e benchmark físico na MX130/UHD 620. P1 continua bloqueado até o gate formal de desempenho.

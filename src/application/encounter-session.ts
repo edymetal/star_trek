@@ -123,9 +123,8 @@ interface TorpedoProjectile {
   readonly damageUnits: number;
   readonly overflowToHull: boolean;
   readonly speedUnitsPerSecond: number;
-  readonly sourcePosition: Vector3Value;
-  readonly initialDistanceUnits: number;
-  remainingDistanceUnits: number;
+  position: Vector3Value;
+  remainingTravelDistanceUnits: number;
   targetPosition: Vector3Value;
 }
 
@@ -197,6 +196,29 @@ function approachAngle(current: number, target: number, maximumDelta: number): n
 
 function sourceDirection(attacker: Vector3Value, target: Vector3Value): Vector3Value {
   return normalize(subtract(attacker, target));
+}
+
+function segmentIntersectsSphere(
+  start: Vector3Value,
+  end: Vector3Value,
+  center: Vector3Value,
+  radiusUnits: number,
+): boolean {
+  const segment = subtract(end, start);
+  const segmentLengthSquared =
+    segment.x * segment.x + segment.y * segment.y + segment.z * segment.z;
+  if (segmentLengthSquared <= Number.EPSILON) {
+    return length(subtract(start, center)) <= radiusUnits;
+  }
+  const fromStart = subtract(center, start);
+  const projection = clamp(
+    (fromStart.x * segment.x + fromStart.y * segment.y + fromStart.z * segment.z) /
+      segmentLengthSquared,
+    0,
+    1,
+  );
+  const closestPoint = add(start, scale(segment, projection));
+  return length(subtract(closestPoint, center)) <= radiusUnits;
 }
 
 function sensorSnapshot(
@@ -329,19 +351,7 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
     const publicContact = toPublicContact(SENSOR_DEFINITION, contact, ENEMY_CONTENT.displayName);
     const firstProjectile = projectiles[0];
     const projectilePosition =
-      firstProjectile === undefined
-        ? undefined
-        : add(
-            firstProjectile.sourcePosition,
-            scale(
-              subtract(firstProjectile.targetPosition, firstProjectile.sourcePosition),
-              clamp(
-                1 - firstProjectile.remainingDistanceUnits / firstProjectile.initialDistanceUnits,
-                0,
-                1,
-              ),
-            ),
-          );
+      firstProjectile === undefined ? undefined : { ...firstProjectile.position };
     return {
       activeScan,
       contact: publicContact,
@@ -437,10 +447,9 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
     } else if (equipmentId === 'torpedo') {
       projectiles.push({
         damageUnits: use.outcome.damageUnits,
-        initialDistanceUnits: distanceUnits,
         overflowToHull: use.outcome.overflowToHull,
-        remainingDistanceUnits: distanceUnits,
-        sourcePosition: { ...context.playerShip.position },
+        position: { ...context.playerShip.position },
+        remainingTravelDistanceUnits: EQUIPMENT_DEFINITIONS.torpedo.maxRangeUnits,
         speedUnitsPerSecond: use.outcome.projectileSpeedUnitsPerSecond ?? 1,
         targetPosition: { ...targetPosition },
       });
@@ -623,7 +632,13 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
         weaponPowerUnitsPerSecond: enemyEnergyStep.flow.channels.weapons.effectiveUnitsPerSecond,
       });
       if (enemyUse.success) {
-        enemyWeaponState = enemyUse.state;
+        enemyWeaponState = {
+          ...enemyUse.state,
+          cooldownSeconds: {
+            ...enemyUse.state.cooldownSeconds,
+            beam: enemyUse.state.cooldownSeconds.beam * ENEMY_CONTENT.beamCooldownMultiplier,
+          },
+        };
         enemyEnergyState = {
           ...enemyEnergyState,
           weaponCapacitorUnits: Math.max(
@@ -655,13 +670,34 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
       if (contact.observedNow && contact.lastObservation !== undefined) {
         projectile.targetPosition = { ...contact.lastObservation.position };
       }
-      projectile.remainingDistanceUnits -= projectile.speedUnitsPerSecond * deltaSeconds;
-      if (projectile.remainingDistanceUnits > 0) {
+      const previousPosition = projectile.position;
+      const toAimPoint = subtract(projectile.targetPosition, previousPosition);
+      const distanceToAimPoint = length(toAimPoint);
+      const requestedTravelDistance = projectile.speedUnitsPerSecond * deltaSeconds;
+      const travelDistance = Math.min(
+        requestedTravelDistance,
+        projectile.remainingTravelDistanceUnits,
+        distanceToAimPoint,
+      );
+      projectile.position = add(previousPosition, scale(normalize(toAimPoint), travelDistance));
+      projectile.remainingTravelDistanceUnits = Math.max(
+        0,
+        projectile.remainingTravelDistanceUnits - requestedTravelDistance,
+      );
+      const hit = segmentIntersectsSphere(
+        previousPosition,
+        projectile.position,
+        enemyPosition,
+        ENEMY_CONTENT.torpedoHitRadiusUnits,
+      );
+      const reachedAimPoint = distanceToAimPoint <= requestedTravelDistance + Number.EPSILON;
+      const expired = projectile.remainingTravelDistanceUnits <= Number.EPSILON;
+      if (!hit && !reachedAimPoint && !expired) {
         remainingProjectiles.push(projectile);
         continue;
       }
-      if (!contact.observedNow || contact.lastObservation === undefined) {
-        feedback = 'Torpedo perdeu o contato antes do impacto.';
+      if (!hit) {
+        feedback = 'Torpedo perdeu a solução antes do impacto.';
         feedbackHoldSeconds = 0.8;
         continue;
       }
@@ -669,12 +705,12 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
         amount: projectile.damageUnits,
         orientationDegrees: enemyOrientation,
         overflowToHull: projectile.overflowToHull,
-        sourceDirectionWorld: sourceDirection(projectile.sourcePosition, projectile.targetPosition),
+        sourceDirectionWorld: sourceDirection(projectile.position, enemyPosition),
       });
       enemyDamage = impact.state;
       feedback = `Torpedo impactou escudo ${impact.shieldSector}; ${impact.appliedToHull.toFixed(0)} de dano no casco.`;
       feedbackHoldSeconds = 0.8;
-      setEffect('torpedo', projectile.targetPosition);
+      setEffect('torpedo', projectile.position);
     }
     projectiles = remainingProjectiles;
 

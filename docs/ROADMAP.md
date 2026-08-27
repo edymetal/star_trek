@@ -124,7 +124,7 @@ Critério de conclusão:
 - inspeção visual confirma centro livre, foco visível, contraste e redução de movimento;
 - fluxo semântico segue objetivo → ações táticas → energia → sessão, com os dados da nave e quatro setores de escudo no cartão do jogador;
 - memória do marcador é explicitamente rotulada e tracejada; marcador e malha remota não consultam nem acompanham posição oculta;
-- P0.4 continua bloqueado até concluir seus findings e o fluxo terminal; P0.5 não começa por consequência desta prioridade.
+- os bloqueios de fluxo foram resolvidos posteriormente em `DECISION-024`; UI-1, isoladamente, não autoriza iniciar P0.5 antes da revisão formal do P0.4.
 
 ## Prioridade intermediária — Polimento gráfico UI-GFX
 
@@ -141,11 +141,11 @@ Entregas:
 
 Critério de conclusão:
 
-- `verify`, auditoria, apresentação UI pura 20/20 e adaptador VFX 10/10 passam; o fluxo gráfico-combate precisa voltar a passar em Chrome/Edge após as correções P0.4;
+- `verify`, auditoria, apresentação UI pura 20/20 e adaptador VFX 10/10 passam; após `DECISION-024`, o fluxo gráfico-combate também passa repetidamente em Chrome/Edge;
 - Chrome e Edge validam efeitos, projétil, impacto, ocultação perceptual e layout;
 - nenhum VFX cria entidade por disparo ou consulta posição/dano remoto oculto;
 - medições são rotuladas como diagnóstico, não benchmark físico;
-- P0.4 continua bloqueado pelas duas falhas terminais e P0.5 continua reservado ao gate completo de dano/asset/performance.
+- a matriz P0.4 passa em 38/38 casos Chrome/Edge; sua revisão formal ainda precede P0.5, que continua reservado ao gate completo de dano/asset/performance.
 
 ## Etapa 5 — Dano visual e benchmark (P0.5)
 

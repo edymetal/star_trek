@@ -83,7 +83,9 @@ export const COMBAT_LINE_OF_SIGHT_OBSTACLES: readonly SphericalLineOfSightObstac
 
 export const ENEMY_CONTENT = {
   beamCapacitorCostMultiplier: 0.25,
+  beamCooldownMultiplier: 3,
   displayName: 'Interceptadora Vespa',
   id: 'enemy-vespa',
   massRatioToPlayer: 0.85,
+  torpedoHitRadiusUnits: 3,
 } as const;
