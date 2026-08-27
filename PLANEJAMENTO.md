@@ -2,6 +2,21 @@
 
 Pesquisa e proposta inicial registradas em 20 de agosto de 2026. Este documento contém somente decisões de pré-produção; não há implementação de código nesta fase.
 
+## Status e documentos canônicos
+
+Este arquivo preserva a pesquisa, as alternativas técnicas, os orçamentos e a proposta original. Após a revisão formal de pré-produção, use as fontes canônicas abaixo para executar o projeto:
+
+- [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md): comportamento, fluxos e requisitos;
+- [`docs/MVP.md`](docs/MVP.md): prioridades P0–P3 e gates;
+- [`ARCHITECTURE.md`](ARCHITECTURE.md): arquitetura e estratégia técnica;
+- [`docs/ROADMAP.md`](docs/ROADMAP.md): ordem de implementação;
+- [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md): hipóteses e validações;
+- [`docs/DECISIONS.md`](docs/DECISIONS.md): decisões justificadas;
+- [`docs/PROGRESS.md`](docs/PROGRESS.md): estado atual;
+- [`AGENTS.md`](AGENTS.md): instruções permanentes de trabalho.
+
+Em caso de divergência, os documentos canônicos mais específicos prevalecem. As decisões antes abertas neste planejamento receberam defaults seguros para permitir o P0; isso não autoriza publicação de propriedade intelectual de terceiros.
+
 ## 1. Resumo executivo
 
 A melhor direção para este projeto é um jogo 3D de navegador, inicialmente para um jogador, com exploração dividida em setores e combates táticos em áreas locais. O projeto não deve tentar simular uma galáxia inteira em escala real nem manter todos os corpos celestes ativos ao mesmo tempo.
@@ -91,7 +106,9 @@ Sem esse ciclo, o projeto corre o risco de virar apenas uma demonstração visua
 - apresentação cinematográfica com desempenho estável;
 - todo conteúdo liberado por jogo, sem compras e sem dependência de serviços pagos.
 
-## 4. Decisões que ainda faltam
+## 4. Decisões originalmente em aberto
+
+Estas questões foram reconciliadas em `docs/ASSUMPTIONS.md` e `docs/DECISIONS.md`. Os defaults atuais permitem iniciar o P0: identidade original provisória, câmera externa com visão tática, voo cinematográfico, campanha curta guiada, planetas sem pouso, português brasileiro e desktop/notebook. Elas continuam sujeitas aos gates indicados, mas não bloqueiam a fundação técnica.
 
 Antes de ampliar o escopo, devem ser confirmadas estas decisões:
 
@@ -583,9 +600,9 @@ O vertical slice estará pronto quando:
 - todos os assets tiverem autoria/licença registradas;
 - o build puder ser hospedado como conteúdo estático.
 
-## 18. Próximas decisões recomendadas
+## 18. Próximas validações recomendadas
 
-A próxima reunião de planejamento deve decidir, nesta ordem:
+A execução deve validar, nesta ordem:
 
 1. universo original ou protótipo privado de fã;
 2. câmera principal e estilo de voo;
@@ -596,7 +613,7 @@ A próxima reunião de planejamento deve decidir, nesta ordem:
 7. direção visual da interface;
 8. metas finais de FPS e resolução.
 
-Somente depois dessas decisões deverá começar a configuração do projeto e o protótipo técnico.
+O P0 pode começar usando os defaults documentados. A decisão de propriedade intelectual torna-se bloqueante antes de produzir conteúdo final ou publicar; câmera, voo e metas técnicas serão validados por protótipo e benchmark.
 
 ## 19. Fontes principais consultadas
 

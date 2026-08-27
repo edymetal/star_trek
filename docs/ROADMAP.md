@@ -1,0 +1,277 @@
+# Roadmap de desenvolvimento
+
+Versão: 1.0 — 20 de agosto de 2026
+
+O roadmap usa gates objetivos, não datas rígidas. Uma etapa só fecha com evidência de teste e revisão. Cada etapa funcional admite no máximo cinco ciclos `review → implement → test`; problemas remanescentes vão para `docs/KNOWN_ISSUES.md`, mas CRITICAL/HIGH impedem avanço.
+
+## Etapa 0 — Pré-produção
+
+**Prioridade:** fundação documental  
+**Status:** concluída
+
+Entregas:
+
+- especificação do produto e casos de uso;
+- escopo P0–P3;
+- arquitetura, premissas e decisões;
+- roadmap, controle de progresso e manual de agentes;
+- reconciliação com a pesquisa de `PLANEJAMENTO.md`;
+- revisão formal e autorização do P0.
+
+Critério de conclusão:
+
+- documentos não se contradizem em tecnologia, escopo, baseline, PI e ordem de trabalho;
+- questões em aberto têm padrão seguro e gate;
+- Agente 2 sabe qual é a primeira entrega e como verificá-la.
+
+## Etapa 1 — Fundação executável (P0.1)
+
+**Objetivo:** produzir o menor build verificável, sem mecânica prematura.
+
+Entregas:
+
+- scaffold TypeScript/Vite/PlayCanvas e lockfile;
+- estrutura modular mínima e regras de importação;
+- lint, typecheck, Vitest, Playwright e build;
+- shell de carregamento/erro e diagnóstico de WebGL 2/renderizador;
+- cena vazia controlada e preset gráfico inicial;
+- documentação de instalação/execução atualizada.
+
+Critério de conclusão:
+
+- instalação limpa reproduzível;
+- dev, lint, typecheck, testes e build passam;
+- preview de produção abre em Chrome e Edge;
+- ausência de WebGL 2 apresenta erro acionável;
+- Product Architect revisa dependências e separação das camadas.
+
+## Etapa 2 — Arena, nave e voo (P0.2)
+
+**Objetivo:** provar controle e representação espacial antes dos sistemas de combate.
+
+Entregas:
+
+- nave provisória do jogador com definição/estado separados;
+- movimento cinemático, assistência, impulso e câmera externa;
+- pausa, foco, tela cheia e captura/liberação de ponteiro;
+- arena com limites, corpos visuais provisórios e asteroides instanciados;
+- primeiro LOD e telemetria básica de frametime/draw calls;
+- teste para passo fixo e entrada crítica.
+
+Critério de conclusão:
+
+- controle permanece estável em FPS variável;
+- nenhum input fica preso após pausa/perda de foco;
+- arena roda no notebook com margem para combate;
+- decisão de 30/60 Hz pode permanecer parametrizada até o benchmark final.
+
+## Etapa 3 — Energia e HUD (P0.3)
+
+**Objetivo:** tornar a primeira escolha tática funcional e observável.
+
+Entregas:
+
+- domínio de reator, reserva, quatro consumidores e eficiência/dano;
+- presets e comandos de ajuste;
+- efeito em voo, regeneração/recarga e auxiliares provisórios;
+- HUD de velocidade, casco, escudo, alvo e energia;
+- testes de conservação, limites, valores inválidos e presets.
+
+Critério de conclusão:
+
+- invariantes passam em testes independentes do motor;
+- HUD e comportamento leem a mesma fonte de estado;
+- playtest distingue claramente equilibrado, ataque, defesa e fuga;
+- interface é legível em 1280×720.
+
+## Etapa 4 — Sensores, armas e IA (P0.4)
+
+**Objetivo:** fechar um encontro tático completo.
+
+Entregas:
+
+- seleção de contato e escaneamento;
+- feixe, torpedo e raio trator;
+- quatro setores de escudo, casco por seções e subsistemas;
+- nave inimiga com percepção e estados básicos;
+- vitória, derrota e reinício;
+- eventos de domínio e feedback provisório;
+- testes de alcance, energia, recarga, dano, alvo e transições de IA.
+
+Critério de conclusão:
+
+- todos os equipamentos têm papel e condição de uso distintos;
+- dano atinge setor/seção corretos e pode desativar subsistema;
+- IA não conhece alvo fora de sua percepção e consegue recuar;
+- encontro é concluível e reiniciável sem recarregar a página.
+
+## Prioridade intermediária — Apresentação tática UI-1
+
+**Objetivo:** atender à prioridade visual explícita do usuário sem antecipar VFX, arte final ou benchmark do P0.5.
+
+Entregas:
+
+- tema sci-fi naval original e acessível;
+- objetivo e sessão no topo, nave e alvo nos cantos inferiores e ações no centro inferior;
+- energia e diagnóstico recolhíveis;
+- câmera externa com nave entre 22–30% da largura, starfield instanciado, retículo e marcador seguro;
+- layout sem scroll/overlap em 1280×720 e 1600×900;
+- orçamento baixo de até 18 draw calls e 96 asteroides.
+
+Critério de conclusão:
+
+- E2E focado passa em Chrome/Edge;
+- inspeção visual confirma centro livre, foco visível, contraste e redução de movimento;
+- fluxo semântico segue objetivo → ações táticas → energia → sessão, com os dados da nave e quatro setores de escudo no cartão do jogador;
+- memória do marcador é explicitamente rotulada e tracejada; marcador e malha remota não consultam nem acompanham posição oculta;
+- P0.4 continua bloqueado até concluir seus findings e o fluxo terminal; P0.5 não começa por consequência desta prioridade.
+
+## Prioridade intermediária — Polimento gráfico UI-GFX
+
+**Objetivo:** tornar nave, alvo, combate e dano imediatamente legíveis sobre a UI-1, sem alterar domínio/IA/combate nem declarar o gate P0.5 concluído.
+
+Entregas:
+
+- materiais, iluminação e silhuetas navais sci-fi originais por primitivas;
+- três estados visuais de casco e motores para jogador e contato atualmente observado;
+- feixe, torpedo, raio trator, impactos e escudo em pool fixo;
+- até dois efeitos simultâneos confirmados pelo adaptador por resultados públicos;
+- inspeção real e capturas em 1280×720 e 1600×900;
+- diagnóstico baixo com até 18 draw calls em repouso e até 28 durante VFX combinados, mantendo 96 asteroides instanciados.
+
+Critério de conclusão:
+
+- `verify`, auditoria, apresentação UI pura 20/20 e adaptador VFX 10/10 passam; o fluxo gráfico-combate precisa voltar a passar em Chrome/Edge após as correções P0.4;
+- Chrome e Edge validam efeitos, projétil, impacto, ocultação perceptual e layout;
+- nenhum VFX cria entidade por disparo ou consulta posição/dano remoto oculto;
+- medições são rotuladas como diagnóstico, não benchmark físico;
+- P0.4 continua bloqueado pelas duas falhas terminais e P0.5 continua reservado ao gate completo de dano/asset/performance.
+
+## Etapa 5 — Dano visual e benchmark (P0.5)
+
+**Objetivo:** comprovar qualidade visual dentro do notebook alvo.
+
+Entregas:
+
+- câmera externa recomposta, com nave do jogador grande/legível e alvo à frente;
+- starfield denso, brackets, linha e retículo de alvo no espaço;
+- HUD tático integrado às bordas: objetivo à esquerda, nave/escudos/sistemas embaixo à esquerda e alvo embaixo à direita;
+- feixe, torpedo, raio trator, impactos e dano visíveis na cena durante o combate;
+- impacto de escudo e três estados de dano por seção selecionada;
+- decalques, partículas, emissivos e pools com limites por preset;
+- base, planeta, lua, estrela e asteroides no cenário de medição;
+- cenário determinístico com carga de combate representativa;
+- presets baixo/médio/alto e comparação WebGL 2/WebGPU quando disponível;
+- relatório de hardware, navegador, resolução, FPS/frametime e contadores.
+
+Critério de conclusão:
+
+- MX130 mantém ≥30 FPS em 1600×900/médio no pior cenário;
+- UHD 620 tem perfil baixo funcional ou limitação é documentada sem comprometer a MX130;
+- efeitos não crescem indefinidamente e assets são descarregáveis;
+- dano visual corresponde ao estado lógico;
+- hierarquia tática permanece legível em 1280×720 e usa identidade original, sem copiar layout, nomes, logos ou assets da referência;
+- gate formal do P0 aprovado, sem CRITICAL/HIGH.
+
+## Etapa 6 — Primeira fatia vertical P1
+
+**Objetivo:** implementar uma missão ponta a ponta antes de multiplicar conteúdo.
+
+Entregas:
+
+- base funcional simples;
+- mapa de um sistema e uma transição de viagem;
+- missão de exploração/escaneamento;
+- retorno, reparo/reabastecimento e resultado;
+- save IndexedDB versionado e configurações persistentes;
+- recuperação de falha de save/asset.
+
+Critério de conclusão:
+
+- ciclo completo funciona após reload;
+- autosave só ocorre em estado seguro;
+- migração e falha simulada têm testes;
+- desempenho continua dentro do orçamento P0.
+
+## Etapa 7 — Vertical slice/MVP P1
+
+**Objetivo:** completar variedade mínima e qualidade de demonstração.
+
+Entregas:
+
+- missão de assistência com raio trator e missão de combate;
+- duas variações de contato/IA;
+- tutorial contextual e diário de objetivo;
+- áudio e feedback refinados;
+- configurações e acessibilidade prioritária;
+- inventário final de licenças do build;
+- testes E2E do ciclo e benchmark de regressão.
+
+Critério de conclusão:
+
+- três missões e ciclo base–retorno completos;
+- save, erro e retomada verificados em Chrome/Edge;
+- zero CRITICAL/HIGH;
+- testes, lint, typecheck e build passam;
+- Product Architect aprova o MVP segundo `docs/MVP.md`.
+
+## Etapa 8 — Alpha de conteúdo P2
+
+**Objetivo:** expandir sem duplicar sistemas.
+
+Entregas potenciais:
+
+- mais sistemas, bases, naves, missões e anomalias;
+- progressão, reputação e facções originais;
+- gamepad, exportação de save, localização e acessibilidade ampliada;
+- pipeline automático de validação/otimização de assets.
+
+Critério de conclusão:
+
+- cada conteúdo reutiliza sistemas orientados a dados;
+- orçamento por setor e licenças passam automaticamente;
+- nenhuma regressão nos gates do MVP.
+
+## Etapa 9 — Preparação para publicação
+
+**Objetivo:** distribuir de forma gratuita, segura e reproduzível.
+
+Entregas:
+
+- decisão final de nome/PI e auditoria de assets/licenças;
+- escolha de hospedagem estática gratuita;
+- headers, cache, caminhos de base e build de produção;
+- compatibilidade, acessibilidade e desempenho finais;
+- créditos, política de privacidade simples (sem coleta) e instruções;
+- plano de rollback e versionamento do save.
+
+Critério de conclusão:
+
+- autorização explícita para publicar;
+- identidade e conteúdo juridicamente seguros;
+- build implantado sem segredo/serviço pago;
+- smoke test público e rollback verificados.
+
+## Processo de cada etapa
+
+1. Product Architect confirma requisito e critérios.
+2. Senior Developer implementa apenas a fatia ativa.
+3. Executa testes, lint, typecheck e build aplicáveis.
+4. Product Architect revisa funcionalidade, arquitetura, UX, segurança e performance.
+5. Senior Developer corrige achados justificados.
+6. Reexecuta verificações e fecha o gate.
+
+Achados usam severidade:
+
+- **CRITICAL:** perda de dados, execução insegura, fluxo principal impossível ou build inutilizável;
+- **HIGH:** requisito P0/P1 quebrado, regressão grave, desempenho abaixo do gate;
+- **MEDIUM:** comportamento importante degradado com contorno;
+- **LOW:** melhoria pequena, legibilidade ou polimento.
+
+## Decisões de parada
+
+- se PlayCanvas falhar objetivamente no spike, revisar DECISION-003 antes de criar conteúdo;
+- se MX130 não sustentar o gate, reduzir efeitos, resolução, assets e carga antes de trocar motor;
+- se P0 não for divertido/legível, ajustar voo, energia e combate antes do P1;
+- se PI não estiver resolvida, o build continua privado/original e não é publicado;
+- multiplayer, pouso ou interiores não entram por “pequena melhoria”; exigem novo plano.

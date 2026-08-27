@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Protótipo original de navegação e exploração espacial executado no navegador."
+    />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E" />
+    <title>Comando Estelar — Arena tática</title>
+  </head>
+  <body>
+    <main class="app-shell" data-app-root data-app-state="loading" aria-busy="true">
+      <canvas
+        id="game-canvas"
+        class="scene-canvas"
+        aria-label="Arena tridimensional de voo espacial"
+      ></canvas>
+
+      <div class="center-reticle" aria-hidden="true" data-center-reticle>
+        <span></span>
+      </div>
+      <div class="target-line" aria-hidden="true" data-target-line hidden></div>
+      <div class="target-tracker" aria-hidden="true" data-target-tracker hidden>
+        <span class="target-tracker__corner target-tracker__corner--tl"></span>
+        <span class="target-tracker__corner target-tracker__corner--tr"></span>
+        <span class="target-tracker__corner target-tracker__corner--bl"></span>
+        <span class="target-tracker__corner target-tracker__corner--br"></span>
+        <span class="target-tracker__caption" data-target-marker-caption>ALVO</span>
+      </div>
+
+      <section class="objective-card hud-card status-panel" aria-labelledby="app-title">
+        <p class="eyebrow">Comando de missão</p>
+        <div class="objective-card__title">
+          <h1 id="app-title">Comando Estelar</h1>
+          <span class="status-dot" aria-hidden="true"></span>
+        </div>
+        <p class="status-line" data-status-text aria-live="polite">
+          Verificando a compatibilidade gráfica…
+        </p>
+        <div class="objective-card__mission">
+          <span class="metric-label">Objetivo atual</span>
+          <strong data-objective-text>Estabeleça enlace com os sistemas da nave.</strong>
+        </div>
+        <p class="phase-note">Arena de treinamento · identidade visual original</p>
+      </section>
+
+      <div class="flight-layer" data-flight-hud hidden>
+        <nav class="session-controls hud-card" aria-label="Controles da sessão">
+          <span class="session-controls__state" data-flight-simulation aria-live="polite"
+            >Iniciando…</span
+          >
+          <div class="flight-actions">
+            <button type="button" data-flight-pause>Pausar (P)</button>
+            <button type="button" data-flight-capture>Capturar mouse</button>
+            <button type="button" data-flight-fullscreen>Tela cheia (F)</button>
+          </div>
+          <p
+            class="control-feedback"
+            data-control-feedback
+            role="status"
+            aria-live="polite"
+            hidden
+          ></p>
+        </nav>
+
+        <section class="player-status hud-card" aria-labelledby="flight-title">
+          <div class="card-heading">
+            <div>
+              <p class="eyebrow">Nave do jogador</p>
+              <h2 id="flight-title">Exploradora Aurora</h2>
+            </div>
+            <strong class="speed-readout" data-flight-speed>0.0 u/s</strong>
+          </div>
+
+          <dl class="player-vitals">
+            <div>
+              <dt>Casco</dt>
+              <dd data-flight-hull>100% · íntegro</dd>
+            </div>
+            <div>
+              <dt>Escudos</dt>
+              <dd data-flight-shields>70% · iniciando</dd>
+            </div>
+            <div>
+              <dt>Armas</dt>
+              <dd data-flight-weapon>40% · iniciando</dd>
+            </div>
+            <div>
+              <dt>Sensores</dt>
+              <dd data-flight-sensor-range>110 u</dd>
+            </div>
+          </dl>
+
+          <div
+            class="shield-cross"
+            data-combat-shield-sectors
+            role="group"
+            aria-label="Escudos direcionais da nave"
+          >
+            <span class="shield-sector">
+              <abbr title="Frente">F</abbr><output data-shield-sector="front">70</output>
+            </span>
+            <span class="shield-sector">
+              <abbr title="Trás">T</abbr><output data-shield-sector="rear">70</output>
+            </span>
+            <span class="shield-sector">
+              <abbr title="Bombordo">B</abbr><output data-shield-sector="port">70</output>
+            </span>
+            <span class="shield-sector">
+              <abbr title="Estibordo">E</abbr><output data-shield-sector="starboard">70</output>
+            </span>
+          </div>
+
+          <dl class="player-subsystems">
+            <div>
+              <dt>Integridade dos sistemas</dt>
+              <dd data-combat-subsystems title="Motores, armas, escudos e sensores">
+                MOT 100 · ARM 100 · ESC 100 · SEN 100
+              </dd>
+            </div>
+          </dl>
+
+          <details class="flight-details">
+            <summary>Telemetria e controles</summary>
+            <dl class="flight-metrics">
+              <div>
+                <dt>Posição</dt>
+                <dd data-flight-position>0.0, 0.0, 16.0</dd>
+              </div>
+              <div>
+                <dt>Alvo</dt>
+                <dd data-flight-target>Nenhum contato</dd>
+              </div>
+              <div>
+                <dt>Calor</dt>
+                <dd data-flight-heat>25%</dd>
+              </div>
+              <div>
+                <dt>Limite</dt>
+                <dd data-flight-boundary>—</dd>
+              </div>
+              <div>
+                <dt>Frame</dt>
+                <dd data-flight-frame-time>— ms</dd>
+              </div>
+              <div>
+                <dt>Desenho</dt>
+                <dd data-flight-draw-calls>—</dd>
+              </div>
+              <div>
+                <dt>LOD</dt>
+                <dd data-flight-lod>—</dd>
+              </div>
+            </dl>
+            <p>
+              W/S acelera; A/D guina; setas inclinam; Q/E rola; Shift dá impulso; Espaço freia; Esc
+              libera o mouse.
+            </p>
+          </details>
+        </section>
+      </div>
+
+      <div class="combat-layer" data-combat-panel hidden>
+        <section class="target-card hud-card" aria-labelledby="combat-title">
+          <div class="card-heading">
+            <div>
+              <p class="eyebrow">Contato tático</p>
+              <h2 id="combat-title" data-combat-contact>Nenhum contato</h2>
+            </div>
+            <span class="phase-chip" data-combat-phase>Ativo</span>
+          </div>
+
+          <div class="target-card__primary">
+            <div>
+              <span class="metric-label">Distância</span>
+              <strong data-combat-distance>—</strong>
+            </div>
+            <div>
+              <span class="metric-label">Scan</span>
+              <strong data-combat-scan>0%</strong>
+            </div>
+          </div>
+          <progress
+            data-combat-scan-progress
+            aria-label="Progresso de identificação do contato"
+            max="1"
+            value="0"
+          ></progress>
+          <dl class="target-metrics">
+            <div>
+              <dt>Condição</dt>
+              <dd data-combat-enemy-state>Dados indisponíveis</dd>
+            </div>
+            <div>
+              <dt>Comportamento</dt>
+              <dd data-combat-ai>Não identificado</dd>
+            </div>
+          </dl>
+        </section>
+
+        <div class="combat-feedback hud-card" role="status" aria-live="polite">
+          <span class="metric-label">Canal tático</span>
+          <p data-combat-feedback>Aguardando dados dos sensores.</p>
+        </div>
+
+        <nav class="tactical-action-bar hud-card" aria-label="Controles táticos">
+          <div class="combat-actions">
+            <button type="button" data-combat-action="select">Selecionar (T)</button>
+            <button type="button" data-combat-action="clear">Limpar (X)</button>
+            <button type="button" data-combat-action="scan" aria-pressed="false">Scan (R)</button>
+            <button type="button" data-combat-action="beam">Feixe (1)</button>
+            <button type="button" data-combat-action="torpedo">Torpedo (2)</button>
+            <button type="button" data-combat-action="tractor">Trator (3)</button>
+            <button type="button" data-combat-action="restart" hidden>
+              Reiniciar encontro (N)
+            </button>
+          </div>
+        </nav>
+      </div>
+
+      <details class="energy-panel hud-card" data-energy-panel hidden>
+        <summary class="energy-panel__heading">
+          <span>
+            <span class="eyebrow">Distribuição de potência</span>
+            <strong id="energy-title">Energia da nave</strong>
+          </span>
+          <output data-energy-total aria-label="Total de energia alocada">100 / 100</output>
+        </summary>
+        <div class="energy-panel__body" aria-labelledby="energy-title">
+          <div class="energy-presets" role="group" aria-label="Presets de energia">
+            <button type="button" data-energy-preset="balanced" aria-pressed="true">
+              Equilíbrio
+            </button>
+            <button type="button" data-energy-preset="attack" aria-pressed="false">Ataque</button>
+            <button type="button" data-energy-preset="defense" aria-pressed="false">Defesa</button>
+            <button type="button" data-energy-preset="escape" aria-pressed="false">Fuga</button>
+          </div>
+          <div class="energy-channels" aria-label="Ajuste manual de energia">
+            <div class="energy-channel">
+              <span>Motores</span><output data-energy-allocation="engines">25%</output>
+              <button
+                type="button"
+                data-energy-channel="engines"
+                data-energy-adjust="-5"
+                aria-label="Reduzir energia de motores"
+              >
+                −
+              </button>
+              <button
+                type="button"
+                data-energy-channel="engines"
+                data-energy-adjust="5"
+                aria-label="Aumentar energia de motores"
+              >
+                +
+              </button>
+            </div>
+            <div class="energy-channel">
+              <span>Escudos</span><output data-energy-allocation="shields">25%</output>
+              <button
+                type="button"
+                data-energy-channel="shields"
+                data-energy-adjust="-5"
+                aria-label="Reduzir energia de escudos"
+              >
+                −
+              </button>
+              <button
+                type="button"
+                data-energy-channel="shields"
+                data-energy-adjust="5"
+                aria-label="Aumentar energia de escudos"
+              >
+                +
+              </button>
+            </div>
+            <div class="energy-channel">
+              <span>Armas</span><output data-energy-allocation="weapons">25%</output>
+              <button
+                type="button"
+                data-energy-channel="weapons"
+                data-energy-adjust="-5"
+                aria-label="Reduzir energia de armas"
+              >
+                −
+              </button>
+              <button
+                type="button"
+                data-energy-channel="weapons"
+                data-energy-adjust="5"
+                aria-label="Aumentar energia de armas"
+              >
+                +
+              </button>
+            </div>
+            <div class="energy-channel">
+              <span>Auxiliares</span><output data-energy-allocation="auxiliary">25%</output>
+              <button
+                type="button"
+                data-energy-channel="auxiliary"
+                data-energy-adjust="-5"
+                aria-label="Reduzir energia de auxiliares e sensores"
+              >
+                −
+              </button>
+              <button
+                type="button"
+                data-energy-channel="auxiliary"
+                data-energy-adjust="5"
+                aria-label="Aumentar energia de auxiliares e sensores"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <dl class="energy-source">
+            <div>
+              <dt>Reator</dt>
+              <dd data-energy-reactor>100 u/s</dd>
+            </div>
+            <div>
+              <dt>Reserva</dt>
+              <dd data-energy-reserve>100%</dd>
+            </div>
+          </dl>
+          <p data-energy-feedback role="status" aria-live="polite">
+            Alocação conservada: 100 de 100. Perfil Equilibrado.
+          </p>
+        </div>
+      </details>
+
+      <details class="diagnostics-drawer hud-card">
+        <summary>Diagnóstico e compatibilidade</summary>
+        <div class="diagnostics-drawer__body">
+          <dl class="diagnostics" aria-label="Diagnóstico gráfico">
+            <div>
+              <dt>Backend</dt>
+              <dd data-diagnostic="backend">Verificando…</dd>
+            </div>
+            <div>
+              <dt>Renderizador</dt>
+              <dd data-diagnostic="renderer">Verificando…</dd>
+            </div>
+            <div>
+              <dt>Preset</dt>
+              <dd data-diagnostic="preset">Verificando…</dd>
+            </div>
+            <div>
+              <dt>Quadros</dt>
+              <dd><span data-diagnostic="fps">—</span> FPS</dd>
+            </div>
+          </dl>
+          <aside class="compatibility-notice" data-compatibility-notice role="alert" hidden>
+            <h2 data-notice-title>Compatibilidade gráfica</h2>
+            <p data-notice-message></p>
+            <ol data-notice-actions></ol>
+            <p class="technical-detail" data-notice-detail hidden></p>
+            <button type="button" data-retry-button>Tentar novamente</button>
+          </aside>
+        </div>
+      </details>
+
+      <section class="terminal-banner hud-card" data-terminal-banner role="status" hidden>
+        <span class="eyebrow">Encontro encerrado</span>
+        <strong data-terminal-title>Resultado do encontro</strong>
+        <p data-terminal-message></p>
+      </section>
+    </main>
+
+    <noscript>
+      <p class="noscript-message">
+        O JavaScript está desativado. Ative-o no navegador para executar o diagnóstico 3D.
+      </p>
+    </noscript>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

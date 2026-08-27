@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+package-lock.json
+AGENTS.md
+ARCHITECTURE.md
+PLANEJAMENTO.md
+docs/

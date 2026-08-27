@@ -1,0 +1,942 @@
+:root {
+  --hud-bg: rgb(6 17 29 / 88%);
+  --hud-bg-strong: rgb(6 17 29 / 94%);
+  --hud-text: #edf7ff;
+  --hud-secondary: #9db6c8;
+  --hud-data: #74d5ff;
+  --hud-success: #70e0a2;
+  --hud-warning: #ffd166;
+  --hud-danger: #ff7d8a;
+  --hud-border: rgb(157 182 200 / 40%);
+  --hud-border-soft: rgb(157 182 200 / 22%);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  color: var(--hud-text);
+  background: #020711;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  font-size: 14px;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html,
+body,
+.app-shell {
+  width: 100%;
+  min-width: 320px;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  background: #020711;
+}
+
+button,
+summary {
+  font: inherit;
+}
+
+button,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #d9f3ff;
+  outline-offset: 2px;
+}
+
+button {
+  min-height: 36px;
+  padding: var(--space-2) var(--space-3);
+  color: var(--hud-text);
+  font-weight: 650;
+  background: #102b44;
+  border: 1px solid rgb(116 213 255 / 45%);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  color: #06111d;
+  background: var(--hud-data);
+  border-color: #bcecff;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.app-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: radial-gradient(circle at 62% 38%, rgb(22 57 88 / 28%), transparent 40%), #020711;
+}
+
+.scene-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hud-card {
+  color: var(--hud-text);
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-border);
+  border-radius: 6px;
+}
+
+.eyebrow,
+.metric-label,
+dt {
+  color: var(--hud-secondary);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  display: block;
+  margin: 0 0 var(--space-1);
+  color: var(--hud-data);
+}
+
+h1,
+h2,
+p,
+dl {
+  margin-top: 0;
+}
+
+h1,
+h2,
+dd,
+output,
+.speed-readout,
+.target-card__primary strong {
+  font-variant-numeric: tabular-nums;
+}
+
+h1 {
+  margin-bottom: 0;
+  font-size: 19px;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+}
+
+h2 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.objective-card {
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  z-index: 5;
+  width: 288px;
+  min-height: 144px;
+  padding: var(--space-3);
+}
+
+.objective-card__title,
+.card-heading {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  background: var(--hud-warning);
+  border-radius: 50%;
+}
+
+[data-app-state='ready'] .status-dot {
+  background: var(--hud-success);
+}
+
+[data-app-state='blocked'] .status-dot {
+  background: var(--hud-danger);
+}
+
+.status-line {
+  min-height: 1.25em;
+  margin: var(--space-2) 0;
+  overflow: hidden;
+  color: var(--hud-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.objective-card__mission {
+  padding: var(--space-2);
+  background: rgb(116 213 255 / 8%);
+  border-left: 3px solid var(--hud-data);
+}
+
+.objective-card__mission strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.phase-note {
+  margin: var(--space-2) 0 0;
+  color: var(--hud-secondary);
+  font-size: 11px;
+}
+
+.flight-layer,
+.combat-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.flight-layer .hud-card,
+.combat-layer .hud-card {
+  pointer-events: auto;
+}
+
+.session-controls {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: 5;
+  width: 300px;
+  padding: var(--space-2);
+}
+
+.session-controls__state {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--hud-success);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+
+[data-simulation-state='paused'] .session-controls__state {
+  color: var(--hud-warning);
+}
+
+.flight-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+
+.flight-actions button {
+  min-height: 34px;
+  padding: var(--space-1) var(--space-2);
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.control-feedback {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2);
+  color: var(--hud-text);
+  font-size: 12px;
+  line-height: 1.25;
+  background: rgb(116 213 255 / 10%);
+  border-left: 3px solid var(--hud-data);
+}
+
+.player-status {
+  position: absolute;
+  bottom: var(--space-4);
+  left: var(--space-4);
+  z-index: 5;
+  width: 288px;
+  padding: var(--space-3);
+}
+
+.speed-readout {
+  color: var(--hud-data);
+  font-size: 18px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.player-vitals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-1);
+  margin: var(--space-3) 0 var(--space-2);
+}
+
+.player-vitals > div,
+.player-subsystems > div,
+.target-metrics > div,
+.flight-metrics > div {
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  background: rgb(116 213 255 / 7%);
+  border: 1px solid var(--hud-border-soft);
+  border-radius: 4px;
+}
+
+.player-vitals dd,
+.player-subsystems dd,
+.target-metrics dd,
+.flight-metrics dd {
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: var(--hud-text);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-player-condition='avariado'] .player-status {
+  border-color: rgb(255 209 102 / 55%);
+}
+
+[data-player-condition='crítico'],
+[data-player-condition='destruído'] {
+  --player-condition-color: var(--hud-danger);
+}
+
+[data-player-condition='crítico'] .player-status,
+[data-player-condition='destruído'] .player-status {
+  border-color: rgb(255 125 138 / 65%);
+}
+
+.shield-cross {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-1);
+  align-items: center;
+  min-height: 28px;
+  padding: var(--space-1) var(--space-2);
+  color: var(--hud-data);
+  background: rgb(116 213 255 / 8%);
+  border-left: 3px solid var(--hud-data);
+}
+
+.shield-sector {
+  display: flex;
+  gap: var(--space-1);
+  align-items: baseline;
+  justify-content: center;
+  min-width: 0;
+}
+
+.shield-sector abbr {
+  color: var(--hud-secondary);
+  font-size: 10px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.shield-sector output {
+  color: var(--hud-data);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.player-subsystems {
+  margin: var(--space-2) 0 0;
+}
+
+.player-subsystems dd {
+  color: var(--hud-data);
+}
+
+.flight-details {
+  margin-top: var(--space-2);
+  color: var(--hud-secondary);
+  font-size: 12px;
+}
+
+.flight-details summary,
+.diagnostics-drawer > summary,
+.energy-panel > summary {
+  min-height: 32px;
+  color: var(--hud-data);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.flight-details summary {
+  padding-top: var(--space-2);
+}
+
+.flight-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-1);
+  margin: var(--space-2) 0;
+}
+
+.flight-details p {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.target-card {
+  position: absolute;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 5;
+  width: 300px;
+  min-height: 210px;
+  padding: var(--space-3);
+}
+
+.phase-chip {
+  padding: var(--space-1) var(--space-2);
+  color: var(--hud-data);
+  font-size: 11px;
+  font-weight: 750;
+  background: rgb(116 213 255 / 10%);
+  border: 1px solid rgb(116 213 255 / 35%);
+  border-radius: 4px;
+}
+
+[data-combat-phase='victory'] .phase-chip {
+  color: var(--hud-success);
+  border-color: rgb(112 224 162 / 50%);
+}
+
+[data-combat-phase='defeat'] .phase-chip {
+  color: var(--hud-danger);
+  border-color: rgb(255 125 138 / 60%);
+}
+
+.target-card__primary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-2);
+}
+
+.target-card__primary > div {
+  min-width: 0;
+}
+
+.target-card__primary strong {
+  display: block;
+  margin-top: var(--space-1);
+  overflow: hidden;
+  color: var(--hud-data);
+  font-size: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.target-card progress {
+  display: block;
+  width: 100%;
+  height: 5px;
+  overflow: hidden;
+  accent-color: var(--hud-data);
+  border: 0;
+  border-radius: 4px;
+}
+
+.target-metrics {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+}
+
+.combat-feedback {
+  position: absolute;
+  bottom: 76px;
+  left: 50%;
+  z-index: 5;
+  width: min(560px, calc(100vw - 672px));
+  min-width: 420px;
+  padding: var(--space-2) var(--space-3);
+  transform: translateX(-50%);
+}
+
+.combat-feedback p {
+  min-height: 1.25em;
+  margin: var(--space-1) 0 0;
+  overflow: hidden;
+  color: var(--hud-text);
+  font-size: 13px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tactical-action-bar {
+  position: absolute;
+  bottom: var(--space-4);
+  left: 50%;
+  z-index: 5;
+  width: min(620px, calc(100vw - 660px));
+  min-width: 440px;
+  padding: var(--space-2);
+  transform: translateX(-50%);
+}
+
+.combat-actions {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+
+.combat-actions button {
+  min-height: 36px;
+  padding: var(--space-1);
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combat-actions button[aria-pressed='true'] {
+  color: #06111d;
+  background: var(--hud-data);
+  border-color: #c7efff;
+}
+
+.combat-actions [data-combat-action='restart'] {
+  grid-column: 1 / -1;
+}
+
+[data-combat-phase='victory'] .combat-actions button:not([data-combat-action='restart']),
+[data-combat-phase='defeat'] .combat-actions button:not([data-combat-action='restart']) {
+  display: none;
+}
+
+.energy-panel {
+  position: absolute;
+  bottom: 312px;
+  left: var(--space-4);
+  z-index: 5;
+  width: 288px;
+  overflow: hidden;
+}
+
+.app-shell:has(.energy-panel[open]) .objective-card {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.energy-panel__heading {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px !important;
+  padding: var(--space-2) var(--space-3);
+  list-style-position: inside;
+}
+
+.energy-panel__heading .eyebrow {
+  display: block;
+  font-size: 10px;
+}
+
+.energy-panel__heading strong {
+  color: var(--hud-text);
+  font-size: 14px;
+}
+
+.energy-panel__heading output {
+  color: var(--hud-data);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.energy-panel__body {
+  padding: 0 var(--space-3) var(--space-3);
+  border-top: 1px solid var(--hud-border-soft);
+}
+
+.energy-presets {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-1);
+  margin: var(--space-2) 0;
+}
+
+.energy-presets button,
+.energy-channel button {
+  min-height: 30px;
+  padding: var(--space-1);
+  font-size: 11px;
+}
+
+.energy-presets button[aria-pressed='true'] {
+  color: #06111d;
+  background: var(--hud-data);
+}
+
+.energy-channel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px 30px 30px;
+  gap: var(--space-1);
+  align-items: center;
+  min-height: 34px;
+  border-bottom: 1px solid var(--hud-border-soft);
+}
+
+.energy-channel > span,
+.energy-channel output {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.energy-channel > span {
+  color: var(--hud-secondary);
+}
+
+.energy-channel output {
+  color: var(--hud-data);
+  text-align: right;
+}
+
+.energy-source {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+}
+
+.energy-source dd {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--hud-text);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.energy-panel [data-energy-feedback] {
+  margin: var(--space-2) 0 0;
+  color: var(--hud-secondary);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.diagnostics-drawer {
+  position: absolute;
+  top: 112px;
+  right: var(--space-4);
+  z-index: 6;
+  width: 300px;
+  overflow: hidden;
+}
+
+.diagnostics-drawer > summary {
+  min-height: 38px;
+  padding: var(--space-2) var(--space-3);
+  color: var(--hud-secondary);
+  font-size: 12px;
+}
+
+.diagnostics-drawer__body {
+  max-height: calc(100vh - 174px);
+  padding: 0 var(--space-3) var(--space-3);
+  overflow-y: auto;
+  border-top: 1px solid var(--hud-border-soft);
+}
+
+.diagnostics {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+}
+
+.diagnostics > div {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: baseline;
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--hud-border-soft);
+}
+
+.diagnostics dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--hud-text);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compatibility-notice {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  color: var(--hud-warning);
+  background: rgb(64 48 13 / 82%);
+  border: 1px solid rgb(255 209 102 / 60%);
+  border-radius: 4px;
+}
+
+.compatibility-notice[data-notice-kind='error'] {
+  color: #ffecef;
+  background: rgb(75 20 30 / 88%);
+  border-color: var(--hud-danger);
+}
+
+.compatibility-notice h2 {
+  font-size: 15px;
+}
+
+.compatibility-notice p,
+.compatibility-notice ol {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.compatibility-notice ol {
+  padding-left: 20px;
+}
+
+.technical-detail {
+  padding: var(--space-2);
+  overflow-wrap: anywhere;
+  color: #ffe0e4;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  background: rgb(0 0 0 / 25%);
+}
+
+[data-app-state='blocked'] .diagnostics-drawer {
+  top: 50%;
+  right: 50%;
+  width: min(520px, calc(100vw - 32px));
+  transform: translate(50%, -50%);
+}
+
+.center-reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  width: 34px;
+  height: 34px;
+  pointer-events: none;
+  border: 1px solid rgb(116 213 255 / 70%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.center-reticle::before,
+.center-reticle::after {
+  position: absolute;
+  content: '';
+  background: var(--hud-data);
+}
+
+.center-reticle::before {
+  top: 16px;
+  left: -7px;
+  width: 48px;
+  height: 1px;
+}
+
+.center-reticle::after {
+  top: -7px;
+  left: 16px;
+  width: 1px;
+  height: 48px;
+}
+
+.center-reticle span {
+  position: absolute;
+  inset: 14px;
+  background: var(--hud-data);
+  border-radius: 50%;
+}
+
+.target-line {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  height: 1px;
+  pointer-events: none;
+  background: rgb(116 213 255 / 48%);
+  transform-origin: 0 50%;
+}
+
+.target-line[data-marker-mode='remembered'] {
+  height: 0;
+  background: transparent;
+  border-top: 1px dashed var(--hud-warning);
+}
+
+.target-tracker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  width: 54px;
+  height: 54px;
+  pointer-events: none;
+  color: var(--hud-data);
+  transform: translate3d(-100px, -100px, 0);
+}
+
+.target-tracker[data-marker-mode='remembered'] {
+  color: var(--hud-warning);
+  opacity: 0.78;
+}
+
+.target-tracker[data-marker-mode='remembered'] .target-tracker__corner {
+  border-style: dashed;
+}
+
+.target-tracker__corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: currentcolor;
+}
+
+.target-tracker__corner--tl {
+  top: 0;
+  left: 0;
+  border-top: 2px solid;
+  border-left: 2px solid;
+}
+
+.target-tracker__corner--tr {
+  top: 0;
+  right: 0;
+  border-top: 2px solid;
+  border-right: 2px solid;
+}
+
+.target-tracker__corner--bl {
+  bottom: 0;
+  left: 0;
+  border-bottom: 2px solid;
+  border-left: 2px solid;
+}
+
+.target-tracker__corner--br {
+  right: 0;
+  bottom: 0;
+  border-right: 2px solid;
+  border-bottom: 2px solid;
+}
+
+.target-tracker__caption {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 50%;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.terminal-banner {
+  position: absolute;
+  top: var(--space-4);
+  left: 50%;
+  z-index: 8;
+  width: 480px;
+  max-width: calc(100vw - 664px);
+  padding: var(--space-3) var(--space-4);
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.terminal-banner strong {
+  display: block;
+  color: var(--hud-success);
+  font-size: 20px;
+}
+
+[data-combat-phase='defeat'] .terminal-banner strong {
+  color: var(--hud-danger);
+}
+
+.terminal-banner p {
+  margin: var(--space-1) 0 0;
+  color: var(--hud-secondary);
+  font-size: 12px;
+}
+
+.noscript-message {
+  position: fixed;
+  inset: var(--space-4);
+  z-index: 20;
+  padding: var(--space-4);
+  color: #fff;
+  background: #651f26;
+  border: 2px solid var(--hud-danger);
+}
+
+@media (max-width: 1100px) {
+  .objective-card,
+  .player-status,
+  .energy-panel {
+    left: var(--space-2);
+    width: 272px;
+  }
+
+  .session-controls,
+  .target-card,
+  .diagnostics-drawer {
+    right: var(--space-2);
+    width: 280px;
+  }
+
+  .tactical-action-bar,
+  .combat-feedback {
+    min-width: 400px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
