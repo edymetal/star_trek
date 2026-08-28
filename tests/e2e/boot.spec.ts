@@ -129,6 +129,35 @@ test('inicia a arena de voo com WebGL 2 e telemetria', async ({ page }) => {
   await expect(page.locator('[data-flight-lod]')).toContainText('Nave remota');
 });
 
+test('executa o cenário determinístico P0.5 com preset e frametimes explícitos', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.goto('/?benchmark=1&preset=medium&duration=1&warmup=1');
+
+  const root = page.locator('[data-app-root]');
+  await expect(root).toHaveAttribute('data-app-state', 'ready');
+  await expect(root).toHaveAttribute('data-benchmark-mode', 'active');
+  await expect(root).toHaveAttribute('data-benchmark-preset', 'medium');
+  await expect(page.locator('[data-benchmark-load]')).toHaveText(
+    '6 naves · 144 asteroides · 900 estrelas',
+  );
+  await expect(root).toHaveAttribute('data-benchmark-state', 'complete', { timeout: 10_000 });
+  await expect
+    .poll(async () => Number(await root.getAttribute('data-benchmark-average-fps')))
+    .toBeGreaterThan(0);
+  await expect
+    .poll(async () => Number(await root.getAttribute('data-benchmark-p50-ms')))
+    .toBeGreaterThan(0);
+  await expect
+    .poll(async () => Number(await root.getAttribute('data-benchmark-p95-ms')))
+    .toBeGreaterThan(0);
+  await expect
+    .poll(async () => Number(await root.getAttribute('data-benchmark-p99-ms')))
+    .toBeGreaterThan(0);
+  await expect(page.locator('[data-benchmark-result]')).toContainText(/FPS médios · p50/);
+});
+
 test('mostra instruções acionáveis quando WebGL 2 não está disponível', async ({ page }) => {
   await page.addInitScript(() => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext;
@@ -315,14 +344,10 @@ test('feixe, torpedo e raio trator têm resultados e restrições distintos', as
   await page.getByRole('button', { name: /Pausar/ }).click();
   await expect(root).toHaveAttribute('data-simulation-state', 'paused');
   await expect(root).toHaveAttribute('data-shield-impact-target', 'remote');
+  await expect(root).not.toHaveAttribute('data-impact-sector', 'none');
   await expect
     .poll(async () => Number(await root.getAttribute('data-active-vfx')))
     .toBeGreaterThanOrEqual(4);
-  if (testInfo.project.name === 'Google Chrome') {
-    await page.screenshot({
-      path: 'docs/screenshots/ui-gfx-final-combat-1280x720.png',
-    });
-  }
   await page.getByRole('button', { name: /Retomar/ }).click();
   await expect(root).toHaveAttribute('data-simulation-state', 'running');
   await page.getByRole('button', { name: /Torpedo/ }).click();
@@ -334,9 +359,27 @@ test('feixe, torpedo e raio trator têm resultados e restrições distintos', as
     .toBeGreaterThanOrEqual(2);
   await expect
     .poll(async () => Number(await root.getAttribute('data-draw-calls')))
-    .toBeLessThanOrEqual(28);
+    .toBeLessThanOrEqual(36);
   await expect(root).toHaveAttribute('data-projectile-count', '0', { timeout: 5_000 });
   await expect(page.locator('[data-combat-feedback]')).toContainText('Torpedo impactou');
+  await page.getByRole('button', { name: /Pausar/ }).click();
+  await expect(root).toHaveAttribute('data-simulation-state', 'paused');
+  await expect
+    .poll(async () =>
+      Promise.all(
+        ['bow', 'stern', 'port', 'starboard'].map((section) =>
+          root.getAttribute(`data-remote-section-${section}`),
+        ),
+      ),
+    )
+    .toContain('critical');
+  await expect(root).not.toHaveAttribute('data-remote-disabled-subsystems', '');
+  if (testInfo.project.name === 'Google Chrome') {
+    await page.waitForTimeout(1_000);
+    await page.screenshot({
+      path: 'docs/screenshots/ui-gfx-final-combat-1280x720.png',
+    });
+  }
 });
 
 test('conclui o encontro com vitória e reinicia sem recarregar a página', async ({ page }) => {
@@ -491,6 +534,8 @@ test('mantém marcador congelado durante memória sensorial', async ({ page }, t
     .toBe('dashed');
   await expect(page.locator('[data-flight-lod]')).toContainText('oculta sem percepção');
   await expect(root).toHaveAttribute('data-remote-visual-damage', 'hidden');
+  await expect(root).toHaveAttribute('data-remote-section-bow', 'hidden');
+  await expect(root).toHaveAttribute('data-remote-disabled-subsystems', '');
   const frozenTransform = await marker.evaluate(
     (element) => (element as HTMLElement).style.transform,
   );

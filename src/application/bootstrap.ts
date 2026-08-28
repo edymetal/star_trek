@@ -2,6 +2,7 @@ import { getGraphicsPreset } from '../content/graphics-presets';
 import { PLAYER_SHIP_DEFINITION, TRAINING_ARENA } from '../content/arena-content';
 import { ENERGY_PRESETS, PLAYER_ENERGY_DEFINITION } from '../content/energy-content';
 import { PLAYER_DAMAGE_DEFINITION } from '../content/combat-content';
+import { resolveShieldSector, type ShieldSectorId } from '../domain/combat/damage';
 import { createInitialEnergyState, type EnergyAllocation } from '../domain/energy/energy-system';
 import { createInitialShipState } from '../domain/flight/ship-flight';
 import { evaluateGraphicsReadiness } from '../domain/graphics-readiness';
@@ -26,6 +27,7 @@ import {
 } from './presentation-effect-retainer';
 import { selectInitialPreset } from './select-initial-preset';
 import { createThrottledPublisher } from './throttled-publisher';
+import { parseStartupOptions } from './startup-options';
 
 const WEBGL_UNAVAILABLE_NOTICE: CompatibilityNotice = {
   actions: [
@@ -72,6 +74,7 @@ interface PublishedHudTelemetry {
 
 export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene | undefined> {
   let disposeFailedBootstrap: (() => void) | undefined;
+  const startupOptions = parseStartupOptions(window.location.search);
   const capability = inspectWebGl2Capability();
   const readiness = evaluateGraphicsReadiness(capability);
   shell.setGraphicsCapability(capability);
@@ -82,7 +85,9 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
     return undefined;
   }
 
-  const preset = getGraphicsPreset(selectInitialPreset(capability));
+  const preset = getGraphicsPreset(
+    selectInitialPreset(capability, startupOptions.requestedPresetId),
+  );
   shell.setPreset(preset);
 
   if (readiness.reason === 'software-renderer') {
@@ -108,12 +113,15 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       | {
           readonly before: PlayerEffectResultView;
           readonly equipmentId: PlayerPresentationEquipmentId;
+          readonly impactSector?: ShieldSectorId;
           readonly targetPosition: { readonly x: number; readonly y: number; readonly z: number };
         }
       | undefined;
     let presentationEffectSerial = 0;
     const requestPlayerEffect = (equipmentId: PlayerPresentationEquipmentId): void => {
-      const before = flightSession.getSnapshot().encounter;
+      const beforeSnapshot = flightSession.getSnapshot();
+      const before = beforeSnapshot.encounter;
+      const ship = beforeSnapshot.ship;
       const publicObservation = before.contact.lastObservation;
       flightSession.useEquipment(equipmentId);
       pendingPresentationEffect =
@@ -126,6 +134,15 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
                 tractorActive: before.tractorActive,
               },
               equipmentId,
+              ...(equipmentId === 'beam'
+                ? {
+                    impactSector: resolveShieldSector(before.enemy.orientationDegrees, {
+                      x: ship.position.x - publicObservation.position.x,
+                      y: ship.position.y - publicObservation.position.y,
+                      z: ship.position.z - publicObservation.position.z,
+                    }),
+                  }
+                : {}),
               targetPosition: { ...publicObservation.position },
             }
           : undefined;
@@ -307,57 +324,95 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       input.dispose();
     };
     const { createArenaScene } = await import('../engine/create-arena-scene');
-    const engineScene = await createArenaScene(shell.canvas, preset, {
-      onFpsSample: (fps) => shell.setFps(fps),
-      onPresentationFrame: (presentation) => shell.setArenaPresentation(presentation),
-      onUpdate(deltaSeconds, getTelemetry) {
-        const snapshot = flightSession.advance(deltaSeconds, input);
-        if (pendingPresentationEffect !== undefined && snapshot.simulationSteps > 0) {
-          const { encounter } = snapshot;
-          const after: PlayerEffectResultView = {
-            enemyHullPercent: encounter.enemy.hullPercent,
-            enemyShieldPercent: encounter.enemy.shieldPercent,
-            torpedoAmmo: encounter.torpedoAmmo,
-            tractorActive: encounter.tractorActive,
-          };
-          if (
-            didPlayerEquipmentActivate(
-              pendingPresentationEffect.equipmentId,
-              pendingPresentationEffect.before,
-              after,
-            )
-          ) {
-            presentationEffectSerial += 1;
-            presentationEffectRetainer.capture(pendingPresentationEffect.equipmentId, {
-              kind: pendingPresentationEffect.equipmentId,
-              remainingSeconds: 0,
-              serial: -presentationEffectSerial,
-              targetPosition: pendingPresentationEffect.targetPosition,
-            });
+    const engineScene = await createArenaScene(
+      shell.canvas,
+      preset,
+      {
+        onBenchmarkTelemetry(telemetry) {
+          shell.setBenchmarkTelemetry({
+            asteroidCount: telemetry.asteroidCount,
+            elapsedSeconds: telemetry.elapsedSeconds,
+            fleetShipCount: telemetry.fleetShipCount,
+            ...(telemetry.frameTimeProfile === undefined
+              ? {}
+              : {
+                  averageFps: telemetry.frameTimeProfile.averageFps,
+                  p50FrameTimeMs: telemetry.frameTimeProfile.p50FrameTimeMs,
+                  p95FrameTimeMs: telemetry.frameTimeProfile.p95FrameTimeMs,
+                  p99FrameTimeMs: telemetry.frameTimeProfile.p99FrameTimeMs,
+                }),
+            presetId: telemetry.presetId,
+            starCount: telemetry.starCount,
+            state: telemetry.state,
+            targetDurationSeconds: telemetry.targetDurationSeconds,
+          });
+        },
+        onFpsSample: (fps) => shell.setFps(fps),
+        onPresentationFrame: (presentation) => shell.setArenaPresentation(presentation),
+        onUpdate(deltaSeconds, getTelemetry) {
+          const snapshot = flightSession.advance(deltaSeconds, input);
+          if (pendingPresentationEffect !== undefined && snapshot.simulationSteps > 0) {
+            const { encounter } = snapshot;
+            const after: PlayerEffectResultView = {
+              enemyHullPercent: encounter.enemy.hullPercent,
+              enemyShieldPercent: encounter.enemy.shieldPercent,
+              torpedoAmmo: encounter.torpedoAmmo,
+              tractorActive: encounter.tractorActive,
+            };
+            if (
+              didPlayerEquipmentActivate(
+                pendingPresentationEffect.equipmentId,
+                pendingPresentationEffect.before,
+                after,
+              )
+            ) {
+              presentationEffectSerial += 1;
+              const matchingAuthoritativeEffect =
+                encounter.effect?.kind === pendingPresentationEffect.equipmentId
+                  ? encounter.effect
+                  : undefined;
+              presentationEffectRetainer.capture(pendingPresentationEffect.equipmentId, {
+                ...(matchingAuthoritativeEffect?.impactSector === undefined
+                  ? pendingPresentationEffect.impactSector === undefined
+                    ? {}
+                    : { impactSector: pendingPresentationEffect.impactSector }
+                  : { impactSector: matchingAuthoritativeEffect.impactSector }),
+                kind: pendingPresentationEffect.equipmentId,
+                remainingSeconds: 0,
+                serial: -presentationEffectSerial,
+                targetPosition: pendingPresentationEffect.targetPosition,
+              });
+            }
+            pendingPresentationEffect = undefined;
           }
-          pendingPresentationEffect = undefined;
-        }
-        hudPublisher.publishIfDue(deltaSeconds, () => {
-          engineTelemetry = getTelemetry();
-          return createHudTelemetry(snapshot);
-        });
-        const retainedPlayerEffects = presentationEffectRetainer.step(
-          deltaSeconds,
-          snapshot.paused,
-          snapshot.encounter.phase,
-        );
-        const authoritativeEffect = snapshot.encounter.effect;
-        const presentationEffects = combinePresentationEffects(
-          authoritativeEffect,
-          retainedPlayerEffects,
-        );
-        if (presentationEffects.length === 0) return snapshot;
-        return {
-          ...snapshot,
-          presentationEffects,
-        };
+          hudPublisher.publishIfDue(deltaSeconds, () => {
+            engineTelemetry = getTelemetry();
+            return createHudTelemetry(snapshot);
+          });
+          const retainedPlayerEffects = presentationEffectRetainer.step(
+            deltaSeconds,
+            snapshot.paused,
+            snapshot.encounter.phase,
+          );
+          const authoritativeEffect = snapshot.encounter.effect;
+          const presentationEffects = combinePresentationEffects(
+            authoritativeEffect,
+            retainedPlayerEffects,
+          );
+          if (presentationEffects.length === 0) return snapshot;
+          return {
+            ...snapshot,
+            presentationEffects,
+          };
+        },
       },
-    });
+      {
+        ...(startupOptions.benchmark === undefined ? {} : { benchmark: startupOptions.benchmark }),
+        ...(startupOptions.requestedBackend === undefined
+          ? {}
+          : { preferredBackend: startupOptions.requestedBackend }),
+      },
+    );
     const scene: ArenaScene = {
       backendLabel: engineScene.backendLabel,
       dispose() {

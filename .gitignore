@@ -3,6 +3,7 @@ dist/
 .vite/
 coverage/
 playwright-report/
+playwright-benchmark-report/
 test-results/
 *.tsbuildinfo
 .env

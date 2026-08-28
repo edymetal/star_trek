@@ -19,5 +19,12 @@
     "skipLibCheck": false,
     "types": ["node"]
   },
-  "include": ["eslint.config.js", "playwright.config.ts", "vite.config.ts", "tests/e2e"]
+  "include": [
+    "eslint.config.js",
+    "playwright.config.ts",
+    "playwright.benchmark.config.ts",
+    "vite.config.ts",
+    "tests/e2e",
+    "tests/performance"
+  ]
 }

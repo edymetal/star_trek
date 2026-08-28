@@ -11,6 +11,10 @@ const baseCapability: GraphicsCapability = {
 };
 
 describe('selectInitialPreset', () => {
+  it('respeita a escolha explícita usada pelo benchmark', () => {
+    expect(selectInitialPreset(baseCapability, 'high')).toBe('high');
+  });
+
   it('seleciona médio para a GPU dedicada alvo', () => {
     expect(selectInitialPreset(baseCapability)).toBe('medium');
   });

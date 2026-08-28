@@ -16,6 +16,7 @@ import {
   totalShieldCharge,
   type DamageDefinition,
   type DamageState,
+  type ShieldSectorId,
 } from '../domain/combat/damage';
 import {
   createInitialEnemyAiState,
@@ -59,6 +60,7 @@ export type EncounterCommand =
   | { readonly equipmentId: EquipmentId; readonly type: 'use-equipment' };
 
 export interface CombatEffectSnapshot {
+  readonly impactSector?: ShieldSectorId;
   readonly kind: CombatEffectKind;
   readonly remainingSeconds: number;
   readonly serial: number;
@@ -129,6 +131,7 @@ interface TorpedoProjectile {
 }
 
 interface MutableEffect {
+  impactSector?: ShieldSectorId;
   kind: CombatEffectKind;
   remainingSeconds: number;
   serial: number;
@@ -342,9 +345,19 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
     tractorSeconds = 0;
   }
 
-  function setEffect(kind: CombatEffectKind, targetPosition: Vector3Value): void {
+  function setEffect(
+    kind: CombatEffectKind,
+    targetPosition: Vector3Value,
+    impactSector?: ShieldSectorId,
+  ): void {
     effectSerial += 1;
-    effect = { kind, remainingSeconds: 0.22, serial: effectSerial, targetPosition };
+    effect = {
+      ...(impactSector === undefined ? {} : { impactSector }),
+      kind,
+      remainingSeconds: 0.22,
+      serial: effectSerial,
+      targetPosition,
+    };
   }
 
   function snapshot(): EncounterSnapshot {
@@ -359,6 +372,7 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
         ? {}
         : {
             effect: {
+              ...(effect.impactSector === undefined ? {} : { impactSector: effect.impactSector }),
               kind: effect.kind,
               remainingSeconds: effect.remainingSeconds,
               serial: effect.serial,
@@ -443,7 +457,7 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
       enemyDamage = impact.state;
       feedback = `Feixe atingiu escudo ${impact.shieldSector}; ${impact.appliedToHull.toFixed(0)} de dano no casco.`;
       feedbackHoldSeconds = 0.8;
-      setEffect('beam', targetPosition);
+      setEffect('beam', targetPosition, impact.shieldSector);
     } else if (equipmentId === 'torpedo') {
       projectiles.push({
         damageUnits: use.outcome.damageUnits,
@@ -661,7 +675,7 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
         if (feedbackHoldSeconds === 0) {
           feedback = `Ataque inimigo no escudo ${impact.shieldSector}.`;
         }
-        setEffect('enemy-beam', perceivedPlayer.position);
+        setEffect('enemy-beam', perceivedPlayer.position, impact.shieldSector);
       }
     }
 
@@ -710,7 +724,7 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
       enemyDamage = impact.state;
       feedback = `Torpedo impactou escudo ${impact.shieldSector}; ${impact.appliedToHull.toFixed(0)} de dano no casco.`;
       feedbackHoldSeconds = 0.8;
-      setEffect('torpedo', projectile.position);
+      setEffect('torpedo', projectile.position, impact.shieldSector);
     }
     projectiles = remainingProjectiles;
 

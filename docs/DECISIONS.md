@@ -220,6 +220,24 @@ Decisões aceitas só devem ser alteradas por nova entrada que referencie a ante
 **Motivo:** preserva percepção justa, torna o projétil rastreável e evitável, mantém a semântica acessível dos controles e estabiliza o encontro real sem caminho exclusivo para automação.  
 **Consequências:** `verify` passa com 123/123 testes; o fluxo crítico feixe/torpedo/trator mais vitória/reinício passa 12/12 em três repetições por navegador; a matriz completa passa 38/38 em Chrome/Edge, sem `skip`. O bloqueio técnico do ciclo 2 foi removido, mas o gate P0.4 ainda aguarda revisão formal. Cadência, raio de colisão e demais números continuam provisórios até playtest/benchmark P0.5.
 
+## DECISION-025 — Benchmark P0.5 explícito, determinístico e limitado
+
+**Status:** aceita; UHD 620 medida, MX130 pendente  
+**Problema:** diagnósticos pontuais de FPS/draw calls da arena jogável não representam uma carga fixa e não produzem percentis comparáveis entre GPU, navegador e preset. Também não podem ser confundidos com o gate físico do hardware alvo.  
+**Opções consideradas:** medir manualmente o encontro variável; criar uma cena separada duplicando renderer/VFX; adicionar um modo de benchmark explícito sobre o mesmo adaptador visual.  
+**Decisão:** a URL `?benchmark=1` ativa uma carga exclusivamente visual sobre o adaptador da arena, sem alterar regras ou snapshots autoritativos. Os presets baixo/médio/alto definem resolução, antialiasing, LOD, 4/6/8 naves, 96/144/192 asteroides, 680/900/1.200 estrelas e 1/2/3 estados de dano simultâneos. O cenário usa movimentos derivados de índice/tempo, mantém dois efeitos e um projétil do pool e coleta até 7.200 frametimes após aquecimento. O relatório expõe FPS médio, p50, p95, p99 e pior quadro.  
+**Motivo:** preserva o mesmo renderer e os mesmos recursos visuais do jogo, cria uma carga repetível e impede crescimento ilimitado de amostras/objetos.  
+**Consequências:** E2E pode validar a conclusão da coleta, mas números headless, aba em segundo plano ou janela curta são apenas diagnósticos. A UHD 620 passou o perfil baixo em janela física; o gate continua exigindo a medição MX130 1600×900/médio. A URL aceita `backend=webgpu` apenas para comparação e usa WebGL 2 como fallback; WebGL 2 continua o padrão porque a comparação UHD não mostrou benefício material. O modo de benchmark não pode fornecer informação de combate ao jogo nem se tornar caminho alternativo para vencer encontros.
+
+## DECISION-026 — Dano visual por seção e impacto direcional com orçamento fixo
+
+**Status:** aceita; medição MX130 e revisão formal pendentes  
+**Problema:** os três estados globais de casco da UI-GFX indicavam severidade, mas não mostravam onde o impacto ocorreu, qual seção foi danificada ou qual subsistema ficou inoperante. Criar partículas e decalques a cada acerto faria o custo crescer durante combates longos.  
+**Opções consideradas:** manter apenas estado global; gerar VFX dinamicamente por acerto; preparar recursos fixos por seção e derivá-los do snapshot público.  
+**Decisão:** cada nave possui quatro decalques preparados para proa, popa, bombordo e estibordo e um pool fixo de três sparks geométricos. O preset limita a 1/2/3 seções com sparks simultâneos. Materiais, emissivos e visibilidade dos decalques derivam dos estados lógicos públicos; motores, escudos, armas e sensores escurecem quando o respectivo subsistema está desativado. O setor de impacto acompanha o efeito confirmado e desloca feixe/impacto para a superfície direcional do alvo. Informações remotas de seção e subsistema são ocultadas quando o contato está apenas na memória.  
+**Motivo:** torna dano e escudos direcionais legíveis, preserva a percepção do domínio e mantém quantidade de entidades limitada independentemente da duração do combate.  
+**Consequências:** testes de apresentação e E2E devem conferir seção atingida, subsistema desativado, setor do impacto e ocultação em memória. O teto automatizado de draw calls do combate no preset baixo sobe de 28 para 36 para comportar recursos preparados; qualquer aumento posterior exige benchmark. Os efeitos continuam procedurais e sem assets externos.
+
 ## Decisões futuras não bloqueantes
 
 | Tema | Padrão até decidir | Gate |

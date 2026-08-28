@@ -5,6 +5,7 @@ import {
   Color,
   createGraphicsDevice,
   DEVICETYPE_WEBGL2,
+  DEVICETYPE_WEBGPU,
   Entity,
   FILLMODE_FILL_WINDOW,
   type GraphicsDevice,
@@ -24,13 +25,22 @@ import {
   deriveCombatVisualPresentation,
   deriveRemoteVesselPresentation,
   type ArenaPresentationDto,
+  type HullSectionVisualState,
   type HullVisualState,
   type TargetMarkerPresentationDto,
 } from '../application/arena-presentation';
 import type { GraphicsPreset } from '../content/graphics-presets';
 import { TRAINING_ARENA } from '../content/arena-content';
+import { ENEMY_DAMAGE_DEFINITION, PLAYER_DAMAGE_DEFINITION } from '../content/combat-content';
+import { HULL_SECTIONS, type HullSectionId, type SubsystemId } from '../domain/combat/damage';
 import { FpsMeter } from '../platform/fps-meter';
+import { FrameTimeProfiler, type FrameTimeProfile } from '../platform/frame-time-profiler';
 import { createResourceTransaction } from './resource-transaction';
+
+const COMBAT_VISUAL_CAPACITIES = {
+  enemyHullCapacityPerSection: ENEMY_DAMAGE_DEFINITION.hullCapacityPerSection,
+  playerHullCapacityPerSection: PLAYER_DAMAGE_DEFINITION.hullCapacityPerSection,
+} as const;
 
 export interface EngineTelemetry {
   readonly activeVfxCount: number;
@@ -41,6 +51,7 @@ export interface EngineTelemetry {
 }
 
 export interface ArenaSceneHandlers {
+  readonly onBenchmarkTelemetry?: (telemetry: BenchmarkTelemetry) => void;
   readonly onFpsSample: (fps: number) => void;
   readonly onPresentationFrame: (presentation: ArenaPresentationDto) => void;
   readonly onUpdate: (
@@ -49,12 +60,31 @@ export interface ArenaSceneHandlers {
   ) => ArenaRenderSnapshot;
 }
 
+export interface ArenaSceneOptions {
+  readonly benchmark?: {
+    readonly durationSeconds: number;
+    readonly warmupSeconds: number;
+  };
+  readonly preferredBackend?: 'webgpu';
+}
+
+export interface BenchmarkTelemetry {
+  readonly asteroidCount: number;
+  readonly elapsedSeconds: number;
+  readonly fleetShipCount: number;
+  readonly frameTimeProfile?: FrameTimeProfile;
+  readonly presetId: GraphicsPreset['id'];
+  readonly starCount: number;
+  readonly state: 'complete' | 'sampling' | 'warmup';
+  readonly targetDurationSeconds: number;
+}
+
 export interface ArenaRenderSnapshot extends FlightSessionSnapshot {
   readonly presentationEffects?: readonly CombatEffectSnapshot[];
 }
 
 export interface ArenaScene {
-  readonly backendLabel: 'WebGL 2';
+  readonly backendLabel: 'WebGL 2' | 'WebGPU';
   dispose(): void;
 }
 
@@ -198,11 +228,13 @@ function addPrimitive(
 }
 
 interface ShipVisual {
-  readonly damageAccents: readonly Entity[];
+  readonly damageAccents: Readonly<Record<HullSectionId, Entity>>;
+  readonly damageSparks: readonly Entity[];
   readonly engineRenders: readonly RenderComponent[];
-  readonly hullRenders: readonly RenderComponent[];
   readonly intactHullMaterial: StandardMaterial;
   readonly root: Entity;
+  readonly sectionRenders: Readonly<Record<HullSectionId, readonly RenderComponent[]>>;
+  readonly subsystemRenders: Readonly<Record<SubsystemId, readonly RenderComponent[]>>;
 }
 
 interface RemoteShipVisual {
@@ -250,7 +282,7 @@ function createDetailedShip(
     [0.72, 0.38, 1.18],
     [0, 0.82, -1.2],
   );
-  addPrimitive(
+  const portPylon = addPrimitive(
     root,
     `${name} pylon port`,
     'box',
@@ -259,7 +291,7 @@ function createDetailedShip(
     [-1.8, -0.08, 1.15],
     [0, -8, -8],
   );
-  addPrimitive(
+  const starboardPylon = addPrimitive(
     root,
     `${name} pylon starboard`,
     'box',
@@ -302,31 +334,147 @@ function createDetailedShip(
     [0.42, 0.42, 0.2],
     [3.1, 0.03, 3.6],
   );
-  const damageAccents = [
-    addPrimitive(
+  const damageAccents: Record<HullSectionId, Entity> = {
+    bow: addPrimitive(
       root,
-      `${name} damage`,
+      `${name} bow damage decal`,
       'box',
       materials.damageCritical,
-      [0.76, 0.1, 1.18],
-      [-0.72, 0.66, -0.1],
-      [0, -14, 0],
+      [0.62, 0.08, 0.92],
+      [0.58, 0.66, -2.2],
+      [0, -12, 0],
     ),
-  ];
-  damageAccents.forEach((accent) => (accent.enabled = false));
+    port: addPrimitive(
+      root,
+      `${name} port damage decal`,
+      'box',
+      materials.damageCritical,
+      [0.7, 0.08, 0.76],
+      [-2.15, 0.3, 0.92],
+      [0, 8, -6],
+    ),
+    starboard: addPrimitive(
+      root,
+      `${name} starboard damage decal`,
+      'box',
+      materials.damageCritical,
+      [0.7, 0.08, 0.76],
+      [2.15, 0.3, 0.92],
+      [0, -8, 6],
+    ),
+    stern: addPrimitive(
+      root,
+      `${name} stern damage decal`,
+      'box',
+      materials.damageCritical,
+      [0.72, 0.08, 0.88],
+      [-0.58, 0.66, 1.85],
+      [0, 14, 0],
+    ),
+  };
+  Object.values(damageAccents).forEach((accent) => (accent.enabled = false));
+  const damageSparks = Array.from({ length: 3 }, (_, index) => {
+    const spark = addPrimitive(
+      root,
+      `${name} pooled damage spark ${index + 1}`,
+      'sphere',
+      materials.damageCritical,
+      [0.1, 0.1, 0.1],
+    );
+    spark.enabled = false;
+    return spark;
+  });
   return {
     damageAccents,
+    damageSparks,
     engineRenders: [requireRender(leftExhaust), requireRender(rightExhaust)],
-    hullRenders: [
-      requireRender(hull),
-      requireRender(prow),
-      requireRender(bridge),
-      requireRender(leftEngine),
-      requireRender(rightEngine),
-    ],
     intactHullMaterial,
     root,
+    sectionRenders: {
+      bow: [requireRender(prow), requireRender(bridge)],
+      port: [requireRender(leftEngine), requireRender(portPylon)],
+      starboard: [requireRender(rightEngine), requireRender(starboardPylon)],
+      stern: [requireRender(hull)],
+    },
+    subsystemRenders: {
+      engines: [requireRender(leftExhaust), requireRender(rightExhaust)],
+      sensors: [requireRender(bridge)],
+      shields: [requireRender(portPylon), requireRender(starboardPylon)],
+      weapons: [requireRender(prow)],
+    },
   };
+}
+
+const DAMAGE_ACCENT_POSITIONS: Readonly<Record<HullSectionId, readonly [number, number, number]>> =
+  {
+    bow: [0.58, 0.78, -2.2],
+    port: [-2.15, 0.42, 0.92],
+    starboard: [2.15, 0.42, 0.92],
+    stern: [-0.58, 0.78, 1.85],
+  };
+
+function applyHullSectionVisualStates(
+  ship: ShipVisual,
+  sectionStates: HullSectionVisualState,
+  disabledSubsystems: readonly SubsystemId[],
+  materials: SceneMaterials,
+  maximumDamageBursts: number,
+  elapsedSeconds: number,
+): void {
+  const damagedSections: HullSectionId[] = [];
+  for (const section of HULL_SECTIONS) {
+    const state = sectionStates[section];
+    const hullMaterial =
+      state === 'intact'
+        ? ship.intactHullMaterial
+        : state === 'damaged'
+          ? materials.damageScorched
+          : materials.damageCritical;
+    ship.sectionRenders[section].forEach((render) => {
+      if (render.material !== hullMaterial) render.material = hullMaterial;
+    });
+    const accent = ship.damageAccents[section];
+    const accentRender = requireRender(accent);
+    accentRender.material =
+      state === 'damaged' ? materials.damageScorched : materials.damageCritical;
+    accent.enabled = state !== 'intact';
+    if (state !== 'intact') damagedSections.push(section);
+  }
+
+  ship.damageSparks.forEach((spark, index) => {
+    const section = damagedSections[index % Math.max(1, damagedSections.length)];
+    const enabled = section !== undefined && index < maximumDamageBursts;
+    spark.enabled = enabled;
+    if (!enabled || section === undefined) return;
+    const [x, y, z] = DAMAGE_ACCENT_POSITIONS[section];
+    const phase = elapsedSeconds * (4.2 + index * 0.7) + index * 1.9;
+    const pulse = 0.08 + (Math.sin(phase) * 0.5 + 0.5) * 0.16;
+    spark.setLocalPosition(x + Math.sin(phase) * 0.16, y + Math.cos(phase * 1.3) * 0.18, z);
+    spark.setLocalScale(pulse, pulse, pulse);
+  });
+
+  const disabled = new Set(disabledSubsystems);
+  const engineMaterial = disabled.has('engines')
+    ? materials.darkHull
+    : sectionStates.stern === 'critical'
+      ? materials.engineCritical
+      : materials.engine;
+  ship.subsystemRenders.engines.forEach((render) => {
+    if (render.material !== engineMaterial) render.material = engineMaterial;
+  });
+  for (const subsystem of ['shields', 'weapons'] as const) {
+    if (!disabled.has(subsystem)) continue;
+    ship.subsystemRenders[subsystem].forEach((render) => (render.material = materials.darkHull));
+  }
+  if (disabled.has('sensors')) {
+    ship.subsystemRenders.sensors.forEach((render) => (render.material = materials.darkHull));
+  }
+}
+
+function countActiveDamageVfx(ship: ShipVisual): number {
+  return [...Object.values(ship.damageAccents), ...ship.damageSparks].filter(
+    (entity) => entity.enabled,
+  ).length;
 }
 
 function applyHullVisualState(
@@ -334,20 +482,16 @@ function applyHullVisualState(
   state: HullVisualState,
   materials: SceneMaterials,
 ): void {
-  const hullMaterial =
-    state === 'intact'
-      ? ship.intactHullMaterial
-      : state === 'damaged'
-        ? materials.damageScorched
-        : materials.damageCritical;
-  ship.hullRenders.forEach((render) => {
-    if (render.material !== hullMaterial) render.material = hullMaterial;
-  });
-  const engineMaterial = state === 'critical' ? materials.engineCritical : materials.engine;
-  ship.engineRenders.forEach((render) => {
-    if (render.material !== engineMaterial) render.material = engineMaterial;
-  });
-  ship.damageAccents[0]!.enabled = state !== 'intact';
+  const sectionStates: HullSectionVisualState = {
+    bow: state,
+    port: state,
+    starboard: state,
+    stern: state,
+  };
+  applyHullSectionVisualStates(ship, sectionStates, [], materials, 0, 0);
+  if (state === 'critical') {
+    ship.engineRenders.forEach((render) => (render.material = materials.engineCritical));
+  }
 }
 
 function createRemoteShip(materials: SceneMaterials): RemoteShipVisual {
@@ -371,6 +515,59 @@ function createRemoteShip(materials: SceneMaterials): RemoteShipVisual {
     [90, 0, 0],
   );
   return { detailed, low, lowRender: requireRender(low), root };
+}
+
+function createBenchmarkFleet(
+  root: Entity,
+  materials: SceneMaterials,
+  shipCount: number,
+  maximumDamagedShips: number,
+): readonly ShipVisual[] {
+  const fleet = Array.from({ length: shipCount }, (_, index) => {
+    const ship = createDetailedShip(
+      `Benchmark vessel ${index + 1}`,
+      materials,
+      index % 2 === 0 ? materials.hostileHull : materials.hull,
+    );
+    ship.root.setLocalScale(0.48, 0.48, 0.48);
+    applyHullVisualState(
+      ship,
+      index < maximumDamagedShips ? (index === 0 ? 'critical' : 'damaged') : 'intact',
+      materials,
+    );
+    if (index < maximumDamagedShips) {
+      const state: HullVisualState = index === 0 ? 'critical' : 'damaged';
+      applyHullSectionVisualStates(
+        ship,
+        { bow: state, port: state, starboard: state, stern: state },
+        index === 0 ? ['engines'] : [],
+        materials,
+        maximumDamagedShips,
+        index,
+      );
+    }
+    root.addChild(ship.root);
+    return ship;
+  });
+  return fleet;
+}
+
+function updateBenchmarkFleet(fleet: readonly ShipVisual[], elapsedSeconds: number): void {
+  fleet.forEach((ship, index) => {
+    const lane = index % 2 === 0 ? -1 : 1;
+    const row = Math.floor(index / 2);
+    const phase = elapsedSeconds * (0.16 + index * 0.006) + index * 0.73;
+    ship.root.setPosition(
+      lane * (9 + row * 6) + Math.sin(phase) * 2.5,
+      -1 + ((index * 7) % 5) + Math.cos(phase * 0.7) * 1.6,
+      -32 - row * 18 + Math.sin(phase * 0.5) * 4,
+    );
+    ship.root.setEulerAngles(
+      4 + Math.sin(phase) * 5,
+      lane < 0 ? 165 + Math.cos(phase) * 12 : 195 + Math.cos(phase) * 12,
+      lane * 5,
+    );
+  });
 }
 
 function createCelestialBodies(root: Entity, materials: SceneMaterials): void {
@@ -418,6 +615,7 @@ function createInstancedAsteroids(
   root: Entity,
   graphicsDevice: GraphicsDevice,
   material: StandardMaterial,
+  asteroidCount: number,
 ): VertexBuffer {
   const asteroid = new Entity('Instanced asteroid field');
   const render = asteroid.addComponent('render', {
@@ -432,10 +630,10 @@ function createInstancedAsteroids(
   );
   root.addChild(asteroid);
 
-  const matrices = new Float32Array(TRAINING_ARENA.asteroidCount * 16);
+  const matrices = new Float32Array(asteroidCount * 16);
   const matrix = new Mat4();
   const rotation = new Quat();
-  for (let index = 0; index < TRAINING_ARENA.asteroidCount; index += 1) {
+  for (let index = 0; index < asteroidCount; index += 1) {
     const angle = index * 2.399963;
     const radius = 48 + ((index * 29) % 102);
     const height = ((index * 17) % 35) - 17;
@@ -451,7 +649,7 @@ function createInstancedAsteroids(
   const buffer = new VertexBuffer(
     graphicsDevice,
     VertexFormat.getDefaultInstancingFormat(graphicsDevice),
-    TRAINING_ARENA.asteroidCount,
+    asteroidCount,
     { data: matrices.buffer },
   );
   const meshInstance = render.meshInstances[0];
@@ -467,6 +665,7 @@ function createInstancedStarfield(
   root: Entity,
   graphicsDevice: GraphicsDevice,
   material: StandardMaterial,
+  starCount: number,
 ): VertexBuffer {
   const starfield = new Entity('Deterministic instanced starfield');
   const render = starfield.addComponent('render', {
@@ -478,7 +677,6 @@ function createInstancedStarfield(
   render.customAabb = new BoundingBox(Vec3.ZERO, new Vec3(490, 490, 490));
   root.addChild(starfield);
 
-  const starCount = 680;
   const matrices = new Float32Array(starCount * 16);
   const matrix = new Mat4();
   const rotation = new Quat();
@@ -692,7 +890,25 @@ function updateCombatVfx(
       effect.targetPosition.y,
       effect.targetPosition.z,
     );
-    const visuals = deriveCombatVisualPresentation({ ...encounter, effect }, remoteObserved);
+    const visuals = deriveCombatVisualPresentation(
+      { ...encounter, effect },
+      remoteObserved,
+      COMBAT_VISUAL_CAPACITIES,
+    );
+    if (effect.impactSector !== undefined) {
+      const targetRoot = effect.kind === 'enemy-beam' ? player.root : remote.root;
+      const impactRadius = effect.kind === 'enemy-beam' ? 3.2 : 2.5;
+      const localImpactOffset =
+        effect.impactSector === 'front'
+          ? vfx.scratchDirection.set(0, 0, -impactRadius)
+          : effect.impactSector === 'rear'
+            ? vfx.scratchDirection.set(0, 0, impactRadius)
+            : effect.impactSector === 'port'
+              ? vfx.scratchDirection.set(-impactRadius, 0, 0)
+              : vfx.scratchDirection.set(impactRadius, 0, 0);
+      targetRoot.getRotation().transformVector(localImpactOffset, vfx.scratchMidpoint);
+      vfx.scratchTarget.add(vfx.scratchMidpoint);
+    }
     const isPlayerBeam = effect.kind === 'beam' || effect.kind === 'tractor';
     const canShowEnemyBeam = effect.kind === 'enemy-beam' && remoteObserved;
     if (isPlayerBeam) {
@@ -783,13 +999,17 @@ export async function createArenaScene(
   canvas: HTMLCanvasElement,
   preset: GraphicsPreset,
   handlers: ArenaSceneHandlers,
+  options: ArenaSceneOptions = {},
 ): Promise<ArenaScene> {
   const resources = createResourceTransaction();
   try {
     const graphicsDevice: GraphicsDevice = await createGraphicsDevice(canvas, {
       antialias: preset.antialias,
       depth: true,
-      deviceTypes: [DEVICETYPE_WEBGL2],
+      deviceTypes:
+        options.preferredBackend === 'webgpu'
+          ? [DEVICETYPE_WEBGPU, DEVICETYPE_WEBGL2]
+          : [DEVICETYPE_WEBGL2],
       powerPreference: 'high-performance',
       stencil: false,
     });
@@ -797,7 +1017,10 @@ export async function createArenaScene(
     const app = new Application(canvas, { graphicsDevice });
     cancelDeviceCleanup();
     resources.defer(() => app.destroy());
-    if (app.graphicsDevice.deviceType !== DEVICETYPE_WEBGL2) {
+    if (
+      app.graphicsDevice.deviceType !== DEVICETYPE_WEBGL2 &&
+      app.graphicsDevice.deviceType !== DEVICETYPE_WEBGPU
+    ) {
       throw new Error(`Backend inesperado: ${app.graphicsDevice.deviceType}`);
     }
 
@@ -845,12 +1068,31 @@ export async function createArenaScene(
     const remote = createRemoteShip(materials);
     app.root.addChild(remote.root);
     remote.root.enabled = false;
+    const benchmarkFleet =
+      options.benchmark === undefined
+        ? []
+        : createBenchmarkFleet(
+            app.root,
+            materials,
+            preset.benchmarkShipCount,
+            preset.maxVisualDamageBursts,
+          );
     const combatVfx = createCombatVfx(app.root, materials);
     createStarbase(app.root, materials);
     createCelestialBodies(app.root, materials);
-    const instanceBuffer = createInstancedAsteroids(app.root, graphicsDevice, materials.asteroid);
+    const instanceBuffer = createInstancedAsteroids(
+      app.root,
+      graphicsDevice,
+      materials.asteroid,
+      preset.asteroidCount,
+    );
     resources.defer(() => instanceBuffer.destroy());
-    const starfieldBuffer = createInstancedStarfield(app.root, graphicsDevice, materials.starfield);
+    const starfieldBuffer = createInstancedStarfield(
+      app.root,
+      graphicsDevice,
+      materials.starfield,
+      preset.starCount,
+    );
     resources.defer(() => starfieldBuffer.destroy());
 
     const fpsMeter = new FpsMeter();
@@ -867,18 +1109,90 @@ export async function createArenaScene(
       visible: false,
     };
     let lodLabel = 'Nave remota · silhueta';
+    let benchmarkElapsedSeconds = 0;
+    let benchmarkFrameStartedAtMs: number | undefined;
+    let lastBenchmarkPublishAtMs = Number.NEGATIVE_INFINITY;
+    let benchmarkCompleted = false;
+    const benchmarkProfiler = new FrameTimeProfiler();
     const renderedTelemetry = {
       activeVfxCount: 0,
       drawCalls: 0,
       frameTimeMs: 0,
-      instancedObjects: TRAINING_ARENA.asteroidCount,
+      instancedObjects: preset.asteroidCount,
       lodLabel,
     };
     const getTelemetry = (): EngineTelemetry => renderedTelemetry;
 
+    const createBenchmarkTelemetry = (
+      state: BenchmarkTelemetry['state'],
+    ): BenchmarkTelemetry | undefined => {
+      if (options.benchmark === undefined) return undefined;
+      const elapsedSeconds = Math.max(0, benchmarkElapsedSeconds - options.benchmark.warmupSeconds);
+      const frameTimeProfile = state === 'warmup' ? undefined : benchmarkProfiler.snapshot();
+      return {
+        asteroidCount: preset.asteroidCount,
+        elapsedSeconds: Math.min(elapsedSeconds, options.benchmark.durationSeconds),
+        fleetShipCount: benchmarkFleet.length,
+        ...(frameTimeProfile === undefined ? {} : { frameTimeProfile }),
+        presetId: preset.id,
+        starCount: preset.starCount,
+        state,
+        targetDurationSeconds: options.benchmark.durationSeconds,
+      };
+    };
+
+    if (options.benchmark !== undefined) {
+      handlers.onBenchmarkTelemetry?.(createBenchmarkTelemetry('warmup')!);
+    }
+
     app.on('update', (deltaSeconds: number) => {
       renderedTelemetry.lodLabel = lodLabel;
-      const snapshot = handlers.onUpdate(deltaSeconds, getTelemetry);
+      const baseSnapshot = handlers.onUpdate(deltaSeconds, getTelemetry);
+      benchmarkElapsedSeconds += Math.max(0, deltaSeconds);
+      updateBenchmarkFleet(benchmarkFleet, benchmarkElapsedSeconds);
+      const benchmarkTarget = benchmarkFleet[0]?.root.getPosition();
+      const benchmarkCycle = Math.floor(benchmarkElapsedSeconds * 8);
+      const benchmarkProjectileProgress = (benchmarkElapsedSeconds * 0.3) % 1;
+      const snapshot: ArenaRenderSnapshot =
+        options.benchmark === undefined || benchmarkTarget === undefined
+          ? baseSnapshot
+          : {
+              ...baseSnapshot,
+              encounter: {
+                ...baseSnapshot.encounter,
+                projectileCount: 1,
+                projectilePosition: {
+                  x: benchmarkTarget.x * benchmarkProjectileProgress,
+                  y: benchmarkTarget.y * benchmarkProjectileProgress,
+                  z:
+                    baseSnapshot.ship.position.z +
+                    (benchmarkTarget.z - baseSnapshot.ship.position.z) *
+                      benchmarkProjectileProgress,
+                },
+              },
+              presentationEffects: [
+                {
+                  kind: 'beam',
+                  remainingSeconds: 0.22,
+                  serial: 1_000_000 + benchmarkCycle,
+                  targetPosition: {
+                    x: benchmarkTarget.x,
+                    y: benchmarkTarget.y,
+                    z: benchmarkTarget.z,
+                  },
+                },
+                {
+                  kind: 'tractor',
+                  remainingSeconds: 0.22,
+                  serial: 2_000_000 + benchmarkCycle,
+                  targetPosition: {
+                    x: benchmarkTarget.x + 8,
+                    y: benchmarkTarget.y - 2,
+                    z: benchmarkTarget.z - 9,
+                  },
+                },
+              ],
+            };
       const { orientationDegrees, position } = snapshot.ship;
       player.root.setPosition(position.x, position.y, position.z);
       player.root.setEulerAngles(orientationDegrees.x, orientationDegrees.y, orientationDegrees.z);
@@ -888,8 +1202,16 @@ export async function createArenaScene(
       const combatVisuals = deriveCombatVisualPresentation(
         presentationEffect === undefined ? encounter : { ...encounter, effect: presentationEffect },
         remoteVessel.visible,
+        COMBAT_VISUAL_CAPACITIES,
       );
-      applyHullVisualState(player, combatVisuals.playerHullState, materials);
+      applyHullSectionVisualStates(
+        player,
+        combatVisuals.playerHullSections,
+        combatVisuals.playerDisabledSubsystems,
+        materials,
+        preset.maxVisualDamageBursts,
+        benchmarkElapsedSeconds,
+      );
       remote.root.enabled = remoteVessel.visible;
       if (remoteVessel.visible && remoteVessel.position !== undefined) {
         remote.root.setPosition(
@@ -902,8 +1224,18 @@ export async function createArenaScene(
           encounter.enemy.orientationDegrees.y,
           encounter.enemy.orientationDegrees.z,
         );
-        if (combatVisuals.remoteHullState !== 'hidden') {
-          applyHullVisualState(remote.detailed, combatVisuals.remoteHullState, materials);
+        if (
+          combatVisuals.remoteHullState !== 'hidden' &&
+          combatVisuals.remoteHullSections !== 'hidden'
+        ) {
+          applyHullSectionVisualStates(
+            remote.detailed,
+            combatVisuals.remoteHullSections,
+            combatVisuals.remoteDisabledSubsystems,
+            materials,
+            preset.maxVisualDamageBursts,
+            benchmarkElapsedSeconds,
+          );
           remote.lowRender.material =
             combatVisuals.remoteHullState === 'intact'
               ? materials.hostileHull
@@ -912,7 +1244,7 @@ export async function createArenaScene(
                 : materials.damageCritical;
         }
       }
-      renderedTelemetry.activeVfxCount = updateCombatVfx(
+      const combatVfxCount = updateCombatVfx(
         combatVfx,
         snapshot,
         player,
@@ -920,6 +1252,11 @@ export async function createArenaScene(
         remoteVessel.visible,
         materials,
       );
+      renderedTelemetry.activeVfxCount =
+        combatVfxCount +
+        countActiveDamageVfx(player) +
+        (remote.root.enabled ? countActiveDamageVfx(remote.detailed) : 0) +
+        benchmarkFleet.reduce((total, ship) => total + countActiveDamageVfx(ship), 0);
 
       const playerRotation = player.root.getRotation();
       playerRotation.transformVector(cameraOffset.set(0, 5.3, 14.8), cameraPosition);
@@ -978,7 +1315,7 @@ export async function createArenaScene(
       const distanceToRemote = remoteVessel.visible
         ? player.root.getPosition().distance(remote.root.getPosition())
         : Number.POSITIVE_INFINITY;
-      const detailedLod = remoteVessel.visible && distanceToRemote < 32;
+      const detailedLod = remoteVessel.visible && distanceToRemote < preset.lodDistanceUnits;
       remote.detailed.root.enabled = detailedLod;
       remote.low.enabled = remoteVessel.visible && !detailedLod;
       lodLabel = remoteVessel.visible
@@ -996,13 +1333,37 @@ export async function createArenaScene(
       renderedTelemetry.drawCalls = app.stats.drawCalls.total;
       renderedTelemetry.frameTimeMs = app.stats.frame.ms;
       renderedTelemetry.lodLabel = lodLabel;
+
+      if (options.benchmark === undefined || benchmarkCompleted) return;
+      const nowMs = performance.now();
+      if (benchmarkFrameStartedAtMs !== undefined) {
+        const frameTimeMs = nowMs - benchmarkFrameStartedAtMs;
+        if (benchmarkElapsedSeconds >= options.benchmark.warmupSeconds) {
+          benchmarkProfiler.record(frameTimeMs);
+        }
+      }
+      benchmarkFrameStartedAtMs = nowMs;
+
+      const measurementElapsedSeconds = benchmarkElapsedSeconds - options.benchmark.warmupSeconds;
+      const state: BenchmarkTelemetry['state'] =
+        measurementElapsedSeconds < 0
+          ? 'warmup'
+          : measurementElapsedSeconds < options.benchmark.durationSeconds
+            ? 'sampling'
+            : 'complete';
+      if (state === 'complete') benchmarkCompleted = true;
+      if (benchmarkCompleted || nowMs - lastBenchmarkPublishAtMs >= 250) {
+        const telemetry = createBenchmarkTelemetry(state);
+        if (telemetry !== undefined) handlers.onBenchmarkTelemetry?.(telemetry);
+        lastBenchmarkPublishAtMs = nowMs;
+      }
     });
 
     app.start();
     const disposeResources = resources.commit();
 
     return {
-      backendLabel: 'WebGL 2',
+      backendLabel: app.graphicsDevice.deviceType === DEVICETYPE_WEBGPU ? 'WebGPU' : 'WebGL 2',
       dispose: disposeResources,
     };
   } catch (cause: unknown) {

@@ -27,6 +27,7 @@ export interface AppShell {
   bindFlightControls(handlers: FlightControlHandlers): () => void;
   bindCombatControls(handlers: CombatControlHandlers): () => void;
   setBackend(label: string): void;
+  setBenchmarkTelemetry(telemetry: BenchmarkHudTelemetry): void;
   setArenaPresentation(presentation: ArenaPresentationDto): void;
   setControlFeedback(message: string): void;
   setEnergyTelemetry(telemetry: EnergyHudTelemetry): void;
@@ -40,6 +41,20 @@ export interface AppShell {
   showBlocked(notice: CompatibilityNotice): void;
   showReady(readiness: GraphicsReadiness): void;
   showWarning(notice: CompatibilityNotice): void;
+}
+
+export interface BenchmarkHudTelemetry {
+  readonly asteroidCount: number;
+  readonly averageFps?: number;
+  readonly elapsedSeconds: number;
+  readonly fleetShipCount: number;
+  readonly p50FrameTimeMs?: number;
+  readonly p95FrameTimeMs?: number;
+  readonly p99FrameTimeMs?: number;
+  readonly presetId: GraphicsPreset['id'];
+  readonly starCount: number;
+  readonly state: 'complete' | 'sampling' | 'warmup';
+  readonly targetDurationSeconds: number;
 }
 
 export interface FlightControlHandlers {
@@ -183,6 +198,11 @@ export function createAppShell(root: HTMLElement): AppShell {
   const rendererValue = requireElement<HTMLElement>(root, '[data-diagnostic="renderer"]');
   const presetValue = requireElement<HTMLElement>(root, '[data-diagnostic="preset"]');
   const fpsValue = requireElement<HTMLElement>(root, '[data-diagnostic="fps"]');
+  const benchmarkPanel = requireElement<HTMLElement>(root, '[data-benchmark-panel]');
+  const benchmarkState = requireElement<HTMLElement>(root, '[data-benchmark-state]');
+  const benchmarkProgress = requireElement<HTMLElement>(root, '[data-benchmark-progress]');
+  const benchmarkLoad = requireElement<HTMLElement>(root, '[data-benchmark-load]');
+  const benchmarkResult = requireElement<HTMLElement>(root, '[data-benchmark-result]');
   const notice = requireElement<HTMLElement>(root, '[data-compatibility-notice]');
   const diagnosticsDrawer = requireElement<HTMLDetailsElement>(root, '.diagnostics-drawer');
   const noticeTitle = requireElement<HTMLElement>(notice, '[data-notice-title]');
@@ -356,11 +376,82 @@ export function createAppShell(root: HTMLElement): AppShell {
     setBackend(label) {
       setTextIfChanged(backendValue, label);
     },
+    setBenchmarkTelemetry(telemetry) {
+      setHiddenIfChanged(benchmarkPanel, false);
+      const stateLabel =
+        telemetry.state === 'warmup'
+          ? 'Aquecendo shaders e cena'
+          : telemetry.state === 'sampling'
+            ? 'Coletando frametimes'
+            : 'Medição concluída';
+      setTextIfChanged(benchmarkState, stateLabel);
+      setTextIfChanged(
+        benchmarkProgress,
+        `${telemetry.elapsedSeconds.toFixed(1)} / ${telemetry.targetDurationSeconds.toFixed(1)} s`,
+      );
+      setTextIfChanged(
+        benchmarkLoad,
+        `${telemetry.fleetShipCount} naves · ${telemetry.asteroidCount} asteroides · ${telemetry.starCount} estrelas`,
+      );
+      setTextIfChanged(
+        benchmarkResult,
+        telemetry.averageFps === undefined
+          ? 'Aguardando amostras válidas…'
+          : `${telemetry.averageFps.toFixed(1)} FPS médios · p50 ${telemetry.p50FrameTimeMs?.toFixed(1)} ms · p95 ${telemetry.p95FrameTimeMs?.toFixed(1)} ms · p99 ${telemetry.p99FrameTimeMs?.toFixed(1)} ms`,
+      );
+      setAttributeIfChanged(root, 'data-benchmark-mode', 'active');
+      setAttributeIfChanged(root, 'data-benchmark-state', telemetry.state);
+      setAttributeIfChanged(root, 'data-benchmark-preset', telemetry.presetId);
+      setAttributeIfChanged(
+        root,
+        'data-benchmark-average-fps',
+        telemetry.averageFps?.toFixed(3) ?? '',
+      );
+      setAttributeIfChanged(
+        root,
+        'data-benchmark-p50-ms',
+        telemetry.p50FrameTimeMs?.toFixed(3) ?? '',
+      );
+      setAttributeIfChanged(
+        root,
+        'data-benchmark-p95-ms',
+        telemetry.p95FrameTimeMs?.toFixed(3) ?? '',
+      );
+      setAttributeIfChanged(
+        root,
+        'data-benchmark-p99-ms',
+        telemetry.p99FrameTimeMs?.toFixed(3) ?? '',
+      );
+      if (telemetry.state === 'complete') diagnosticsDrawer.open = true;
+    },
     setArenaPresentation(presentation) {
       const visuals = presentation.combatVisuals;
       setAttributeIfChanged(root, 'data-player-visual-damage', visuals.playerHullState);
       setAttributeIfChanged(root, 'data-remote-visual-damage', visuals.remoteHullState);
+      for (const section of ['bow', 'stern', 'port', 'starboard'] as const) {
+        setAttributeIfChanged(
+          root,
+          `data-player-section-${section}`,
+          visuals.playerHullSections[section],
+        );
+        setAttributeIfChanged(
+          root,
+          `data-remote-section-${section}`,
+          visuals.remoteHullSections === 'hidden' ? 'hidden' : visuals.remoteHullSections[section],
+        );
+      }
+      setAttributeIfChanged(
+        root,
+        'data-player-disabled-subsystems',
+        visuals.playerDisabledSubsystems.join(','),
+      );
+      setAttributeIfChanged(
+        root,
+        'data-remote-disabled-subsystems',
+        visuals.remoteDisabledSubsystems.join(','),
+      );
       setAttributeIfChanged(root, 'data-vfx-kind', visuals.effectKind);
+      setAttributeIfChanged(root, 'data-impact-sector', visuals.impactSector);
       setAttributeIfChanged(root, 'data-shield-impact-target', visuals.shieldImpactTarget);
       const marker = presentation.targetMarker;
       const presentationKey = marker.visible

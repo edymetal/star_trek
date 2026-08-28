@@ -149,6 +149,8 @@ Critério de conclusão:
 
 ## Etapa 5 — Dano visual e benchmark (P0.5)
 
+**Status:** em desenvolvimento; cenário determinístico, três presets, dano por seção e medição UHD 620 concluídos; medição MX130 e gate formal pendentes
+
 **Objetivo:** comprovar qualidade visual dentro do notebook alvo.
 
 Entregas:

@@ -4,6 +4,9 @@ setlocal EnableExtensions
 title Comando Estelar - Servidor local
 cd /d "%~dp0"
 
+set "OPEN_PATH=/"
+if /I "%~1"=="benchmark" set "OPEN_PATH=/?benchmark=1^&preset=medium^&warmup=5^&duration=30"
+
 where node >nul 2>nul
 if errorlevel 1 (
   echo.
@@ -84,7 +87,7 @@ echo O navegador sera aberto automaticamente.
 echo Para encerrar o jogo, volte a esta janela e pressione Ctrl+C.
 echo.
 
-call npm run dev -- --host 127.0.0.1 --port 5173 --strictPort --open
+call npm run dev -- --host 127.0.0.1 --port 5173 --strictPort --open "%OPEN_PATH%"
 
 if errorlevel 1 (
   echo.

@@ -703,6 +703,39 @@ h2 {
   white-space: nowrap;
 }
 
+.benchmark-diagnostics {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--hud-border-soft);
+}
+
+.benchmark-diagnostics > strong {
+  display: block;
+  margin-block: 0.2rem 0.45rem;
+  color: var(--hud-data);
+}
+
+.benchmark-diagnostics dl {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.benchmark-diagnostics dl > div {
+  display: grid;
+  grid-template-columns: 4.6rem minmax(0, 1fr);
+  gap: 0.55rem;
+}
+
+.benchmark-diagnostics dt {
+  color: var(--hud-secondary);
+}
+
+.benchmark-diagnostics dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
 .compatibility-notice {
   margin-top: var(--space-3);
   padding: var(--space-3);

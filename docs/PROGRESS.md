@@ -1,9 +1,9 @@
 # Progresso do projeto
 
-Atualizado em: 27 de agosto de 2026  
-Etapa atual: P0.4 — Estabilização do encontro tático  
-Estado do código: correções do ciclo 2 concluídas e matriz técnica verde; revisão formal do P0.4 pendente  
-Próximo responsável: Product Architect / Reviewer
+Atualizado em: 28 de agosto de 2026  
+Etapa atual: P0.5 — Dano visual e benchmark  
+Estado do código: dano por seção e UHD 620 validados; medição MX130 e gate formal pendentes  
+Próximo responsável: usuário / selecionar MX130 para o navegador; depois Senior Developer / gate formal
 
 Legenda:
 
@@ -62,7 +62,7 @@ Legenda:
 - [x] Escudos, casco e subsistemas
 - [x] IA básica e condições de encontro
 - [x] Correções do ciclo 2 integradas; fluxo crítico e matriz E2E estáveis em Chrome/Edge
-- [~] Revisão do Product Architect e gate completo
+- [x] Revisão formal e gate completo
 
 ### UI-1 Apresentação tática prioritária
 
@@ -72,7 +72,7 @@ Legenda:
 - [x] Câmera externa, starfield instanciado, retículo e marcador seguro
 - [x] Layout sem scroll/overlap em 1280×720 e 1600×900
 - [x] E2E focado em Chrome/Edge e inspeção visual
-- [~] Revisão do Product Architect pendente
+- [x] Revisão incorporada ao gate formal P0.4
 
 ### UI-GFX Polimento gráfico de apresentação
 
@@ -81,14 +81,14 @@ Legenda:
 - [x] Feixe, torpedo, trator, impactos e escudo em pool fixo
 - [x] Dois efeitos de combate simultâneos no adaptador, sem alterar o domínio
 - [x] Inspeção real e capturas em 1280×720 e 1600×900
-- [~] Revisão gráfica pendente; não equivale ao gate/benchmark P0.5
+- [x] Revisão gráfica incorporada ao gate formal P0.4; não equivale ao gate/benchmark P0.5
 
 ### P0.5 Dano visual e benchmark
 
-- [ ] Estados de dano e efeitos limitados
-- [ ] Cenário determinístico
-- [ ] Perfis baixo/médio/alto
-- [ ] Benchmark MX130/UHD 620 e WebGL 2/WebGPU
+- [x] Estados de dano por seção e efeitos limitados
+- [x] Cenário determinístico
+- [x] Perfis baixo/médio/alto
+- [~] Benchmark MX130/UHD 620 e WebGL 2/WebGPU — UHD 620 concluída; MX130 pendente
 - [ ] Gate formal do P0
 
 ## P1 — Vertical slice/MVP
@@ -209,7 +209,7 @@ Feixe do jogador/inimigo, torpedo, raio trator, impactos e escudo usam um pool f
 
 UI-GFX não contém asset final, partículas complexas, sombras, pós-processamento ou benchmark físico. As capturas e a apresentação pura foram aprovadas pelo coordenador; o fluxo integrado foi estabilizado depois em `DECISION-024`. P0.5 ainda depende da revisão formal do P0.4 e continua responsável pelos assets e pelo benchmark físico.
 
-## Último relatório — P0.4 ciclo 2
+## Relatório anterior — P0.4 ciclo 2
 
 **ETAPA:** P0.4 — Sensores, armas e IA  
 **STATUS:** correções técnicas concluídas; revisão formal do Product Architect pendente
@@ -235,3 +235,86 @@ Os fluxos E2E agora devolvem foco ao canvas antes de comandos de pilotagem poste
 ### Próxima etapa
 
 O bloqueio técnico do ciclo 2 foi removido. Falta a revisão formal do P0.4; após esse gate, o próximo trabalho é P0.5: cenário determinístico, perfis baixo/médio/alto, efeitos de dano limitados e benchmark físico na MX130/UHD 620. P1 continua bloqueado até o gate formal de desempenho.
+
+## Revisão formal — P0.4
+
+**ETAPA:** P0.4 — Sensores, armas e IA  
+**STATUS:** APROVADO em 27 de agosto de 2026
+
+A função de reviewer foi exercida pelo coordenador sem convocar o subagente Architect, respeitando a decisão explícita do usuário. A revisão conferiu requisitos, lógica, fronteiras arquiteturais, UX/acessibilidade, segurança, desempenho diagnóstico e a matriz real de navegadores.
+
+Evidência repetida no commit então versionado:
+
+- `npm run verify`: aprovado com 123/123 testes em 18 arquivos;
+- Playwright completo: 38/38 em Chrome/Edge, um worker e nenhum `skip`;
+- domínio sem imports de PlayCanvas, DOM, UI ou plataforma;
+- nenhum `any`, `innerHTML`, segredo, código remoto ou achado CRITICAL/HIGH;
+- percepção, memória sensorial, torpedo, IA, pausa, reinício e equipamentos permanecem cobertos;
+- avisos do chunk lazy do PlayCanvas e workers não usados continuam não bloqueantes e pertencem à otimização P0.5.
+
+Resultado: o gate funcional P0.4 foi encerrado e o P0.5 autorizado. P1 continua bloqueado até o benchmark físico e o gate formal de saída do P0.
+
+## Relatório anterior — P0.5 benchmark, fatia 1
+
+**ETAPA:** P0.5 — Dano visual e benchmark  
+**STATUS:** infraestrutura determinística concluída; medições físicas e dano por seção pendentes
+
+### Implementado
+
+- presets baixo, médio e alto agora controlam escala de resolução, antialiasing, distância de LOD, estrelas, asteroides, naves de carga e quantidade de danos simultâneos;
+- modo explícito `?benchmark=1` com aquecimento e janela de medição configuráveis;
+- carga determinística de 4/6/8 naves, 96/144/192 asteroides e 680/900/1.200 estrelas conforme o preset;
+- dois efeitos táticos e um projétil permanecem ativos usando o pool existente, sem alterar o estado autoritativo do encontro;
+- profiler com capacidade fixa de 7.200 amostras e relatório de FPS médio, p50, p95, p99 e pior frametime;
+- painel visível de andamento/resultado e atributos estáveis para automação;
+- `EXECUTAR_BENCHMARK.bat` e procedimento em `docs/BENCHMARK_P0_5.md`.
+
+### Verificação desta fatia
+
+- Vitest parcial: 132/132 em 20 arquivos após os testes novos;
+- E2E focado do benchmark: 2/2 em Chrome/Edge;
+- inspeção real em 1600×900: zero scroll, todos os painéis dentro do viewport e nenhum erro/aviso no console;
+- diagnóstico curto no navegador integrado identificou UHD 620, preset médio, aproximadamente 60 FPS e p95 de 19 ms; esse número não substitui a medição física formal de 30 segundos.
+
+### Próxima etapa
+
+Executar e registrar MX130 1600×900/médio e UHD 620 1280×720/baixo em Chrome ou Edge. Em paralelo de implementação, concluir dano por seção, partículas/decalques/emissivos limitados e efeito de subsistema desativado. Comparar WebGPU somente depois de registrar o baseline WebGL 2.
+
+## Último relatório — P0.5 dano visual e benchmark UHD 620
+
+**ETAPA:** P0.5 — Dano visual e benchmark  
+**STATUS:** implementação da fatia concluída; medição MX130 e gate formal pendentes
+
+### Dano visual concluído
+
+- proa, popa, bombordo e estibordo possuem estados visuais independentes derivados do dano lógico;
+- quatro decalques preparados e três sparks geométricos por nave impedem crescimento de entidades por acerto;
+- o preset limita a quantidade de seções com sparks simultâneos a 1/2/3;
+- motor, escudo, armas e sensores perdem emissividade quando o respectivo subsistema é desativado;
+- feixe e impacto usam o setor direcional real do alvo;
+- memória sensorial oculta seções e subsistemas remotos, sem consultar estado autoritativo escondido;
+- o teto E2E do combate no preset baixo foi ajustado de 28 para 36 draw calls para os recursos preparados.
+
+### Benchmark físico UHD 620
+
+As medições foram realizadas em janela física do Chrome 151.0.7922.34, com renderizador acelerado `ANGLE (Intel UHD Graphics 620, D3D11)`, 1280×720, preset baixo, 5 s de aquecimento e 30 s de coleta:
+
+| Backend | FPS médio | p50 | p95 | p99 | Draw calls | VFX ativos |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| WebGL 2 | 60,010 | 16,7 ms | 17,9 ms | 18,9 ms | 69 | 17 |
+| WebGPU | 60,011 | 16,7 ms | 17,6 ms | 19,9 ms | 69 | 17 |
+
+O perfil baixo da UHD 620 fica validado com limiar prático de 30 FPS. WebGPU não mostrou ganho material e permanece somente experimental; WebGL 2 continua baseline e padrão do MVP.
+
+### Estado do gate
+
+O Chrome não possui preferência de GPU do usuário registrada no Windows e selecionou a UHD 620. Alterar essa preferência do sistema requer ação explícita do usuário. Por isso, a medição obrigatória MX130 1600×900/médio ainda está pendente e o P0.5 não pode ser aprovado nem liberar conteúdo P1.
+
+### Verificação consolidada
+
+- `npm run verify`: aprovado com 132/132 testes em 20 arquivos, lint, typecheck e build;
+- Playwright completo: 40/40 casos em Chrome/Edge, um worker e nenhum `skip`;
+- testes focados após reposicionar a captura de dano: 2/2 Chrome/Edge;
+- benchmark físico: 1/1 WebGL 2 e 1/1 WebGPU, ambos com 30 s de coleta;
+- inspeção das capturas 1280×720 e 1600×900: HUD íntegro, memória sensorial legível e dano crítico/impacto visíveis;
+- nenhum achado CRITICAL/HIGH nesta fatia; os avisos conhecidos de chunk lazy e workers PlayCanvas não usados continuam não bloqueantes.

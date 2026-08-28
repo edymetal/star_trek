@@ -1,6 +1,6 @@
 # Comando Estelar — protótipo técnico
 
-Protótipo de um jogo 3D original de exploração espacial executado no navegador. A etapa atual combina o encontro tático **P0.4** ainda em correção com a apresentação **UI-GFX** validada: arena, voo, energia, sensores, três equipamentos, escudos direcionais, dano, IA, HUD nas bordas, naves procedurais e VFX em pool. Os assets finais e o benchmark físico continuam reservados ao P0.5; o gate lógico P0.4 ainda não está aprovado.
+Protótipo de um jogo 3D original de exploração espacial executado no navegador. O encontro tático **P0.4** está aprovado: arena, voo, energia, sensores, três equipamentos, escudos direcionais, dano, IA, HUD nas bordas, naves procedurais e VFX em pool. O **P0.5** está em desenvolvimento com benchmark determinístico, presets baixo/médio/alto, dano visual por seção e impacto direcional. A UHD 620 já foi medida; ainda falta executar o gate físico da MX130 e a revisão formal do P0.
 
 ## Requisitos
 
@@ -12,6 +12,8 @@ Protótipo de um jogo 3D original de exploração espacial executado no navegado
 ## Instalação e execução
 
 No Windows, dê dois cliques em `ABRIR_JOGO.bat` para preparar, iniciar e abrir o jogo automaticamente no navegador. Mantenha a janela do servidor aberta enquanto estiver jogando; use `Ctrl+C` nela para encerrar.
+
+Para abrir a carga determinística do P0.5, dê dois cliques em `EXECUTAR_BENCHMARK.bat`. O procedimento e a tabela de resultados ficam em [`docs/BENCHMARK_P0_5.md`](docs/BENCHMARK_P0_5.md).
 
 Como alternativa, execute manualmente:
 
@@ -28,21 +30,22 @@ Se uma rede corporativa interceptar TLS, configure o Node para confiar no reposi
 
 ## Comandos
 
-| Ação                               | Comando                |
-| ---------------------------------- | ---------------------- |
-| Desenvolvimento                    | `npm run dev`          |
-| Testes em modo interativo          | `npm test`             |
-| Testes unitários em execução única | `npm run test:run`     |
-| E2E no Chrome e Edge instalados    | `npm run test:e2e`     |
-| Lint                               | `npm run lint`         |
-| Formatação                         | `npm run format`       |
-| Verificar formatação               | `npm run format:check` |
-| Typecheck                          | `npm run typecheck`    |
-| Build estático                     | `npm run build`        |
-| Prévia do build                    | `npm run preview`      |
-| Gate local sem E2E                 | `npm run verify`       |
+| Ação                               | Comando                  |
+| ---------------------------------- | ------------------------ |
+| Desenvolvimento                    | `npm run dev`            |
+| Testes em modo interativo          | `npm test`               |
+| Testes unitários em execução única | `npm run test:run`       |
+| E2E no Chrome e Edge instalados    | `npm run test:e2e`       |
+| Benchmark físico em Chrome         | `npm run test:benchmark` |
+| Lint                               | `npm run lint`           |
+| Formatação                         | `npm run format`         |
+| Verificar formatação               | `npm run format:check`   |
+| Typecheck                          | `npm run typecheck`      |
+| Build estático                     | `npm run build`          |
+| Prévia do build                    | `npm run preview`        |
+| Gate local sem E2E                 | `npm run verify`         |
 
-`npm run test:e2e` cria o build e o serve em `http://127.0.0.1:4173`. Os projetos Playwright usam os canais de sistema `chrome` e `msedge`; nenhum navegador baixado separadamente é obrigatório nesta máquina.
+`npm run test:e2e` cria o build e o serve em `http://127.0.0.1:4173`. Os projetos Playwright usam os canais de sistema `chrome` e `msedge`; nenhum navegador baixado separadamente é obrigatório nesta máquina. A matriz também verifica uma janela curta do benchmark, mas esse teste automatizado não substitui a medição física documentada.
 
 ## Controles de voo
 
@@ -76,7 +79,7 @@ Os mesmos comandos estão disponíveis como botões nativos no painel **Encontro
 
 ## Diagnóstico da GPU
 
-A tela inicial informa backend, renderizador, preset e FPS. O HUD mostra voo, casco, escudos, estado preparado de armas, alcance de sensores, alocação, reator e reserva, além de frametime, draw calls, objetos instanciados e LOD. O baseline é sempre WebGL 2; WebGPU ainda não faz parte do protótipo.
+A tela inicial informa backend, renderizador, preset e FPS. O HUD mostra voo, casco, escudos, estado preparado de armas, alcance de sensores, alocação, reator e reserva, além de frametime, draw calls, objetos instanciados e LOD. O baseline e o padrão do jogo continuam sendo WebGL 2. O benchmark aceita `backend=webgpu` somente para comparação experimental e sempre mantém fallback WebGL 2.
 
 Se aparecer renderização por software ou a GPU integrada:
 
@@ -95,7 +98,7 @@ Se aparecer renderização por software ou a GPU integrada:
 - `src/ui`: shell e HUD DOM acessíveis;
 - `tests/e2e`: boot, recuperação, controle, pausa e foco em Chrome/Edge.
 
-Não existe `.env.example` porque o P0.4 não usa variáveis de ambiente, segredo, API ou serviço externo em runtime.
+Não existe `.env.example` porque o jogo não usa variáveis de ambiente, segredo, API ou serviço externo em runtime. As variáveis `BENCHMARK_*` são apenas parâmetros locais do teste físico em Playwright.
 
 ## Build
 
