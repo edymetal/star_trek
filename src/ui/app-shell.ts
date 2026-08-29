@@ -28,6 +28,7 @@ export interface AppShell {
   bindFlightControls(handlers: FlightControlHandlers): () => void;
   bindCombatControls(handlers: CombatControlHandlers): () => void;
   bindMissionControls(handlers: MissionControlHandlers): () => void;
+  bindSaveControls(handlers: SaveControlHandlers): () => void;
   setBackend(label: string): void;
   setBenchmarkTelemetry(telemetry: BenchmarkHudTelemetry): void;
   setArenaPresentation(presentation: ArenaPresentationDto): void;
@@ -38,6 +39,7 @@ export interface AppShell {
   setGraphicsCapability(capability: GraphicsCapability): void;
   setFlightTelemetry(telemetry: FlightHudTelemetry): void;
   setMissionTelemetry(telemetry: MissionHudTelemetry): void;
+  setSaveStatus(telemetry: SaveHudTelemetry): void;
   setFullscreenActive(active: boolean): void;
   setPointerCaptured(active: boolean): void;
   setPreset(preset: GraphicsPreset): void;
@@ -83,6 +85,24 @@ export interface CombatControlHandlers {
 
 export interface MissionControlHandlers {
   readonly onPrimaryAction: () => void;
+}
+
+export interface SaveControlHandlers {
+  readonly onRecover: () => void;
+}
+
+export interface SaveHudTelemetry {
+  readonly detail?: string;
+  readonly state:
+    | 'created'
+    | 'disabled'
+    | 'error'
+    | 'inactive'
+    | 'invalid'
+    | 'loaded'
+    | 'loading'
+    | 'migrated'
+    | 'saved';
 }
 
 export interface MissionHudTelemetry {
@@ -234,6 +254,8 @@ export function createAppShell(root: HTMLElement): AppShell {
   const missionTitle = requireElement<HTMLElement>(root, '[data-mission-title]');
   const missionPhase = requireElement<HTMLElement>(root, '[data-mission-phase]');
   const missionAction = requireElement<HTMLButtonElement>(root, '[data-mission-action]');
+  const saveStatus = requireElement<HTMLElement>(root, '[data-save-status]');
+  const saveRecovery = requireElement<HTMLButtonElement>(root, '[data-save-recovery]');
   const speedValue = requireElement<HTMLElement>(flightHud, '[data-flight-speed]');
   const positionValue = requireElement<HTMLElement>(flightHud, '[data-flight-position]');
   const boundaryValue = requireElement<HTMLElement>(flightHud, '[data-flight-boundary]');
@@ -386,6 +408,11 @@ export function createAppShell(root: HTMLElement): AppShell {
       const listener = (): void => handlers.onPrimaryAction();
       missionAction.addEventListener('click', listener);
       return () => missionAction.removeEventListener('click', listener);
+    },
+    bindSaveControls(handlers) {
+      const listener = (): void => handlers.onRecover();
+      saveRecovery.addEventListener('click', listener);
+      return () => saveRecovery.removeEventListener('click', listener);
     },
     bindFlightControls(handlers) {
       const handlePause = (): void => handlers.onPause();
@@ -790,6 +817,28 @@ export function createAppShell(root: HTMLElement): AppShell {
         telemetry.identifiedTarget ? 'true' : 'false',
       );
       setAttributeIfChanged(root, 'data-mission-progress', telemetry.transitionProgress.toFixed(3));
+    },
+    setSaveStatus(telemetry) {
+      const labels: Readonly<Record<SaveHudTelemetry['state'], string>> = {
+        created: 'Save local criado.',
+        disabled: 'Benchmark não altera o save.',
+        error: 'Save indisponível; sessão segura ativa.',
+        inactive: 'Save local não foi alterado.',
+        invalid: 'Save inválido preservado; sessão segura ativa.',
+        loaded: 'Progresso local retomado.',
+        loading: 'Carregando save local…',
+        migrated: 'Save atualizado para o formato atual.',
+        saved: 'Progresso salvo neste dispositivo.',
+      };
+      setTextIfChanged(saveStatus, labels[telemetry.state]);
+      setAttributeIfChanged(saveStatus, 'title', telemetry.detail ?? labels[telemetry.state]);
+      const recoverable = telemetry.state === 'error' || telemetry.state === 'invalid';
+      setHiddenIfChanged(saveRecovery, !recoverable);
+      setTextIfChanged(
+        saveRecovery,
+        telemetry.state === 'invalid' ? 'Criar save seguro' : 'Tentar novamente',
+      );
+      setAttributeIfChanged(root, 'data-save-state', telemetry.state);
     },
     setFullscreenActive(active) {
       setAttributeIfChanged(root, 'data-fullscreen-state', active ? 'active' : 'inactive');

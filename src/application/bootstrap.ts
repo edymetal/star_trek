@@ -14,6 +14,7 @@ import {
 import type { ArenaScene, EngineTelemetry } from '../engine/create-arena-scene';
 import { createFlightInputController } from '../platform/flight-input';
 import { inspectWebGl2Capability } from '../platform/graphics-diagnostics';
+import { createIndexedDbSaveRepository } from '../platform/indexeddb-save-repository';
 import type {
   AppShell,
   CombatHudTelemetry,
@@ -21,6 +22,7 @@ import type {
   EnergyHudTelemetry,
   FlightHudTelemetry,
   MissionHudTelemetry,
+  SaveHudTelemetry,
 } from '../ui/app-shell';
 import { createFlightSession } from './flight-session';
 import { createEncounterSession } from './encounter-session';
@@ -32,6 +34,8 @@ import {
   type PlayerPresentationEquipmentId,
 } from './presentation-effect-retainer';
 import { selectInitialPreset } from './select-initial-preset';
+import { createGameSavePayload, type GameSavePayload } from './game-save';
+import { createSaveController, type SaveControllerStatus } from './save-controller';
 import { createThrottledPublisher } from './throttled-publisher';
 import { parseStartupOptions } from './startup-options';
 
@@ -142,6 +146,10 @@ function createMissionHudTelemetry(snapshot: ExplorationMissionSnapshot): Missio
   }
 }
 
+function toSaveHudTelemetry(status: SaveControllerStatus): SaveHudTelemetry {
+  return { ...(status.detail === undefined ? {} : { detail: status.detail }), state: status.state };
+}
+
 export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene | undefined> {
   let disposeFailedBootstrap: (() => void) | undefined;
   const startupOptions = parseStartupOptions(window.location.search);
@@ -151,6 +159,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
   shell.setBackend(capability.webGl2Available ? 'WebGL 2 · detectado' : 'Indisponível');
 
   if (readiness.status === 'blocked') {
+    shell.setSaveStatus({ state: 'inactive' });
     shell.showBlocked(WEBGL_UNAVAILABLE_NOTICE);
     return undefined;
   }
@@ -167,6 +176,21 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
   }
 
   try {
+    const persistenceEnabled = startupOptions.benchmark === undefined;
+    const defaultSavePayload = createGameSavePayload(FIRST_EXPLORATION_MISSION.id, 'briefing');
+    const saveController = createSaveController({
+      clock: { nowIso: () => new Date().toISOString() },
+      isPayloadSupported: (payload) => payload.mission.missionId === FIRST_EXPLORATION_MISSION.id,
+      repository: createIndexedDbSaveRepository(),
+    });
+    shell.setSaveStatus({ state: persistenceEnabled ? 'loading' : 'disabled' });
+    const saveInitialization = persistenceEnabled
+      ? await saveController.initialize(defaultSavePayload)
+      : { payload: defaultSavePayload, status: undefined };
+    if (saveInitialization.status !== undefined) {
+      shell.setSaveStatus(toSaveHudTelemetry(saveInitialization.status));
+    }
+    let lastSafePayload: GameSavePayload = saveInitialization.payload;
     const flightSession = createFlightSession({
       arenaRadiusUnits: TRAINING_ARENA.radiusUnits,
       definition: PLAYER_SHIP_DEFINITION,
@@ -178,7 +202,12 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       initialEnergyState: createInitialEnergyState(PLAYER_ENERGY_DEFINITION),
       initialState: createInitialShipState({ x: 0, y: 0, z: 16 }),
     });
-    const missionSession = createExplorationMission(FIRST_EXPLORATION_MISSION);
+    const missionSession = createExplorationMission(FIRST_EXPLORATION_MISSION, {
+      checkpoint: saveInitialization.payload.mission.checkpoint,
+    });
+    if (saveInitialization.payload.mission.checkpoint === 'completed') {
+      flightSession.pause('mission-complete');
+    }
     const presentationEffectRetainer = createPresentationEffectRetainer();
     let pendingPresentationEffect:
       | {
@@ -323,6 +352,12 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
     const refreshHud = (): void => {
       hudPublisher.publishNow(createHudTelemetry());
     };
+    const persistCheckpoint = (payload: GameSavePayload, recover = false): void => {
+      lastSafePayload = payload;
+      if (!persistenceEnabled) return;
+      const operation = recover ? saveController.recover(payload) : saveController.save(payload);
+      void operation.then((status) => shell.setSaveStatus(toSaveHudTelemetry(status)));
+    };
     const input = createFlightInputController({
       canvas: shell.canvas,
       fullscreenTarget: shell.fullscreenTarget,
@@ -420,6 +455,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
     };
     const startMission = (): void => {
       if (!missionSession.start()) return;
+      persistCheckpoint(createGameSavePayload(FIRST_EXPLORATION_MISSION.id, 'briefing'));
       input.releaseControls();
       flightSession.restartEncounter();
       flightSession.pause('mission-transition');
@@ -443,7 +479,13 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
         }
       },
     });
+    const unbindSaveControls = shell.bindSaveControls({
+      onRecover() {
+        persistCheckpoint(lastSafePayload, true);
+      },
+    });
     disposeFailedBootstrap = () => {
+      unbindSaveControls();
       unbindMissionControls();
       unbindCombatControls();
       unbindEnergyControls();
@@ -490,6 +532,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
               flightSession.restartEncounter();
               flightSession.pause('mission-complete');
               resetPresentationEffects();
+              persistCheckpoint(createGameSavePayload(FIRST_EXPLORATION_MISSION.id, 'completed'));
               shell.setControlFeedback('Missão concluída. Reparo e reabastecimento finalizados.');
             }
           }

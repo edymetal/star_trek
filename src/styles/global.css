@@ -250,6 +250,31 @@ h2 {
   opacity: 0.7;
 }
 
+.save-control {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-2);
+  color: var(--hud-secondary);
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.save-control button {
+  flex: 0 0 auto;
+  padding: 4px 6px;
+  color: var(--hud-warning);
+  font-size: 10px;
+  background: rgb(255 209 102 / 8%);
+  border: 1px solid rgb(255 209 102 / 45%);
+}
+
+[data-save-state='invalid'] .save-control,
+[data-save-state='error'] .save-control {
+  color: var(--hud-warning);
+}
+
 .phase-note {
   margin: var(--space-2) 0 0;
   color: var(--hud-secondary);

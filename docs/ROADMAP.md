@@ -177,7 +177,7 @@ Critério de conclusão:
 
 ## Etapa 6 — Primeira fatia vertical P1
 
-**Status:** em desenvolvimento; ciclo em sessão da primeira missão concluído, persistência e recuperação ainda pendentes
+**Status:** em desenvolvimento; primeira missão e persistência do progresso concluídas, mapa e configurações ainda pendentes
 
 **Objetivo:** implementar uma missão ponta a ponta antes de multiplicar conteúdo.
 
@@ -196,6 +196,15 @@ Primeira subfatia concluída:
 - scan/identificação existente completa o objetivo sem duplicar estado do contato;
 - retorno reinicia casco, energia e munição na base;
 - transições e comandos inválidos são testados sem GPU; ciclo integrado é coberto em Chrome/Edge.
+
+Segunda subfatia concluída:
+
+- IndexedDB isolado atrás de `SaveRepository`, com schema v2 e migração v1 → v2;
+- snapshots e ponteiro ativo são gravados na mesma transação, com limite de três registros;
+- somente briefing e missão concluída são checkpoints seguros;
+- reload retoma o progresso; corrupção preserva o original e exige recuperação explícita;
+- falhas simuladas de leitura/quota mantêm uma sessão segura e o último save válido;
+- benchmark não abre nem altera a persistência do jogador.
 
 Critério de conclusão:
 

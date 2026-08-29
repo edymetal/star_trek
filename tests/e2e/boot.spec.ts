@@ -1,5 +1,88 @@
 import { expect, test, type Page } from '@playwright/test';
 
+const SAVE_DATABASE_NAME = 'stellar-command-game-save';
+const SAVE_METADATA_STORE = 'metadata';
+const SAVE_SNAPSHOTS_STORE = 'snapshots';
+const SAVE_ACTIVE_KEY = 'active-game-save';
+
+async function corruptActiveSave(page: Page): Promise<void> {
+  await page.evaluate(
+    async ({ activeKey, databaseName, metadataStoreName, snapshotsStoreName }) => {
+      const requestResult = <T>(request: IDBRequest<T>): Promise<T> =>
+        new Promise((resolve, reject) => {
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () =>
+            reject(request.error ?? new Error('Falha no IndexedDB do teste.'));
+        });
+      const transactionDone = (transaction: IDBTransaction): Promise<void> =>
+        new Promise((resolve, reject) => {
+          transaction.oncomplete = () => resolve();
+          transaction.onerror = () =>
+            reject(transaction.error ?? new Error('Transação IndexedDB falhou no teste.'));
+          transaction.onabort = () =>
+            reject(transaction.error ?? new Error('Transação IndexedDB cancelada no teste.'));
+        });
+      const isRecord = (value: unknown): value is Record<string, unknown> =>
+        typeof value === 'object' && value !== null && !Array.isArray(value);
+
+      const database = await requestResult(indexedDB.open(databaseName));
+      const readTransaction = database.transaction(
+        [metadataStoreName, snapshotsStoreName],
+        'readonly',
+      );
+      const pointer: unknown = await requestResult(
+        readTransaction.objectStore(metadataStoreName).get(activeKey),
+      );
+      if (!isRecord(pointer) || typeof pointer.snapshotId !== 'string') {
+        throw new Error('Ponteiro de save não encontrado no teste.');
+      }
+      const snapshot: unknown = await requestResult(
+        readTransaction.objectStore(snapshotsStoreName).get(pointer.snapshotId),
+      );
+      await transactionDone(readTransaction);
+      if (!isRecord(snapshot) || !isRecord(snapshot.envelope)) {
+        throw new Error('Snapshot de save não encontrado no teste.');
+      }
+
+      const writeTransaction = database.transaction(snapshotsStoreName, 'readwrite');
+      writeTransaction.objectStore(snapshotsStoreName).put({
+        ...snapshot,
+        envelope: { ...snapshot.envelope, checksum: 'checksum-corrompido-pelo-teste' },
+      });
+      await transactionDone(writeTransaction);
+      database.close();
+    },
+    {
+      activeKey: SAVE_ACTIVE_KEY,
+      databaseName: SAVE_DATABASE_NAME,
+      metadataStoreName: SAVE_METADATA_STORE,
+      snapshotsStoreName: SAVE_SNAPSHOTS_STORE,
+    },
+  );
+}
+
+async function countStoredSaveSnapshots(page: Page): Promise<number> {
+  return page.evaluate(
+    async ({ databaseName, snapshotsStoreName }) => {
+      const database = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open(databaseName);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error ?? new Error('Falha ao abrir save no teste.'));
+      });
+      const transaction = database.transaction(snapshotsStoreName, 'readonly');
+      const count = await new Promise<number>((resolve, reject) => {
+        const request = transaction.objectStore(snapshotsStoreName).count();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () =>
+          reject(request.error ?? new Error('Falha ao contar saves no teste.'));
+      });
+      database.close();
+      return count;
+    },
+    { databaseName: SAVE_DATABASE_NAME, snapshotsStoreName: SAVE_SNAPSHOTS_STORE },
+  );
+}
+
 async function identifyEnemy(page: Page): Promise<void> {
   const root = page.locator('[data-app-root]');
   await expect(root).toHaveAttribute('data-contact-awareness', 'detected');
@@ -138,6 +221,7 @@ test('executa o cenário determinístico P0.5 com preset e frametimes explícito
   const root = page.locator('[data-app-root]');
   await expect(root).toHaveAttribute('data-app-state', 'ready');
   await expect(root).toHaveAttribute('data-benchmark-mode', 'active');
+  await expect(root).toHaveAttribute('data-save-state', 'disabled');
   await expect(root).toHaveAttribute('data-benchmark-preset', 'medium');
   await expect(page.locator('[data-benchmark-load]')).toHaveText(
     '6 naves · 144 asteroides · 900 estrelas',
@@ -433,12 +517,13 @@ test('expõe energia conservada e telemetria observável no HUD', async ({ page 
   await expect(page.locator('.status-panel .eyebrow')).toHaveText('Comando de missão');
 });
 
-test('conclui a primeira missão de reconhecimento e retorna à base', async ({ page }) => {
+test('persiste a primeira missão concluída e a retoma após reload', async ({ page }) => {
   await page.goto('/');
   const root = page.locator('[data-app-root]');
   const missionAction = page.locator('[data-mission-action]');
 
   await expect(root).toHaveAttribute('data-mission-phase', 'briefing');
+  await expect(root).toHaveAttribute('data-save-state', 'created');
   await expect(missionAction).toHaveText('Iniciar missão');
   await missionAction.click();
   await expect(root).toHaveAttribute('data-mission-phase', 'outbound');
@@ -459,6 +544,59 @@ test('conclui a primeira missão de reconhecimento e retorna à base', async ({ 
   await expect(root).toHaveAttribute('data-torpedo-ammo', '6');
   await expect(page.locator('[data-objective-text]')).toContainText('reparada e reabastecida');
   await expect(missionAction).toHaveText('Repetir missão');
+  await expect(root).toHaveAttribute('data-save-state', 'saved');
+  expect(await countStoredSaveSnapshots(page)).toBe(3);
+
+  await page.reload();
+  await expect(root).toHaveAttribute('data-app-state', 'ready');
+  await expect(root).toHaveAttribute('data-save-state', 'loaded');
+  await expect(root).toHaveAttribute('data-mission-phase', 'completed');
+  await expect(root).toHaveAttribute('data-simulation-state', 'paused');
+  await expect(missionAction).toHaveText('Repetir missão');
+
+  await missionAction.click();
+  await expect(root).toHaveAttribute('data-mission-phase', 'survey', { timeout: 4_000 });
+  await expect(root).toHaveAttribute('data-save-state', 'saved');
+  expect(await countStoredSaveSnapshots(page)).toBe(3);
+});
+
+test('retoma o último checkpoint seguro ao recarregar durante a missão', async ({ page }) => {
+  await page.goto('/');
+  const root = page.locator('[data-app-root]');
+  const missionAction = page.locator('[data-mission-action]');
+
+  await expect(root).toHaveAttribute('data-save-state', 'created');
+  await missionAction.click();
+  await expect(root).toHaveAttribute('data-mission-phase', 'survey', { timeout: 4_000 });
+  await expect(root).toHaveAttribute('data-save-state', 'saved');
+
+  await page.reload();
+  await expect(root).toHaveAttribute('data-app-state', 'ready');
+  await expect(root).toHaveAttribute('data-save-state', 'loaded');
+  await expect(root).toHaveAttribute('data-mission-phase', 'briefing');
+  await expect(root).toHaveAttribute('data-simulation-state', 'running');
+});
+
+test('preserva save corrompido e recupera somente após ação explícita', async ({ page }) => {
+  await page.goto('/');
+  const root = page.locator('[data-app-root]');
+  await expect(root).toHaveAttribute('data-save-state', 'created');
+  await corruptActiveSave(page);
+
+  await page.reload();
+  await expect(root).toHaveAttribute('data-app-state', 'ready');
+  await expect(root).toHaveAttribute('data-save-state', 'invalid');
+  await expect(root).toHaveAttribute('data-mission-phase', 'briefing');
+  await expect(page.locator('[data-save-status]')).toContainText('Save inválido preservado');
+  const recoveryButton = page.getByRole('button', { name: 'Criar save seguro' });
+  await expect(recoveryButton).toBeVisible();
+  await recoveryButton.click();
+  await expect(root).toHaveAttribute('data-save-state', 'saved');
+  expect(await countStoredSaveSnapshots(page)).toBe(2);
+
+  await page.reload();
+  await expect(root).toHaveAttribute('data-save-state', 'loaded');
+  await expect(root).toHaveAttribute('data-mission-phase', 'briefing');
 });
 
 test('presets e ajuste manual alteram efeitos imediatamente sem perder energia', async ({
@@ -536,6 +674,7 @@ test('mantém marcador congelado durante memória sensorial', async ({ page }, t
   const root = page.locator('[data-app-root]');
   const marker = page.locator('[data-target-tracker]');
   const line = page.locator('[data-target-line]');
+  await expect(root).toHaveAttribute('data-app-state', 'ready');
   await page.keyboard.press('KeyT');
   await expect(root).toHaveAttribute('data-target-selected', 'true');
   await expect(root).toHaveAttribute('data-contact-observed', 'true');

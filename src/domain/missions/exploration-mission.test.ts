@@ -52,6 +52,21 @@ describe('createExplorationMission', () => {
     });
   });
 
+  it('retoma um checkpoint concluído em estado coerente e repetível', () => {
+    const mission = createExplorationMission(definition, { checkpoint: 'completed' });
+
+    expect(mission.getSnapshot()).toMatchObject({
+      identifiedTarget: true,
+      phase: 'completed',
+      transitionProgress: 1,
+    });
+    expect(mission.start()).toBe(true);
+    expect(mission.getSnapshot()).toMatchObject({
+      identifiedTarget: false,
+      phase: 'outbound',
+    });
+  });
+
   it('protege a simulação contra duração e delta inválidos', () => {
     expect(() => createExplorationMission({ ...definition, travelDurationSeconds: 0 })).toThrow(
       'maior que zero',

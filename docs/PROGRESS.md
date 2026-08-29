@@ -2,8 +2,8 @@
 
 Atualizado em: 29 de agosto de 2026  
 Etapa atual: P1 — Primeira fatia vertical  
-Estado do código: P0.5 aprovado; primeira missão completa em sessão, persistência ainda pendente  
-Próximo responsável: Senior Developer / save IndexedDB versionado e retomada segura
+Estado do código: P0.5 aprovado; primeira missão e persistência local do progresso concluídas  
+Próximo responsável: Senior Developer / mapa de sistema e apresentação da viagem
 
 Legenda:
 
@@ -95,7 +95,7 @@ Legenda:
 
 - [x] Primeira missão ponta a ponta em uma sessão
 - [~] Base funcional e viagem — partida, retorno, reparo/reabastecimento e transição implementados; mapa ainda pendente
-- [ ] Save IndexedDB versionado
+- [x] Save IndexedDB versionado
 - [ ] Missões de assistência e combate
 - [ ] Tutorial, áudio e acessibilidade prioritária
 - [ ] Inventário de licenças
@@ -319,7 +319,7 @@ Naquele momento, o Chrome não possuía preferência de GPU do usuário registra
 - inspeção das capturas 1280×720 e 1600×900: HUD íntegro, memória sensorial legível e dano crítico/impacto visíveis;
 - nenhum achado CRITICAL/HIGH nesta fatia; os avisos conhecidos de chunk lazy e workers PlayCanvas não usados continuam não bloqueantes.
 
-## Último relatório — gate P0.5 e primeira missão P1
+## Relatório anterior — gate P0.5 e primeira missão P1
 
 **ETAPA:** P0.5 encerrado; P1 primeira subfatia  
 **STATUS:** P0 aprovado; missão de exploração completa em uma sessão
@@ -354,3 +354,37 @@ O requisito explícito de 29/08/2026 substituiu a personalização e medição o
 - o teste de layout permanece verde em 1280×720 e 1600×900;
 - capturas oficiais atualizadas e inspecionadas: ação da missão legível, centro tático livre e sem sobreposição nova;
 - nenhum achado CRITICAL/HIGH; o aviso conhecido de chunk lazy do PlayCanvas continua não bloqueante.
+
+## Último relatório — persistência local P1
+
+**ETAPA:** P1 — segunda subfatia da Etapa 6  
+**STATUS:** save da primeira missão, retomada e recuperação concluídos
+
+### Implementado
+
+- envelope v2 com timestamp ISO UTC, checksum, payload validado e migração sequencial da fixture v1;
+- `SaveRepository` independente e adaptador IndexedDB com stores separados para snapshots e metadados;
+- novo snapshot e ponteiro ativo gravados na mesma transação, preservando o anterior em falha e limitando o histórico a três registros;
+- checkpoints seguros somente no briefing e após conclusão/reparo; reload durante a missão retorna ao briefing;
+- save inválido ou incompatível é preservado, abre sessão segura e bloqueia autosave até recuperação explícita;
+- mensagens de criação, retomada, migração, falha e recuperação ficam visíveis e acessíveis no HUD;
+- o benchmark não abre nem altera o banco de progresso.
+
+### Revisão e correções
+
+O domínio da missão recebeu somente o checkpoint inicial e continua sem DOM, IndexedDB, PlayCanvas ou relógio global. A aplicação injeta o relógio e coordena os pontos seguros; a plataforma concentra o banco. A inicialização assíncrona revelou um teste antigo que enviava seleção antes do estado pronto; o teste passou a aguardar o contrato público do boot e voltou a passar nos dois navegadores. Nenhuma biblioteca ou carga gráfica foi adicionada e nenhum achado CRITICAL/HIGH permaneceu.
+
+### Verificação
+
+- `npm run verify`: 148/148 testes em 23 arquivos, lint, typecheck e build aprovados;
+- testes sem GPU cobrem checksum, estrutura, versão futura, migração v1 → v2, conteúdo incompatível, leitura indisponível, corrupção e falha simulada de quota;
+- Playwright completo: 46/46 casos em Chrome/Edge, um worker e nenhum `skip`;
+- navegador real cobre criação, conclusão, reload, checkpoint seguro, corrupção do registro, preservação do original e recuperação explícita;
+- o código principal cresceu aproximadamente 2,5 kB comprimidos; o chunk do engine permaneceu em 510,32 kB gzip;
+- avisos conhecidos do chunk PlayCanvas e workers não usados permanecem não bloqueantes.
+
+### Pendências da Etapa 6
+
+- mapa de um sistema e apresentação gráfica da transição de viagem;
+- configurações persistentes em registro/repositório separado do progresso;
+- completar a recuperação de falha de asset no ciclo P1 antes do gate da etapa.

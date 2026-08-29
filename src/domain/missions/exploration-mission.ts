@@ -1,6 +1,11 @@
 export type ExplorationMissionPhase =
   'briefing' | 'outbound' | 'survey' | 'returning' | 'completed';
 
+export type ExplorationMissionCheckpoint = Extract<
+  ExplorationMissionPhase,
+  'briefing' | 'completed'
+>;
+
 export interface ExplorationMissionDefinition {
   readonly id: string;
   readonly targetContactId: string;
@@ -22,15 +27,20 @@ export interface ExplorationMissionSession {
   start(): boolean;
 }
 
+export interface ExplorationMissionInitialState {
+  readonly checkpoint: ExplorationMissionCheckpoint;
+}
+
 export function createExplorationMission(
   definition: ExplorationMissionDefinition,
+  initialState: ExplorationMissionInitialState = { checkpoint: 'briefing' },
 ): ExplorationMissionSession {
   if (definition.travelDurationSeconds <= 0) {
     throw new Error('A duração da viagem da missão deve ser maior que zero.');
   }
 
-  let phase: ExplorationMissionPhase = 'briefing';
-  let identifiedTarget = false;
+  let phase: ExplorationMissionPhase = initialState.checkpoint;
+  let identifiedTarget = phase === 'completed';
   let transitionElapsedSeconds = 0;
 
   function snapshot(): ExplorationMissionSnapshot {

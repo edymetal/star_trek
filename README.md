@@ -1,6 +1,6 @@
 # Comando Estelar — protótipo técnico
 
-Protótipo de um jogo 3D original de exploração espacial executado no navegador. O **P0 está aprovado**: arena, voo, energia, sensores, três equipamentos, escudos direcionais, dano, IA, HUD nas bordas, naves procedurais, VFX em pool e benchmark escalável. O **P1 está em desenvolvimento** e já contém a primeira missão de reconhecimento em sessão, da partida ao retorno à base.
+Protótipo de um jogo 3D original de exploração espacial executado no navegador. O **P0 está aprovado**: arena, voo, energia, sensores, três equipamentos, escudos direcionais, dano, IA, HUD nas bordas, naves procedurais, VFX em pool e benchmark escalável. O **P1 está em desenvolvimento** e já contém a primeira missão de reconhecimento, save local versionado, retomada após recarregar e recuperação visível de falha.
 
 ## Requisitos
 
@@ -94,7 +94,7 @@ Se aparecer renderização por software ou a GPU integrada:
 - `src/content`: definições imutáveis de presets, arena, nave e energia;
 - `src/domain`: prontidão gráfica e regras puras de voo, energia, sensores, armas, dano, linha de visão e IA, sem DOM/GPU;
 - `src/engine`: adaptação PlayCanvas, arena, câmera, instancing e LOD;
-- `src/platform`: diagnóstico, medição local e entrada segura de teclado/mouse;
+- `src/platform`: diagnóstico, medição local, IndexedDB e entrada segura de teclado/mouse;
 - `src/ui`: shell e HUD DOM acessíveis;
 - `tests/e2e`: boot, recuperação, controle, pausa e foco em Chrome/Edge.
 

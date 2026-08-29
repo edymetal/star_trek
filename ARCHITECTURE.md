@@ -253,15 +253,11 @@ O adaptador gráfico aplica origem flutuante/recenteamento sem mudar coordenadas
 
 ## 9. Persistência
 
-P0 persiste apenas preferências essenciais se isso for necessário ao teste. P1 adiciona:
+O progresso P1 usa IndexedDB atrás de `SaveRepository`, sem acesso espalhado pelo domínio. O schema atual é v2 e contém data UTC, checksum determinístico, versão e payload validado. A migração sequencial v1 → v2 é coberta sem GPU.
 
-- IndexedDB atrás de `SaveRepository`, sem acesso espalhado pelo domínio;
-- envelope com versão, data, checksum/validação estrutural e payload;
-- migrações sequenciais testadas;
-- gravação transacional em novo registro/slot antes de substituir referência válida;
-- autosave somente fora de combate ou em ponto seguro;
-- configurações em repositório/registro separado do progresso;
-- limite de slots e tamanho, com erro de quota tratado.
+Cada gravação cria um snapshot e troca o ponteiro ativo na mesma transação, preservando o registro anterior se a operação falhar. O repositório mantém no máximo três snapshots. A primeira missão persiste somente `briefing` e `completed`; estados transitórios, combate e resolução de dano nunca são checkpoints. Save ilegível, incompatível ou com checksum inválido abre uma sessão segura, preserva o original e bloqueia autosave até recuperação explícita do jogador. Falha simulada de quota mantém o último envelope válido. O modo de benchmark não abre nem altera o save.
+
+Configurações pertencem a repositório/registro separado do progresso e continuam pendentes. Novos schemas deverão adicionar migrações sequenciais e seus testes, sem reescrever versões antigas silenciosamente.
 
 Save do cliente não é proteção antitrapaça e não precisa ser criptografado. Ele não conterá segredo nem dado pessoal.
 

@@ -254,7 +254,16 @@ Decisões aceitas só devem ser alteradas por nova entrada que referencie a ante
 **Opções consideradas:** criar imediatamente mapa, setor e save completos; controlar a missão pela UI; criar uma máquina de estados de domínio pequena e integrá-la à arena existente.  
 **Decisão:** `Levantamento de Nereida` usa uma máquina de estados determinística com briefing, partida, levantamento, retorno e conclusão. O objetivo só é satisfeito quando o snapshot público dos sensores identifica o ID configurado; HUD e PlayCanvas não se tornam autoridades. Partida/retorno usam transição temporal curta e bloqueiam voo, enquanto a conclusão reinicia o encontro para representar reparo, energia e reabastecimento na base. A ação contextual permite repetir o ciclo.  
 **Motivo:** entrega uma missão jogável completa em sessão com regras testáveis sem GPU, reutiliza os sistemas P0 e não adiciona biblioteca, entidade ou efeito gráfico.  
-**Consequências:** a missão ainda não sobrevive a reload e a viagem ainda não tem mapa/apresentação própria. A próxima subfatia deve adicionar envelope versionado e IndexedDB atrás de repositório, autosave somente em estados seguros, migração e recuperação visível de erro antes de declarar a Etapa 6 concluída.
+**Consequências:** a missão ainda não sobrevivia a reload e a viagem ainda não tinha mapa/apresentação própria. A persistência foi resolvida posteriormente por `DECISION-029`; mapa e apresentação de viagem permanecem pendentes.
+
+## DECISION-029 — Snapshots transacionais e checkpoints seguros no save local
+
+**Status:** aceita para a segunda subfatia P1  
+**Problema:** o progresso da primeira missão precisava sobreviver a reload sem salvar estados instáveis, corromper o último registro válido ou transformar IndexedDB em dependência do domínio. Corrupção, versão incompatível e indisponibilidade de armazenamento também precisavam produzir recuperação visível.  
+**Opções consideradas:** salvar diretamente um único objeto; usar `localStorage`; adicionar uma biblioteca de persistência; manter snapshots próprios atrás de repositório com ponteiro ativo transacional.  
+**Decisão:** o progresso usa `SaveRepository` e um adaptador IndexedDB próprio, sem nova dependência. O envelope atual é v2, com timestamp ISO UTC, checksum FNV-1a de integridade e payload estruturalmente validado; uma fixture v1 comprova a migração sequencial v1 → v2. Cada gravação cria um snapshot e atualiza o ponteiro ativo na mesma transação, mantendo no máximo três snapshots. A missão salva apenas `briefing` e `completed`: viagem, levantamento, retorno e combate retomam do briefing. Save inválido ou conteúdo incompatível é preservado, inicia uma sessão segura e bloqueia gravações automáticas até uma ação explícita de recuperação. O modo de benchmark não acessa a persistência.  
+**Motivo:** entrega retomada local, rollback implícito em falha transacional e tratamento acionável sem backend, biblioteca, segredo ou estado autoritativo na UI/engine. Checksum detecta dano acidental e não pretende impedir trapaça.  
+**Consequências:** o payload atual persiste apenas o checkpoint da primeira missão. Configurações continuam separadas e pendentes. Toda expansão do payload exige validação e migração testada; estados transitórios não podem virar autosave sem novo ponto seguro explícito.
 
 ## Decisões futuras não bloqueantes
 
