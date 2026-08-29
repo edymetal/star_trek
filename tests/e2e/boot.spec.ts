@@ -433,6 +433,34 @@ test('expõe energia conservada e telemetria observável no HUD', async ({ page 
   await expect(page.locator('.status-panel .eyebrow')).toHaveText('Comando de missão');
 });
 
+test('conclui a primeira missão de reconhecimento e retorna à base', async ({ page }) => {
+  await page.goto('/');
+  const root = page.locator('[data-app-root]');
+  const missionAction = page.locator('[data-mission-action]');
+
+  await expect(root).toHaveAttribute('data-mission-phase', 'briefing');
+  await expect(missionAction).toHaveText('Iniciar missão');
+  await missionAction.click();
+  await expect(root).toHaveAttribute('data-mission-phase', 'outbound');
+  await expect(root).toHaveAttribute('data-simulation-state', 'paused');
+
+  await expect(root).toHaveAttribute('data-mission-phase', 'survey', { timeout: 4_000 });
+  await expect(root).toHaveAttribute('data-simulation-state', 'running');
+  await identifyEnemy(page);
+  await expect(root).toHaveAttribute('data-mission-target-identified', 'true');
+  await expect(missionAction).toHaveText('Retornar à base');
+  await expect(missionAction).toBeEnabled();
+
+  await missionAction.click();
+  await expect(root).toHaveAttribute('data-mission-phase', 'returning');
+  await expect(root).toHaveAttribute('data-mission-phase', 'completed', { timeout: 4_000 });
+  await expect(root).toHaveAttribute('data-simulation-state', 'paused');
+  await expect(root).toHaveAttribute('data-player-condition', 'íntegro');
+  await expect(root).toHaveAttribute('data-torpedo-ammo', '6');
+  await expect(page.locator('[data-objective-text]')).toContainText('reparada e reabastecida');
+  await expect(missionAction).toHaveText('Repetir missão');
+});
+
 test('presets e ajuste manual alteram efeitos imediatamente sem perder energia', async ({
   page,
 }) => {

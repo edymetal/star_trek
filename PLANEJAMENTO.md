@@ -48,18 +48,18 @@ Notebook analisado:
 | Sistema | Windows 11 64 bits |
 | Node.js atual | 22.23.1, ainda LTS e compatível com Vite 8 |
 
-O principal limite é a GPU e seus 2 GB de VRAM, não a memória RAM. O jogo deverá confirmar que o navegador está usando a MX130, oferecer perfis de qualidade e conseguir reduzir resolução e efeitos em tempo real.
+O principal limite é a GPU disponível e sua memória, não a RAM do sistema. O jogo não exige nem configura uma placa específica: diagnostica o adaptador escolhido pelo navegador, oferece perfis de qualidade e consegue reduzir resolução e efeitos de forma controlada.
 
 Metas iniciais propostas:
 
-- perfil recomendado: 1600 × 900, 45 a 60 FPS durante exploração e pelo menos 30 FPS no pior momento de combate;
-- perfil de segurança: 1280 × 720, 60 FPS na maior parte do tempo;
+- perfil recomendado: maior qualidade que preserve 45 a 60 FPS durante exploração e pelo menos 30 FPS no pior momento de combate;
+- perfil de segurança: 1280 × 720/baixo, pelo menos 30 FPS médios e p99 de até 50 ms;
 - escala de resolução dinâmica entre 70% e 100%;
 - primeiro carregamento jogável entre 40 e 60 MB compactados;
 - conteúdo de cada novo setor preferencialmente abaixo de 30 a 50 MB;
 - orçamento aproximado de até 200 a 300 draw calls nos encontros mais pesados;
 - uso de VRAM do conteúdo ativo idealmente abaixo de 1,2 a 1,4 GB, deixando margem para navegador e sistema;
-- teste obrigatório tanto na MX130 quanto na UHD 620, mesmo que a segunda use qualidade baixa.
+- teste obrigatório na GPU acelerada efetivamente escolhida pelo navegador; uma segunda GPU é diagnóstico opcional.
 
 Essas metas são hipóteses de pré-produção. O protótipo técnico deverá medi-las e ajustá-las.
 
@@ -72,10 +72,9 @@ Em notebooks com vídeo híbrido, Chrome e navegadores Chromium não combinam a 
 Antes dos benchmarks:
 
 1. manter ativa a opção de aceleração gráfica nas configurações de sistema do Chrome ou Edge;
-2. nas configurações de gráficos do Windows 11, cadastrar o executável do navegador e escolher o perfil de alto desempenho/NVIDIA MX130;
-3. encerrar todas as janelas e processos do navegador e abri-lo novamente;
-4. no Chrome, abrir `chrome://gpu` e confirmar que WebGL e, quando testado, WebGPU aparecem como acelerados por hardware;
-5. conferir o adaptador/renderizador mostrado no relatório e validar no Gerenciador de Tarefas qual GPU está executando a carga 3D.
+2. encerrar outras abas 3D ou tarefas pesadas que possam distorcer a medição;
+3. no Chrome, abrir `chrome://gpu` e confirmar que WebGL e, quando testado, WebGPU aparecem como acelerados por hardware;
+4. registrar o adaptador/renderizador mostrado no relatório, sem alterar obrigatoriamente a preferência de GPU do sistema.
 
 O jogo deverá exibir um diagnóstico simples do renderizador e avisar quando detectar renderização por software. WebGPU não deve ser forçado por flags para usuários finais; se estiver indisponível ou bloqueado pelo driver, o jogo deverá usar WebGL 2.
 
@@ -539,7 +538,7 @@ As durações abaixo são estimativas para uma pessoa trabalhando com regularida
 - uma arma de feixe e um torpedo;
 - teste WebGL 2/WebGPU no notebook.
 
-Ponto de decisão: se o cenário não sustentar 30 FPS no perfil médio, reduzir orçamento visual antes de criar conteúdo.
+Ponto de decisão: se o cenário não sustentar 30 FPS médios e p99 de até 50 ms no perfil suportado, reduzir orçamento visual antes de criar conteúdo.
 
 ### Fase 2 — combate e energia, 4 a 8 semanas
 
@@ -576,7 +575,7 @@ Uma vertical slice convincente é um objetivo de aproximadamente 4 a 6 meses em 
 | Risco | Impacto | Resposta |
 | --- | --- | --- |
 | Escopo cresce para “simular toda a galáxia” | projeto não termina | setores, vertical slice e lista explícita de fora do escopo |
-| Qualidade visual excede a MX130 | FPS baixo e travamentos | benchmark desde a primeira fase, LOD, KTX2, perfis e resolução dinâmica |
+| Qualidade visual excede a GPU disponível | FPS baixo e travamentos | benchmark desde a primeira fase, LOD, KTX2, perfis e resolução dinâmica |
 | Assets de Star Trek sem autorização | remoção do projeto ou disputa | universo e identidade originais antes de publicar |
 | Arte leva mais tempo que programação | poucas naves e cenários | uma nave hero bem feita, kit modular e reutilização consciente |
 | WebGPU falha ou fica mais lento nesse hardware | incompatibilidade | WebGL 2 obrigatório e seleção automática por benchmark |
@@ -595,7 +594,7 @@ O vertical slice estará pronto quando:
 - phaser, torpedo e raio trator tiverem papéis distintos;
 - impactos mostrarem setor de escudo, dano de casco e falha de subsistemas;
 - planeta, lua, estrela, asteroides, nave inimiga e base estiverem presentes;
-- o jogo sustentar pelo menos 30 FPS no pior combate da MX130 em perfil médio;
+- o jogo sustentar pelo menos 30 FPS médios e p99 de até 50 ms no pior combate do preset suportado;
 - saves locais sobreviverem a fechamento e reabertura do navegador;
 - todos os assets tiverem autoria/licença registradas;
 - o build puder ser hospedado como conteúdo estático.

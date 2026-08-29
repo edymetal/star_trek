@@ -27,7 +27,8 @@ import type {
   EncounterStepContext,
 } from './encounter-session';
 
-export type PauseReason = 'focus-lost' | 'manual' | undefined;
+export type PauseReason =
+  'focus-lost' | 'manual' | 'mission-complete' | 'mission-transition' | undefined;
 
 export interface FlightSessionSnapshot {
   readonly boundaryDistanceUnits: number;

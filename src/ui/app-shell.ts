@@ -11,6 +11,7 @@ import {
 } from '../domain/energy/energy-system';
 import type { GraphicsCapability, GraphicsReadiness } from '../domain/graphics-readiness';
 import type { Vector3Value } from '../domain/flight/ship-flight';
+import type { ExplorationMissionPhase } from '../domain/missions/exploration-mission';
 import { conditionLabel } from './condition-label';
 
 export interface CompatibilityNotice {
@@ -26,6 +27,7 @@ export interface AppShell {
   bindEnergyControls(handlers: EnergyControlHandlers): () => void;
   bindFlightControls(handlers: FlightControlHandlers): () => void;
   bindCombatControls(handlers: CombatControlHandlers): () => void;
+  bindMissionControls(handlers: MissionControlHandlers): () => void;
   setBackend(label: string): void;
   setBenchmarkTelemetry(telemetry: BenchmarkHudTelemetry): void;
   setArenaPresentation(presentation: ArenaPresentationDto): void;
@@ -35,6 +37,7 @@ export interface AppShell {
   setFps(fps: number): void;
   setGraphicsCapability(capability: GraphicsCapability): void;
   setFlightTelemetry(telemetry: FlightHudTelemetry): void;
+  setMissionTelemetry(telemetry: MissionHudTelemetry): void;
   setFullscreenActive(active: boolean): void;
   setPointerCaptured(active: boolean): void;
   setPreset(preset: GraphicsPreset): void;
@@ -78,6 +81,21 @@ export interface CombatControlHandlers {
   readonly onUseTractor: () => void;
 }
 
+export interface MissionControlHandlers {
+  readonly onPrimaryAction: () => void;
+}
+
+export interface MissionHudTelemetry {
+  readonly actionEnabled: boolean;
+  readonly actionLabel: string;
+  readonly identifiedTarget: boolean;
+  readonly objective: string;
+  readonly phase: ExplorationMissionPhase;
+  readonly phaseLabel: string;
+  readonly title: string;
+  readonly transitionProgress: number;
+}
+
 export interface CombatHudTelemetry {
   readonly activeScan: boolean;
   readonly awareness: ContactAwareness;
@@ -108,7 +126,8 @@ export interface FlightHudTelemetry {
   readonly hullPercent: number;
   readonly instancedObjects: number;
   readonly lodLabel: string;
-  readonly pauseReason: 'focus-lost' | 'manual' | undefined;
+  readonly pauseReason:
+    'focus-lost' | 'manual' | 'mission-complete' | 'mission-transition' | undefined;
   readonly paused: boolean;
   readonly position: Vector3Value;
   readonly sensorRangeUnits: number;
@@ -212,6 +231,9 @@ export function createAppShell(root: HTMLElement): AppShell {
   const retryButton = requireElement<HTMLButtonElement>(notice, '[data-retry-button]');
   const flightHud = requireElement<HTMLElement>(root, '[data-flight-hud]');
   const objectiveText = requireElement<HTMLElement>(root, '[data-objective-text]');
+  const missionTitle = requireElement<HTMLElement>(root, '[data-mission-title]');
+  const missionPhase = requireElement<HTMLElement>(root, '[data-mission-phase]');
+  const missionAction = requireElement<HTMLButtonElement>(root, '[data-mission-action]');
   const speedValue = requireElement<HTMLElement>(flightHud, '[data-flight-speed]');
   const positionValue = requireElement<HTMLElement>(flightHud, '[data-flight-position]');
   const boundaryValue = requireElement<HTMLElement>(flightHud, '[data-flight-boundary]');
@@ -359,6 +381,11 @@ export function createAppShell(root: HTMLElement): AppShell {
           button.removeEventListener('click', listener),
         );
       };
+    },
+    bindMissionControls(handlers) {
+      const listener = (): void => handlers.onPrimaryAction();
+      missionAction.addEventListener('click', listener);
+      return () => missionAction.removeEventListener('click', listener);
     },
     bindFlightControls(handlers) {
       const handlePause = (): void => handlers.onPause();
@@ -533,19 +560,6 @@ export function createAppShell(root: HTMLElement): AppShell {
         `MOT ${(systems.engines * 100).toFixed(0)} · ARM ${(systems.weapons * 100).toFixed(0)} · ESC ${(systems.shields * 100).toFixed(0)} · SEN ${(systems.sensors * 100).toFixed(0)}`,
       );
       setTextIfChanged(combatFeedback, telemetry.feedback);
-      const objective =
-        telemetry.phase === 'victory'
-          ? 'Encontro concluído. Reinicie quando estiver pronto.'
-          : telemetry.phase === 'defeat'
-            ? 'Nave neutralizada. Reinicie o exercício tático.'
-            : telemetry.awareness === 'unknown'
-              ? 'Localize um contato com os sensores passivos.'
-              : telemetry.activeScan
-                ? 'Mantenha o contato no alcance até concluir o scan.'
-                : telemetry.awareness === 'identified'
-                  ? 'Avalie o alvo e escolha o equipamento adequado.'
-                  : 'Selecione o contato e execute um scan ativo.';
-      setTextIfChanged(objectiveText, objective);
       setTextIfChanged(
         beamButton,
         telemetry.weaponCooldownSeconds.beam > 0
@@ -702,7 +716,11 @@ export function createAppShell(root: HTMLElement): AppShell {
         telemetry.paused
           ? telemetry.pauseReason === 'focus-lost'
             ? 'Pausada · foco perdido'
-            : 'Pausada'
+            : telemetry.pauseReason === 'mission-transition'
+              ? 'Pausada · em trânsito'
+              : telemetry.pauseReason === 'mission-complete'
+                ? 'Atracada na base'
+                : 'Pausada'
           : 'Em execução',
       );
       setTextIfChanged(frameTimeValue, `${telemetry.frameTimeMs.toFixed(1)} ms`);
@@ -725,7 +743,18 @@ export function createAppShell(root: HTMLElement): AppShell {
       );
       setTextIfChanged(heatValue, `${telemetry.weaponHeatPercent.toFixed(0)}%`);
       setTextIfChanged(sensorValue, `${telemetry.sensorRangeUnits.toFixed(0)} u`);
-      setTextIfChanged(pauseButton, telemetry.paused ? 'Retomar (P)' : 'Pausar (P)');
+      const missionLocked =
+        telemetry.pauseReason === 'mission-transition' ||
+        telemetry.pauseReason === 'mission-complete';
+      setTextIfChanged(
+        pauseButton,
+        missionLocked
+          ? 'Controle de missão ativo'
+          : telemetry.paused
+            ? 'Retomar (P)'
+            : 'Pausar (P)',
+      );
+      if (pauseButton.disabled !== missionLocked) pauseButton.disabled = missionLocked;
       setAttributeIfChanged(root, 'data-simulation-state', telemetry.paused ? 'paused' : 'running');
       setAttributeIfChanged(root, 'data-ship-x', position.x.toFixed(4));
       setAttributeIfChanged(root, 'data-ship-y', position.y.toFixed(4));
@@ -745,6 +774,22 @@ export function createAppShell(root: HTMLElement): AppShell {
       setAttributeIfChanged(root, 'data-sensor-range', telemetry.sensorRangeUnits.toFixed(3));
       setAttributeIfChanged(root, 'data-active-vfx', String(telemetry.activeVfxCount));
       setAttributeIfChanged(root, 'data-draw-calls', String(telemetry.drawCalls));
+    },
+    setMissionTelemetry(telemetry) {
+      setTextIfChanged(missionTitle, telemetry.title);
+      setTextIfChanged(missionPhase, telemetry.phaseLabel);
+      setTextIfChanged(objectiveText, telemetry.objective);
+      setTextIfChanged(missionAction, telemetry.actionLabel);
+      if (missionAction.disabled === telemetry.actionEnabled) {
+        missionAction.disabled = !telemetry.actionEnabled;
+      }
+      setAttributeIfChanged(root, 'data-mission-phase', telemetry.phase);
+      setAttributeIfChanged(
+        root,
+        'data-mission-target-identified',
+        telemetry.identifiedTarget ? 'true' : 'false',
+      );
+      setAttributeIfChanged(root, 'data-mission-progress', telemetry.transitionProgress.toFixed(3));
     },
     setFullscreenActive(active) {
       setAttributeIfChanged(root, 'data-fullscreen-state', active ? 'active' : 'inactive');

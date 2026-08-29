@@ -28,7 +28,7 @@ IndexedDB <───────> snapshots versionados da aplicação (P1)
 - **Determinismo útil:** regras críticas em passo fixo, relógio explícito e aleatoriedade com semente em testes.
 - **Dados antes de subclasses:** diferenças entre naves, armas e missões vivem em definições validadas.
 - **Apresentação derivada do estado:** HUD, áudio e VFX reagem ao mesmo estado/evento de domínio.
-- **Orçamento de desempenho:** cada recurso gráfico precisa caber na MX130 e degradar de forma controlada.
+- **Orçamento de desempenho:** cada recurso gráfico precisa degradar de forma controlada pelos presets e preservar fluidez no perfil suportado, sem depender de um modelo específico de GPU.
 - **Falha visível e recuperável:** compatibilidade, asset ou save inválido produz mensagem e rota segura.
 - **Offline real:** nenhuma regra central depende de rede ou serviço de terceiros.
 
@@ -281,8 +281,8 @@ Estados de dano combinam máscaras/variantes preparadas, decalques limitados, em
 
 O cenário de benchmark do P0 é uma funcionalidade permanente. Ele deve medir FPS/frametime, draw calls, triângulos, efeitos ativos, tempo de carga e tamanho de assets. Orçamentos de referência:
 
-- 1600×900/médio na MX130: mínimo de 30 FPS no pior encontro;
-- 1280×720/baixo na UHD 620: jogável, limiar final definido após medição;
+- preset suportado pela GPU acelerada: mínimo de 30 FPS médios e p99 de até 50 ms no pior encontro;
+- referência física aprovada: 1280×720/baixo na UHD 620 com 60,010 FPS e p99 de 18,9 ms;
 - 200–300 draw calls no pico como teto inicial;
 - conteúdo ativo idealmente abaixo de 1,2–1,4 GB de VRAM estimada;
 - 40–60 MB compactados até primeira interação;

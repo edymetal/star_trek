@@ -1,7 +1,7 @@
 # Escopo priorizado do MVP
 
-Status: P0 autorizado para implementação  
-Versão: 1.0 — 20 de agosto de 2026
+Status: P0 concluído; P1 em implementação  
+Atualizado em: 29 de agosto de 2026
 
 O P0 é um protótipo técnico jogável, não o jogo completo. O MVP demonstrável é formado por todo o P0 e pelo subconjunto P1 descrito aqui. P2 e P3 não podem consumir esforço enquanto houver falha crítica/alta, meta de desempenho não atendida ou fluxo incompleto em P0/P1.
 
@@ -54,7 +54,7 @@ Concluído quando cada equipamento respeitar energia, alcance, linha de visão/s
 - LOD da nave principal e instancing de asteroides;
 - encontro de benchmark reproduzível, presets baixo/médio/alto e relatório de métricas.
 
-Concluído quando o dano lógico e visual não divergirem; não houver crescimento ilimitado de efeitos; e o cenário mantiver pelo menos 30 FPS na MX130 em 1600×900/médio. Se falhar, o orçamento visual deve ser reduzido e repetido antes do P1.
+Concluído quando o dano lógico e visual não divergirem; não houver crescimento ilimitado de efeitos; e o cenário mantiver pelo menos 30 FPS médios com p99 de até 50 ms no preset suportado pela GPU acelerada escolhida pelo navegador. A medição física UHD 620/baixo aprovou este gate; uma GPU específica não é requisito conforme `DECISION-027`.
 
 ### Gate de saída do P0
 
@@ -83,7 +83,7 @@ Concluído quando o dano lógico e visual não divergirem; não houver crescimen
 - ciclo base → missão → viagem → escaneamento → resolução → retorno completo;
 - três missões concluíveis e reiniciáveis sem corromper estado;
 - save reabre após fechar o navegador e migra entre versões de teste suportadas;
-- 30 FPS ou mais no pior combate da MX130/médio e experiência funcional na UHD 620/baixo;
+- 30 FPS médios ou mais e p99 de até 50 ms no preset suportado, sem travamentos recorrentes ou crescimento ilimitado de carga;
 - Chrome e Edge passam nos fluxos críticos;
 - zero bug CRITICAL ou HIGH conhecido;
 - build, lint, typecheck e testes essenciais passam;

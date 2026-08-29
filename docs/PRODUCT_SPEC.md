@@ -1,7 +1,7 @@
 # Especificação do produto
 
-Status: aprovada para iniciar o P0  
-Versão: 1.0 — 20 de agosto de 2026
+Status: P0 aprovado; P1 em implementação  
+Atualizado em: 29 de agosto de 2026
 
 Este é o documento canônico para o que o produto deve fazer. A pesquisa técnica, os orçamentos de arte e as fontes consultadas permanecem em [`PLANEJAMENTO.md`](../PLANEJAMENTO.md). Prioridades de entrega ficam em [`MVP.md`](MVP.md) e decisões técnicas em [`ARCHITECTURE.md`](../ARCHITECTURE.md) e [`DECISIONS.md`](DECISIONS.md).
 
@@ -197,9 +197,9 @@ O HUD será HTML/CSS sobre o canvas. Deve funcionar em 1280×720 ou mais, com es
 
 ### Desempenho
 
-- hardware de referência: i7-8550U, 20 GB RAM, GeForce MX130 2 GB, com UHD 620 como perfil baixo;
-- MX130: pelo menos 30 FPS no pior encontro P0/P1 em 1600×900 no preset médio, buscando 45–60 FPS fora do pico;
-- UHD 620: experiência funcional em 1280×720 no preset baixo, com meta a validar no benchmark;
+- hardware usado como referência de orçamento: i7-8550U, 20 GB RAM, GeForce MX130 2 GB e UHD 620, sem exigir seleção manual de um adaptador específico;
+- preset suportado: pelo menos 30 FPS médios e p99 de até 50 ms no pior cenário determinístico, buscando 45–60 FPS fora do pico;
+- a UHD 620 validou o perfil baixo em 1280×720; presets, LOD e pools continuam obrigatórios para manter a experiência leve;
 - carregamento jogável inicial de até 60 MB compactados como orçamento, não como licença para preenchê-lo;
 - limites detalhados de VRAM, draw calls, LOD e assets estão no `PLANEJAMENTO.md`.
 
@@ -269,7 +269,7 @@ Uma API, banco remoto ou autenticação só poderá entrar mediante requisito no
 ### P0
 
 - mecânicas centrais demonstráveis numa arena e benchmark repetível;
-- ao menos 30 FPS no pior cenário da MX130 no preset médio, ou redução documentada de orçamento antes de avançar;
+- ao menos 30 FPS médios e p99 de até 50 ms no preset suportado pela GPU acelerada escolhida pelo navegador, ou redução documentada de orçamento antes de avançar;
 - build estático abre em Chrome e Edge, sem serviço pago;
 - testes de invariantes de energia, escudo, dano e armas passam;
 - nenhuma falha crítica/alta conhecida.

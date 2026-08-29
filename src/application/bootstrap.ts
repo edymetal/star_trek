@@ -2,10 +2,15 @@ import { getGraphicsPreset } from '../content/graphics-presets';
 import { PLAYER_SHIP_DEFINITION, TRAINING_ARENA } from '../content/arena-content';
 import { ENERGY_PRESETS, PLAYER_ENERGY_DEFINITION } from '../content/energy-content';
 import { PLAYER_DAMAGE_DEFINITION } from '../content/combat-content';
+import { FIRST_EXPLORATION_MISSION } from '../content/mission-content';
 import { resolveShieldSector, type ShieldSectorId } from '../domain/combat/damage';
 import { createInitialEnergyState, type EnergyAllocation } from '../domain/energy/energy-system';
 import { createInitialShipState } from '../domain/flight/ship-flight';
 import { evaluateGraphicsReadiness } from '../domain/graphics-readiness';
+import {
+  createExplorationMission,
+  type ExplorationMissionSnapshot,
+} from '../domain/missions/exploration-mission';
 import type { ArenaScene, EngineTelemetry } from '../engine/create-arena-scene';
 import { createFlightInputController } from '../platform/flight-input';
 import { inspectWebGl2Capability } from '../platform/graphics-diagnostics';
@@ -15,6 +20,7 @@ import type {
   CompatibilityNotice,
   EnergyHudTelemetry,
   FlightHudTelemetry,
+  MissionHudTelemetry,
 } from '../ui/app-shell';
 import { createFlightSession } from './flight-session';
 import { createEncounterSession } from './encounter-session';
@@ -42,9 +48,9 @@ const WEBGL_UNAVAILABLE_NOTICE: CompatibilityNotice = {
 
 const SOFTWARE_RENDERER_NOTICE: CompatibilityNotice = {
   actions: [
-    'No Windows, configure o navegador para usar a opção de GPU de alto desempenho.',
-    'Confirme no Gerenciador de Tarefas se a NVIDIA GeForce MX130 está em uso.',
-    'Consulte chrome://gpu ou edge://gpu para verificar o renderizador ativo.',
+    'Mantenha a aceleração gráfica ativada nas configurações do navegador.',
+    'Atualize o navegador e o driver gráfico disponível no sistema.',
+    'Consulte chrome://gpu ou edge://gpu e confirme que WebGL 2 usa aceleração por hardware.',
   ],
   message:
     'A renderização está sendo feita por software. A cena foi aberta, mas o desempenho será limitado.',
@@ -70,6 +76,70 @@ interface PublishedHudTelemetry {
   readonly combat: CombatHudTelemetry;
   readonly energy: EnergyHudTelemetry;
   readonly flight: FlightHudTelemetry;
+  readonly mission: MissionHudTelemetry;
+}
+
+function createMissionHudTelemetry(snapshot: ExplorationMissionSnapshot): MissionHudTelemetry {
+  const mission = FIRST_EXPLORATION_MISSION;
+  switch (snapshot.phase) {
+    case 'briefing':
+      return {
+        actionEnabled: true,
+        actionLabel: 'Iniciar missão',
+        identifiedTarget: false,
+        objective: mission.briefing,
+        phase: snapshot.phase,
+        phaseLabel: 'Na base',
+        title: mission.title,
+        transitionProgress: snapshot.transitionProgress,
+      };
+    case 'outbound':
+      return {
+        actionEnabled: false,
+        actionLabel: `Em trânsito · ${(snapshot.transitionProgress * 100).toFixed(0)}%`,
+        identifiedTarget: false,
+        objective: 'Em trânsito para o corredor de Nereida. Sistemas táticos em espera.',
+        phase: snapshot.phase,
+        phaseLabel: 'Partida',
+        title: mission.title,
+        transitionProgress: snapshot.transitionProgress,
+      };
+    case 'survey':
+      return {
+        actionEnabled: snapshot.identifiedTarget,
+        actionLabel: snapshot.identifiedTarget ? 'Retornar à base' : 'Identifique o contato',
+        identifiedTarget: snapshot.identifiedTarget,
+        objective: snapshot.identifiedTarget
+          ? 'Assinatura registrada. Retorne à base para concluir o levantamento.'
+          : mission.surveyObjective,
+        phase: snapshot.phase,
+        phaseLabel: 'Levantamento',
+        title: mission.title,
+        transitionProgress: snapshot.transitionProgress,
+      };
+    case 'returning':
+      return {
+        actionEnabled: false,
+        actionLabel: `Retornando · ${(snapshot.transitionProgress * 100).toFixed(0)}%`,
+        identifiedTarget: true,
+        objective: 'Retornando à base com os dados do levantamento.',
+        phase: snapshot.phase,
+        phaseLabel: 'Retorno',
+        title: mission.title,
+        transitionProgress: snapshot.transitionProgress,
+      };
+    case 'completed':
+      return {
+        actionEnabled: true,
+        actionLabel: 'Repetir missão',
+        identifiedTarget: true,
+        objective: mission.completedObjective,
+        phase: snapshot.phase,
+        phaseLabel: 'Concluída',
+        title: mission.title,
+        transitionProgress: snapshot.transitionProgress,
+      };
+  }
 }
 
 export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene | undefined> {
@@ -108,6 +178,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       initialEnergyState: createInitialEnergyState(PLAYER_ENERGY_DEFINITION),
       initialState: createInitialShipState({ x: 0, y: 0, z: 16 }),
     });
+    const missionSession = createExplorationMission(FIRST_EXPLORATION_MISSION);
     const presentationEffectRetainer = createPresentationEffectRetainer();
     let pendingPresentationEffect:
       | {
@@ -158,6 +229,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       shell.setCombatTelemetry(telemetry.combat);
       shell.setFlightTelemetry(telemetry.flight);
       shell.setEnergyTelemetry(telemetry.energy);
+      shell.setMissionTelemetry(telemetry.mission);
     });
     const createHudTelemetry = (snapshot = flightSession.getSnapshot()): PublishedHudTelemetry => {
       const { effects, flow, profileId, state } = snapshot.energy;
@@ -245,6 +317,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
           weaponHeatPercent: state.weaponHeatUnits,
           weaponRechargeUnitsPerSecond: effects.weaponRechargeUnitsPerSecond,
         },
+        mission: createMissionHudTelemetry(missionSession.getSnapshot()),
       };
     };
     const refreshHud = (): void => {
@@ -255,7 +328,9 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       fullscreenTarget: shell.fullscreenTarget,
       onControlFeedback: (message) => shell.setControlFeedback(message),
       onFocusLost() {
-        flightSession.pause('focus-lost');
+        flightSession.pause(
+          missionSession.getSnapshot().phase === 'completed' ? 'mission-complete' : 'focus-lost',
+        );
         refreshHud();
       },
       onFullscreenChange(active) {
@@ -263,6 +338,17 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
         shell.setControlFeedback(active ? 'Tela cheia ativada.' : 'Tela cheia desativada.');
       },
       onPauseToggle() {
+        const missionPhase = missionSession.getSnapshot().phase;
+        if (
+          missionPhase === 'outbound' ||
+          missionPhase === 'returning' ||
+          missionPhase === 'completed'
+        ) {
+          shell.setControlFeedback(
+            'O controle de voo está bloqueado durante esta etapa da missão.',
+          );
+          return;
+        }
         flightSession.toggleManualPause();
         refreshHud();
       },
@@ -288,6 +374,17 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       onFullscreen: () => void input.toggleFullscreen(),
       onPause() {
         input.releaseControls();
+        const missionPhase = missionSession.getSnapshot().phase;
+        if (
+          missionPhase === 'outbound' ||
+          missionPhase === 'returning' ||
+          missionPhase === 'completed'
+        ) {
+          shell.setControlFeedback(
+            'O controle de voo está bloqueado durante esta etapa da missão.',
+          );
+          return;
+        }
         flightSession.toggleManualPause();
         refreshHud();
       },
@@ -317,7 +414,37 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       onUseTorpedo: () => requestPlayerEffect('torpedo'),
       onUseTractor: () => requestPlayerEffect('tractor'),
     });
+    const resetPresentationEffects = (): void => {
+      presentationEffectRetainer.clear();
+      pendingPresentationEffect = undefined;
+    };
+    const startMission = (): void => {
+      if (!missionSession.start()) return;
+      input.releaseControls();
+      flightSession.restartEncounter();
+      flightSession.pause('mission-transition');
+      resetPresentationEffects();
+      shell.setControlFeedback('Rota definida. Iniciando viagem para o corredor de Nereida.');
+      refreshHud();
+    };
+    const unbindMissionControls = shell.bindMissionControls({
+      onPrimaryAction() {
+        const mission = missionSession.getSnapshot();
+        if (mission.phase === 'briefing' || mission.phase === 'completed') {
+          startMission();
+          return;
+        }
+        if (mission.phase === 'survey' && missionSession.beginReturn()) {
+          input.releaseControls();
+          flightSession.pause('mission-transition');
+          resetPresentationEffects();
+          shell.setControlFeedback('Dados protegidos. Retornando à base.');
+          refreshHud();
+        }
+      },
+    });
     disposeFailedBootstrap = () => {
+      unbindMissionControls();
       unbindCombatControls();
       unbindEnergyControls();
       unbindControls();
@@ -350,7 +477,29 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
         onFpsSample: (fps) => shell.setFps(fps),
         onPresentationFrame: (presentation) => shell.setArenaPresentation(presentation),
         onUpdate(deltaSeconds, getTelemetry) {
+          const missionBeforeAdvance = missionSession.getSnapshot();
+          const missionAfterAdvance = missionSession.advance(deltaSeconds);
+          if (missionBeforeAdvance.phase !== missionAfterAdvance.phase) {
+            if (
+              missionAfterAdvance.phase === 'survey' &&
+              flightSession.getSnapshot().pauseReason === 'mission-transition'
+            ) {
+              flightSession.resume();
+              shell.setControlFeedback('Destino alcançado. Identifique a assinatura desconhecida.');
+            } else if (missionAfterAdvance.phase === 'completed') {
+              flightSession.restartEncounter();
+              flightSession.pause('mission-complete');
+              resetPresentationEffects();
+              shell.setControlFeedback('Missão concluída. Reparo e reabastecimento finalizados.');
+            }
+          }
           const snapshot = flightSession.advance(deltaSeconds, input);
+          if (
+            snapshot.encounter.contact.awareness === 'identified' &&
+            missionSession.recordIdentifiedContact(snapshot.encounter.contact.contactId)
+          ) {
+            shell.setControlFeedback('Assinatura confirmada. O retorno à base está autorizado.');
+          }
           if (pendingPresentationEffect !== undefined && snapshot.simulationSteps > 0) {
             const { encounter } = snapshot;
             const after: PlayerEffectResultView = {

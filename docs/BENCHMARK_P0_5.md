@@ -1,6 +1,6 @@
 # Benchmark P0.5
 
-Status: UHD 620 validada em WebGL 2 e WebGPU; MX130 pendente  
+Status: gate P0.5 aprovado na UHD 620; medição MX130 opcional  
 Atualizado em: 28 de agosto de 2026
 
 ## Como executar
@@ -41,15 +41,15 @@ Não preencha esta tabela com execução headless, aba em segundo plano ou rende
 
 | GPU | Navegador | Resolução | Preset | Backend | FPS médio | p50 ms | p95 ms | p99 ms | Resultado |
 | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- |
-| GeForce MX130 2 GB | Pendente | 1600×900 | Médio | WebGL 2 | — | — | — | — | Pendente |
+| GeForce MX130 2 GB | Opcional | 1600×900 | Médio | WebGL 2 | — | — | — | — | Diagnóstico não executado |
 | Intel UHD 620 | Chrome 151.0.7922.34 | 1280×720 | Baixo | WebGL 2 | 60,010 | 16,7 | 17,9 | 18,9 | Aprovado; perfil funcional |
 | Intel UHD 620 | Chrome 151.0.7922.34 | 1280×720 | Baixo | WebGPU | 60,011 | 16,7 | 17,6 | 19,9 | Comparação; sem ganho material |
 
-As duas medições UHD usaram janela física, 5 segundos de aquecimento, 30 segundos de coleta e renderizador acelerado `ANGLE (Intel UHD Graphics 620, D3D11)`. O perfil baixo fica validado com limiar prático de 30 FPS, preservando margem observada para variação térmica e carga do sistema. O gate da MX130 continua exigindo pelo menos 30 FPS no pior cenário em 1600×900/médio.
+As duas medições UHD usaram janela física, 5 segundos de aquecimento, 30 segundos de coleta e renderizador acelerado `ANGLE (Intel UHD Graphics 620, D3D11)`. O perfil baixo fica validado com limiar de 30 FPS médios e p99 de até 50 ms, preservando margem observada para variação térmica e carga do sistema. Conforme `DECISION-027`, não existe gate vinculado à MX130.
 
 ## Limites desta fatia
 
 - WebGPU é somente uma opção do benchmark; não substitui WebGL 2 nem habilita efeitos exclusivos no MVP.
 - Os modelos continuam procedurais e originais, sem assets externos.
 - O cenário mede a carga visual representativa; não altera regras, percepção ou estado autoritativo do encontro jogável.
-- A aprovação final do P0.5 ainda depende da medição física da MX130 e do gate formal; dano por seção já foi implementado e coberto por testes.
+- O P0.5 foi aprovado com a medição física da GPU acelerada efetivamente escolhida pelo navegador; medições em outras GPUs continuam úteis, mas são opcionais.

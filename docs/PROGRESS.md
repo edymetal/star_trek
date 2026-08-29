@@ -1,9 +1,9 @@
 # Progresso do projeto
 
-Atualizado em: 28 de agosto de 2026  
-Etapa atual: P0.5 — Dano visual e benchmark  
-Estado do código: dano por seção e UHD 620 validados; medição MX130 e gate formal pendentes  
-Próximo responsável: usuário / selecionar MX130 para o navegador; depois Senior Developer / gate formal
+Atualizado em: 29 de agosto de 2026  
+Etapa atual: P1 — Primeira fatia vertical  
+Estado do código: P0.5 aprovado; primeira missão completa em sessão, persistência ainda pendente  
+Próximo responsável: Senior Developer / save IndexedDB versionado e retomada segura
 
 Legenda:
 
@@ -88,13 +88,13 @@ Legenda:
 - [x] Estados de dano por seção e efeitos limitados
 - [x] Cenário determinístico
 - [x] Perfis baixo/médio/alto
-- [~] Benchmark MX130/UHD 620 e WebGL 2/WebGPU — UHD 620 concluída; MX130 pendente
-- [ ] Gate formal do P0
+- [x] Benchmark escalável e WebGL 2/WebGPU — UHD 620 física concluída; segunda GPU opcional
+- [x] Gate formal do P0
 
 ## P1 — Vertical slice/MVP
 
-- [ ] Primeira missão ponta a ponta
-- [ ] Base funcional e viagem
+- [x] Primeira missão ponta a ponta em uma sessão
+- [~] Base funcional e viagem — partida, retorno, reparo/reabastecimento e transição implementados; mapa ainda pendente
 - [ ] Save IndexedDB versionado
 - [ ] Missões de assistência e combate
 - [ ] Tutorial, áudio e acessibilidade prioritária
@@ -134,7 +134,7 @@ Verificações realizadas:
 
 ### Bloqueios reais
 
-Nenhum bloqueio real para iniciar P0.1. Antes de publicar, será bloqueante confirmar identidade original/licença e auditar todos os assets. Antes de avançar ao P1, será bloqueante cumprir ou renegociar formalmente o gate de desempenho da MX130.
+Nenhum bloqueio real para iniciar P0.1. Antes de publicar, será bloqueante confirmar identidade original/licença e auditar todos os assets. O antigo gate vinculado à MX130 foi renegociado e encerrado formalmente em `DECISION-027` antes do início do P1.
 
 ## Relatório anterior — UI-1
 
@@ -280,7 +280,7 @@ Resultado: o gate funcional P0.4 foi encerrado e o P0.5 autorizado. P1 continua 
 
 Executar e registrar MX130 1600×900/médio e UHD 620 1280×720/baixo em Chrome ou Edge. Em paralelo de implementação, concluir dano por seção, partículas/decalques/emissivos limitados e efeito de subsistema desativado. Comparar WebGPU somente depois de registrar o baseline WebGL 2.
 
-## Último relatório — P0.5 dano visual e benchmark UHD 620
+## Relatório anterior — P0.5 dano visual e benchmark UHD 620
 
 **ETAPA:** P0.5 — Dano visual e benchmark  
 **STATUS:** implementação da fatia concluída; medição MX130 e gate formal pendentes
@@ -308,7 +308,7 @@ O perfil baixo da UHD 620 fica validado com limiar prático de 30 FPS. WebGPU n�
 
 ### Estado do gate
 
-O Chrome não possui preferência de GPU do usuário registrada no Windows e selecionou a UHD 620. Alterar essa preferência do sistema requer ação explícita do usuário. Por isso, a medição obrigatória MX130 1600×900/médio ainda está pendente e o P0.5 não pode ser aprovado nem liberar conteúdo P1.
+Naquele momento, o Chrome não possuía preferência de GPU do usuário registrada no Windows e selecionou a UHD 620. O estado foi substituído em 29/08/2026: o usuário removeu o vínculo obrigatório à MX130 e `DECISION-027` aprovou o gate escalável sem alterar configurações do sistema.
 
 ### Verificação consolidada
 
@@ -318,3 +318,39 @@ O Chrome não possui preferência de GPU do usuário registrada no Windows e sel
 - benchmark físico: 1/1 WebGL 2 e 1/1 WebGPU, ambos com 30 s de coleta;
 - inspeção das capturas 1280×720 e 1600×900: HUD íntegro, memória sensorial legível e dano crítico/impacto visíveis;
 - nenhum achado CRITICAL/HIGH nesta fatia; os avisos conhecidos de chunk lazy e workers PlayCanvas não usados continuam não bloqueantes.
+
+## Último relatório — gate P0.5 e primeira missão P1
+
+**ETAPA:** P0.5 encerrado; P1 primeira subfatia  
+**STATUS:** P0 aprovado; missão de exploração completa em uma sessão
+
+### Gate de desempenho reconciliado
+
+O requisito explícito de 29/08/2026 substituiu a personalização e medição obrigatória da MX130 por uma experiência leve e sem travamentos. `DECISION-027` preserva os presets, o benchmark permanente, WebGL 2, LOD, instancing e pools, mas mede a GPU acelerada que o navegador realmente escolheu. O limiar passa a ser ≥30 FPS médios e p99 ≤50 ms no preset suportado. A medição física UHD 620/baixo de 60,010 FPS e p99 18,9 ms aprovou o P0.5 com ampla margem. A revisão do coordenador não encontrou achado CRITICAL/HIGH; o passo fixo de 60 Hz e WebGL 2 foram confirmados.
+
+### Primeira missão P1
+
+- `Levantamento de Nereida` usa identidade original e conteúdo separado das regras;
+- o domínio determinístico controla briefing, partida, levantamento, retorno e conclusão sem DOM, PlayCanvas, relógio global ou GPU;
+- o scan existente identifica o contato-alvo e libera o retorno, sem duplicar a autoridade dos sensores;
+- partida e retorno bloqueiam os controles de voo de modo explícito;
+- a conclusão retorna à base, reinicia casco, energia e munição e permite repetir a missão;
+- a HUD apresenta fase, objetivo e única ação contextual, com atributos estáveis para teste.
+
+### Pendências da Etapa 6
+
+- IndexedDB atrás de repositório e envelope versionado;
+- autosave somente em estado seguro, retomada após reload e migração;
+- recuperação visível de corrupção/quota;
+- mapa setorial e apresentação gráfica da viagem.
+
+### Verificação
+
+- regras de missão cobertas por testes unitários, inclusive comandos fora de fase e entradas inválidas;
+- ciclo integrado coberto em navegador real da partida à conclusão;
+- nenhuma biblioteca ou carga gráfica foi adicionada;
+- `npm run verify`: aprovado com 136/136 testes em 21 arquivos, lint, typecheck e build;
+- Playwright completo: 42/42 casos em Chrome/Edge, um worker e nenhum `skip`;
+- o teste de layout permanece verde em 1280×720 e 1600×900;
+- capturas oficiais atualizadas e inspecionadas: ação da missão legível, centro tático livre e sem sobreposição nova;
+- nenhum achado CRITICAL/HIGH; o aviso conhecido de chunk lazy do PlayCanvas continua não bloqueante.

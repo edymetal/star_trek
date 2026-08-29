@@ -1,6 +1,6 @@
 # Registro de decisões
 
-Versão: 1.0 — 20 de agosto de 2026
+Atualizado em: 29 de agosto de 2026
 
 Decisões aceitas só devem ser alteradas por nova entrada que referencie a anterior, apresente evidência e descreva migração. Decisões provisórias têm gate explícito.
 
@@ -222,29 +222,47 @@ Decisões aceitas só devem ser alteradas por nova entrada que referencie a ante
 
 ## DECISION-025 — Benchmark P0.5 explícito, determinístico e limitado
 
-**Status:** aceita; UHD 620 medida, MX130 pendente  
+**Status:** aceita e encerrada por `DECISION-027`  
 **Problema:** diagnósticos pontuais de FPS/draw calls da arena jogável não representam uma carga fixa e não produzem percentis comparáveis entre GPU, navegador e preset. Também não podem ser confundidos com o gate físico do hardware alvo.  
 **Opções consideradas:** medir manualmente o encontro variável; criar uma cena separada duplicando renderer/VFX; adicionar um modo de benchmark explícito sobre o mesmo adaptador visual.  
 **Decisão:** a URL `?benchmark=1` ativa uma carga exclusivamente visual sobre o adaptador da arena, sem alterar regras ou snapshots autoritativos. Os presets baixo/médio/alto definem resolução, antialiasing, LOD, 4/6/8 naves, 96/144/192 asteroides, 680/900/1.200 estrelas e 1/2/3 estados de dano simultâneos. O cenário usa movimentos derivados de índice/tempo, mantém dois efeitos e um projétil do pool e coleta até 7.200 frametimes após aquecimento. O relatório expõe FPS médio, p50, p95, p99 e pior quadro.  
 **Motivo:** preserva o mesmo renderer e os mesmos recursos visuais do jogo, cria uma carga repetível e impede crescimento ilimitado de amostras/objetos.  
-**Consequências:** E2E pode validar a conclusão da coleta, mas números headless, aba em segundo plano ou janela curta são apenas diagnósticos. A UHD 620 passou o perfil baixo em janela física; o gate continua exigindo a medição MX130 1600×900/médio. A URL aceita `backend=webgpu` apenas para comparação e usa WebGL 2 como fallback; WebGL 2 continua o padrão porque a comparação UHD não mostrou benefício material. O modo de benchmark não pode fornecer informação de combate ao jogo nem se tornar caminho alternativo para vencer encontros.
+**Consequências:** E2E pode validar a conclusão da coleta, mas números headless, aba em segundo plano ou janela curta são apenas diagnósticos. A UHD 620 passou o perfil baixo em janela física. A URL aceita `backend=webgpu` apenas para comparação e usa WebGL 2 como fallback; WebGL 2 continua o padrão porque a comparação UHD não mostrou benefício material. O modo de benchmark não pode fornecer informação de combate ao jogo nem se tornar caminho alternativo para vencer encontros. A exigência posterior de medir uma GPU específica foi substituída por `DECISION-027`.
 
 ## DECISION-026 — Dano visual por seção e impacto direcional com orçamento fixo
 
-**Status:** aceita; medição MX130 e revisão formal pendentes  
+**Status:** aceita e aprovada no gate P0.5 por `DECISION-027`  
 **Problema:** os três estados globais de casco da UI-GFX indicavam severidade, mas não mostravam onde o impacto ocorreu, qual seção foi danificada ou qual subsistema ficou inoperante. Criar partículas e decalques a cada acerto faria o custo crescer durante combates longos.  
 **Opções consideradas:** manter apenas estado global; gerar VFX dinamicamente por acerto; preparar recursos fixos por seção e derivá-los do snapshot público.  
 **Decisão:** cada nave possui quatro decalques preparados para proa, popa, bombordo e estibordo e um pool fixo de três sparks geométricos. O preset limita a 1/2/3 seções com sparks simultâneos. Materiais, emissivos e visibilidade dos decalques derivam dos estados lógicos públicos; motores, escudos, armas e sensores escurecem quando o respectivo subsistema está desativado. O setor de impacto acompanha o efeito confirmado e desloca feixe/impacto para a superfície direcional do alvo. Informações remotas de seção e subsistema são ocultadas quando o contato está apenas na memória.  
 **Motivo:** torna dano e escudos direcionais legíveis, preserva a percepção do domínio e mantém quantidade de entidades limitada independentemente da duração do combate.  
 **Consequências:** testes de apresentação e E2E devem conferir seção atingida, subsistema desativado, setor do impacto e ocultação em memória. O teto automatizado de draw calls do combate no preset baixo sobe de 28 para 36 para comportar recursos preparados; qualquer aumento posterior exige benchmark. Os efeitos continuam procedurais e sem assets externos.
 
+## DECISION-027 — Desempenho escalável sem vínculo obrigatório a uma GPU
+
+**Status:** aceita por requisito explícito do usuário; gate P0.5 aprovado  
+**Problema:** o gate inicial exigia selecionar e medir especificamente a MX130 em 1600×900/médio. O usuário esclareceu que não deseja personalização por placa de vídeo: o requisito real é manter o jogo leve e sem travamentos. O navegador já havia escolhido a UHD 620 e produzido uma medição física acelerada suficiente para avaliar o pior perfil disponível no notebook.  
+**Opções consideradas:** alterar a preferência de GPU do Windows; manter a MX130 como bloqueio; eliminar métricas; usar presets escaláveis e um gate independente do modelo de GPU.  
+**Decisão:** não alterar preferências do sistema operacional nem exigir um adaptador específico. O jogo mantém baixo/médio/alto e seleciona um ponto de partida conservador, sempre com WebGL 2 funcional. O gate de regressão usa o cenário determinístico na GPU acelerada efetivamente escolhida pelo navegador: no preset suportado, exige média de pelo menos 30 FPS e p99 de até 50 ms, sem crescimento de entidades/VFX. A medição de uma segunda GPU permanece diagnóstico opcional. Recursos futuros que romperem esse limite devem reduzir carga, resolução ou efeitos antes de avançar. O passo lógico fixo de 60 Hz é confirmado, com limite de recuperação e descarte explícito de tempo excedente.  
+**Motivo:** mede a experiência percebida — fluidez e ausência de pausas recorrentes — sem acoplar o produto à configuração de um único notebook. A UHD 620/baixo em 1280×720 registrou 60,010 FPS, p95 de 17,9 ms e p99 de 18,9 ms em WebGL 2 durante 30 s, fornecendo uma referência conservadora já aprovada.  
+**Consequências:** P0.5 e o gate formal do P0 são aprovados sem medição obrigatória da MX130; P1 pode começar. O benchmark permanece obrigatório para regressões gráficas relevantes. WebGPU continua opcional, pois não apresentou ganho material. Não há autorização para remover presets, LOD, instancing, pools ou limites de carga.
+
+## DECISION-028 — Primeira missão reutiliza a arena e os sensores autoritativos
+
+**Status:** aceita para a primeira subfatia P1  
+**Problema:** o P1 precisa provar um ciclo base–missão–retorno antes de adicionar mapa, novos setores e persistência, sem duplicar o estado do contato ou aumentar a carga gráfica.  
+**Opções consideradas:** criar imediatamente mapa, setor e save completos; controlar a missão pela UI; criar uma máquina de estados de domínio pequena e integrá-la à arena existente.  
+**Decisão:** `Levantamento de Nereida` usa uma máquina de estados determinística com briefing, partida, levantamento, retorno e conclusão. O objetivo só é satisfeito quando o snapshot público dos sensores identifica o ID configurado; HUD e PlayCanvas não se tornam autoridades. Partida/retorno usam transição temporal curta e bloqueiam voo, enquanto a conclusão reinicia o encontro para representar reparo, energia e reabastecimento na base. A ação contextual permite repetir o ciclo.  
+**Motivo:** entrega uma missão jogável completa em sessão com regras testáveis sem GPU, reutiliza os sistemas P0 e não adiciona biblioteca, entidade ou efeito gráfico.  
+**Consequências:** a missão ainda não sobrevive a reload e a viagem ainda não tem mapa/apresentação própria. A próxima subfatia deve adicionar envelope versionado e IndexedDB atrás de repositório, autosave somente em estados seguros, migração e recuperação visível de erro antes de declarar a Etapa 6 concluída.
+
 ## Decisões futuras não bloqueantes
 
 | Tema | Padrão até decidir | Gate |
 | --- | --- | --- |
 | Nome/lore final | identidade original provisória | antes de produzir arte final/publicar |
-| 30 Hz ou 60 Hz fixos | 60 Hz parametrizado | benchmark P0.5 |
-| WebGPU preferencial | WebGL 2 | fim de P0.5 |
+| 30 Hz ou 60 Hz fixos | 60 Hz confirmado em `DECISION-027` | reavaliar só com evidência nova |
+| WebGPU preferencial | WebGL 2 confirmado em `DECISION-027` | reavaliar só com evidência nova |
 | GitHub ou Cloudflare Pages | apenas build local | preparação de publicação |
 | PWA/cache offline | sem service worker | P1 após medir atualização e tamanho |
 | Framework de UI | DOM simples | só se complexidade de P1 justificar |

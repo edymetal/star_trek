@@ -1,6 +1,6 @@
 # Roadmap de desenvolvimento
 
-Versão: 1.0 — 20 de agosto de 2026
+Atualizado em: 29 de agosto de 2026
 
 O roadmap usa gates objetivos, não datas rígidas. Uma etapa só fecha com evidência de teste e revisão. Cada etapa funcional admite no máximo cinco ciclos `review → implement → test`; problemas remanescentes vão para `docs/KNOWN_ISSUES.md`, mas CRITICAL/HIGH impedem avanço.
 
@@ -149,9 +149,9 @@ Critério de conclusão:
 
 ## Etapa 5 — Dano visual e benchmark (P0.5)
 
-**Status:** em desenvolvimento; cenário determinístico, três presets, dano por seção e medição UHD 620 concluídos; medição MX130 e gate formal pendentes
+**Status:** concluída e aprovada; `DECISION-027` substituiu o vínculo obrigatório à MX130 por um gate escalável de fluidez
 
-**Objetivo:** comprovar qualidade visual dentro do notebook alvo.
+**Objetivo:** comprovar qualidade visual leve e escalável no navegador, sem exigir configuração manual de uma GPU específica.
 
 Entregas:
 
@@ -168,14 +168,16 @@ Entregas:
 
 Critério de conclusão:
 
-- MX130 mantém ≥30 FPS em 1600×900/médio no pior cenário;
-- UHD 620 tem perfil baixo funcional ou limitação é documentada sem comprometer a MX130;
+- o preset suportado mantém ≥30 FPS médios, p99 ≤50 ms e não apresenta crescimento ilimitado de carga;
+- a GPU e o preset efetivamente usados ficam registrados, sem alteração obrigatória das preferências do sistema;
 - efeitos não crescem indefinidamente e assets são descarregáveis;
 - dano visual corresponde ao estado lógico;
 - hierarquia tática permanece legível em 1280×720 e usa identidade original, sem copiar layout, nomes, logos ou assets da referência;
 - gate formal do P0 aprovado, sem CRITICAL/HIGH.
 
 ## Etapa 6 — Primeira fatia vertical P1
+
+**Status:** em desenvolvimento; ciclo em sessão da primeira missão concluído, persistência e recuperação ainda pendentes
 
 **Objetivo:** implementar uma missão ponta a ponta antes de multiplicar conteúdo.
 
@@ -187,6 +189,13 @@ Entregas:
 - retorno, reparo/reabastecimento e resultado;
 - save IndexedDB versionado e configurações persistentes;
 - recuperação de falha de save/asset.
+
+Primeira subfatia concluída:
+
+- missão original `Levantamento de Nereida` com briefing, partida, levantamento, retorno e conclusão;
+- scan/identificação existente completa o objetivo sem duplicar estado do contato;
+- retorno reinicia casco, energia e munição na base;
+- transições e comandos inválidos são testados sem GPU; ciclo integrado é coberto em Chrome/Edge.
 
 Critério de conclusão:
 
@@ -273,7 +282,7 @@ Achados usam severidade:
 ## Decisões de parada
 
 - se PlayCanvas falhar objetivamente no spike, revisar DECISION-003 antes de criar conteúdo;
-- se MX130 não sustentar o gate, reduzir efeitos, resolução, assets e carga antes de trocar motor;
+- se o preset suportado romper o gate escalável, reduzir efeitos, resolução, assets e carga antes de trocar motor;
 - se P0 não for divertido/legível, ajustar voo, energia e combate antes do P1;
 - se PI não estiver resolvida, o build continua privado/original e não é publicado;
 - multiplayer, pouso ou interiores não entram por “pequena melhoria”; exigem novo plano.

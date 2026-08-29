@@ -1,6 +1,6 @@
 # Comando Estelar — protótipo técnico
 
-Protótipo de um jogo 3D original de exploração espacial executado no navegador. O encontro tático **P0.4** está aprovado: arena, voo, energia, sensores, três equipamentos, escudos direcionais, dano, IA, HUD nas bordas, naves procedurais e VFX em pool. O **P0.5** está em desenvolvimento com benchmark determinístico, presets baixo/médio/alto, dano visual por seção e impacto direcional. A UHD 620 já foi medida; ainda falta executar o gate físico da MX130 e a revisão formal do P0.
+Protótipo de um jogo 3D original de exploração espacial executado no navegador. O **P0 está aprovado**: arena, voo, energia, sensores, três equipamentos, escudos direcionais, dano, IA, HUD nas bordas, naves procedurais, VFX em pool e benchmark escalável. O **P1 está em desenvolvimento** e já contém a primeira missão de reconhecimento em sessão, da partida ao retorno à base.
 
 ## Requisitos
 

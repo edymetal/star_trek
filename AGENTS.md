@@ -23,7 +23,7 @@ Em conflito, requisito mais recente e explícito do usuário vence. Atualize os 
 
 ## Estado atual
 
-P0.1, P0.2, P0.3 e P0.4 foram aprovados. Na revisão formal de 27/08/2026, a função de reviewer foi exercida pelo coordenador sem convocar subagente Architect, conforme decisão explícita do usuário: `verify` passou com 123/123 testes e a matriz completa com 38/38 casos Chrome/Edge, sem `skip` ou achado CRITICAL/HIGH. O P0.5 está em desenvolvimento: o cenário determinístico, três presets e coleta limitada de frametimes foram implementados em `DECISION-025`; dano visual por seção, impacto direcional e VFX limitados estão em `DECISION-026`. A UHD 620 passou a medição física WebGL 2/baixo em 1280×720 e a comparação WebGPU; a medição MX130 em 1600×900/médio e o gate formal do P0 continuam pendentes. Não inicie conteúdo P1 antes desses gates. A direção visual e seus limites estão em `DECISION-021` a `DECISION-026`.
+P0.1 a P0.5 foram aprovados. A revisão P0.4 de 27/08/2026 foi exercida pelo coordenador sem convocar subagente Architect, conforme decisão explícita do usuário. O cenário determinístico e os presets estão em `DECISION-025`; dano visual por seção, impacto direcional e VFX limitados estão em `DECISION-026`. Em 29/08/2026, o usuário substituiu a medição obrigatória da MX130 por fluidez escalável sem personalização de GPU; `DECISION-027` aprovou o P0.5 com a medição física UHD 620/baixo de 60,010 FPS e p99 de 18,9 ms. O P1 está em desenvolvimento: `DECISION-028` implementou o ciclo em sessão da primeira missão de exploração. O gate atual passa com 136/136 testes e 42/42 casos E2E Chrome/Edge; IndexedDB, retomada após reload e recuperação de falha são a próxima subfatia.
 
 Versões fixadas no scaffold: Node.js 22.12 ou superior, TypeScript 6.0.3, Vite 8.2.2, PlayCanvas 2.21.4, Vitest 4.1.11, Playwright 1.62.1, ESLint 10.8.1 e Prettier 3.9.6. O motivo para manter TypeScript 6 no scaffold está em `DECISION-017`; não atualize isoladamente sem conferir a matriz do typescript-eslint.
 
@@ -113,8 +113,8 @@ Classifique achados como CRITICAL, HIGH, MEDIUM ou LOW segundo `docs/ROADMAP.md`
 
 ## Desempenho
 
-- meta gate: ≥30 FPS na MX130 em 1600×900/médio no pior cenário P0;
-- UHD 620 usa 1280×720/baixo e terá limiar final medido;
+- meta gate: ≥30 FPS médios e p99 ≤50 ms no preset suportado pela GPU acelerada efetivamente escolhida pelo navegador;
+- não altere preferências de GPU do sistema; uma segunda GPU pode ser medida como diagnóstico opcional;
 - WebGPU nunca substitui o fallback WebGL 2 no MVP;
 - prefira LOD, instancing, atlas, pools e carregamento por setor;
 - não adicione transparência/pós-processamento/sombras pesadas sem comparar o benchmark;
