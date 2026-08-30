@@ -1,6 +1,6 @@
 # Arquitetura do jogo
 
-Status: aceita para P0 e P1-A  
+Status: aceita para P0 e P1-B  
 Versão: 1.1 — 30 de agosto de 2026
 
 Este documento define como o produto será construído. Requisitos pertencem a [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md), prioridade a [`docs/MVP.md`](docs/MVP.md), decisões justificadas a [`docs/DECISIONS.md`](docs/DECISIONS.md) e pesquisa/orçamentos detalhados a [`PLANEJAMENTO.md`](PLANEJAMENTO.md).
@@ -144,6 +144,8 @@ Scripts do motor referenciam IDs/estado da aplicação; lógica de dano não fic
 - componentes DOM pequenos e sem framework no P0;
 - estado de interface separado do estado persistente do jogo;
 - eventos sem HTML injetado a partir de dados.
+
+No P1-B, o estado efêmero do menu fica em `src/application/session-menu.ts`; o shell DOM apenas apresenta suas visões, gerencia foco e torna a sessão tática inerte enquanto o menu modal está aberto. O painel da base deriva campanha, nave e save autoritativos, sem persistir ou duplicar essas regras na interface.
 
 ### `platform`
 

@@ -28,15 +28,17 @@ import { inspectWebGl2Capability } from '../platform/graphics-diagnostics';
 import { createIndexedDbSaveRepository } from '../platform/indexeddb-save-repository';
 import type {
   AppShell,
+  BaseHudTelemetry,
   CombatHudTelemetry,
   CompatibilityNotice,
   EnergyHudTelemetry,
   FlightHudTelemetry,
   MissionHudTelemetry,
+  MainMenuHudTelemetry,
   NavigationHudTelemetry,
   SaveHudTelemetry,
 } from '../ui/app-shell';
-import { createFlightSession } from './flight-session';
+import { createFlightSession, type FlightSessionSnapshot } from './flight-session';
 import { createEncounterSession } from './encounter-session';
 import {
   combinePresentationEffects,
@@ -48,6 +50,7 @@ import {
 import { selectInitialPreset } from './select-initial-preset';
 import { createGameSavePayload, type GameSavePayload } from './game-save';
 import { createSaveController, type SaveControllerStatus } from './save-controller';
+import { createSessionMenu, type SessionMenuSnapshot } from './session-menu';
 import { createThrottledPublisher } from './throttled-publisher';
 import { parseStartupOptions } from './startup-options';
 
@@ -89,10 +92,59 @@ function describeUnknownError(cause: unknown): string {
 }
 
 interface PublishedHudTelemetry {
+  readonly base: BaseHudTelemetry;
   readonly combat: CombatHudTelemetry;
   readonly energy: EnergyHudTelemetry;
   readonly flight: FlightHudTelemetry;
   readonly mission: MissionHudTelemetry;
+}
+
+function createBaseHudTelemetry(
+  mission: TutorialCampaignSnapshot,
+  snapshot: FlightSessionSnapshot,
+  visible: boolean,
+): BaseHudTelemetry {
+  const currentIndex = mission.missionNumber - 1;
+  const currentContent = getTutorialMissionContent(mission.missionId);
+  const campaignFinished = mission.campaignCompleted;
+  const nextContent =
+    mission.phase === 'completed' && !campaignFinished
+      ? INITIAL_TUTORIAL_MISSIONS[currentIndex + 1]
+      : currentContent;
+  const energyTotal = Object.values(snapshot.energy.state.allocation).reduce(
+    (total, value) => total + value,
+    0,
+  );
+  return {
+    energyLabel: `${energyTotal.toFixed(0)} / ${PLAYER_ENERGY_DEFINITION.allocationCapacityUnits.toFixed(0)} · reserva ${(snapshot.energy.state.reserveUnits / PLAYER_ENERGY_DEFINITION.reserveCapacityUnits) * 100}%`,
+    integrityLabel: `Casco ${snapshot.encounter.playerHullPercent.toFixed(0)}% · sistemas íntegros`,
+    missions: INITIAL_TUTORIAL_MISSIONS.map((content, index) => ({
+      id: content.id,
+      status:
+        campaignFinished ||
+        index < currentIndex ||
+        (index === currentIndex && mission.phase === 'completed')
+          ? 'completed'
+          : index === currentIndex
+            ? 'current'
+            : 'locked',
+      title: content.title,
+    })),
+    nextMissionTitle: campaignFinished
+      ? 'Treinamento inicial concluído'
+      : (nextContent?.title ?? currentContent.title),
+    nextObjective: campaignFinished
+      ? 'As três missões foram concluídas. Reinicie quando desejar repetir a certificação.'
+      : (nextContent?.briefing ?? currentContent.briefing),
+    prepareLabel: campaignFinished
+      ? 'Reiniciar treinamento pelo mapa'
+      : mission.phase === 'completed'
+        ? `Preparar missão ${mission.missionNumber + 1}`
+        : 'Abrir mapa e preparar partida',
+    serviceLabel: 'Reparo e suprimentos concluídos',
+    torpedoLabel: `${snapshot.encounter.torpedoAmmo} / 6 disponíveis`,
+    visible,
+  };
 }
 
 function createMissionHudTelemetry(snapshot: TutorialCampaignSnapshot): MissionHudTelemetry {
@@ -223,6 +275,40 @@ function toSaveHudTelemetry(status: SaveControllerStatus): SaveHudTelemetry {
   return { ...(status.detail === undefined ? {} : { detail: status.detail }), state: status.state };
 }
 
+function createMainMenuHudTelemetry(
+  menu: SessionMenuSnapshot,
+  save: SaveHudTelemetry,
+  mission: TutorialCampaignSnapshot,
+): MainMenuHudTelemetry {
+  const content = getTutorialMissionContent(mission.missionId);
+  const saveReady = save.state === 'loaded' || save.state === 'migrated' || save.state === 'saved';
+  const saveUnavailable = save.state === 'error' || save.state === 'invalid';
+  return {
+    canClose: menu.canClose,
+    canContinue: menu.canClose || saveReady,
+    progressLabel: saveUnavailable
+      ? 'Continuar indisponível'
+      : save.state === 'created'
+        ? 'Novo treinamento pronto'
+        : `${content.title} · missão ${mission.missionNumber} de ${mission.missionCount}`,
+    saveDetail: saveUnavailable
+      ? save.state === 'invalid'
+        ? 'O registro inválido foi preservado. Iniciar um novo treinamento exige confirmação explícita.'
+        : 'O armazenamento não respondeu. Ainda é possível abrir uma sessão segura sem tela preta.'
+      : save.state === 'created'
+        ? 'Nenhum progresso anterior foi encontrado. A primeira missão está pronta para começar.'
+        : mission.phase === 'completed'
+          ? 'Checkpoint seguro após a conclusão da missão.'
+          : 'Checkpoint seguro no briefing da base.',
+    statusLabel: saveUnavailable
+      ? 'Atenção ao save'
+      : menu.canClose
+        ? 'Sessão segura'
+        : 'Sistemas prontos',
+    view: menu.isOpen ? menu.view : 'closed',
+  };
+}
+
 export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene | undefined> {
   let disposeFailedBootstrap: (() => void) | undefined;
   const startupOptions = parseStartupOptions(window.location.search);
@@ -250,6 +336,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
 
   try {
     const persistenceEnabled = startupOptions.benchmark === undefined;
+    const menuSession = createSessionMenu(persistenceEnabled);
     const defaultSavePayload = createGameSavePayload(FIRST_TUTORIAL_MISSION.id, 'briefing');
     const saveController = createSaveController({
       clock: { nowIso: () => new Date().toISOString() },
@@ -257,12 +344,16 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
         INITIAL_TUTORIAL_MISSIONS.some(({ id }) => id === payload.mission.missionId),
       repository: createIndexedDbSaveRepository(),
     });
-    shell.setSaveStatus({ state: persistenceEnabled ? 'loading' : 'disabled' });
+    let currentSaveTelemetry: SaveHudTelemetry = {
+      state: persistenceEnabled ? 'loading' : 'disabled',
+    };
+    shell.setSaveStatus(currentSaveTelemetry);
     const saveInitialization = persistenceEnabled
       ? await saveController.initialize(defaultSavePayload)
       : { payload: defaultSavePayload, status: undefined };
     if (saveInitialization.status !== undefined) {
-      shell.setSaveStatus(toSaveHudTelemetry(saveInitialization.status));
+      currentSaveTelemetry = toSaveHudTelemetry(saveInitialization.status);
+      shell.setSaveStatus(currentSaveTelemetry);
     }
     let lastSafePayload: GameSavePayload = saveInitialization.payload;
     const encounterSession = createEncounterSession({
@@ -303,7 +394,10 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       | undefined;
     let presentationEffectSerial = 0;
     const requestPlayerEffect = (equipmentId: PlayerPresentationEquipmentId): void => {
-      if (navigationSession.getSnapshot().mode !== 'encounter') {
+      if (
+        menuSession.getSnapshot().isOpen ||
+        navigationSession.getSnapshot().mode !== 'encounter'
+      ) {
         shell.setControlFeedback('Equipamentos táticos estão indisponíveis fora do encontro.');
         return;
       }
@@ -350,6 +444,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       shell.setNavigationTelemetry(
         createNavigationHudTelemetry(navigationSession.getSnapshot(), missionSession.getSnapshot()),
       );
+      shell.setBaseTelemetry(telemetry.base);
     });
     const createHudTelemetry = (snapshot = flightSession.getSnapshot()): PublishedHudTelemetry => {
       const { effects, flow, profileId, state } = snapshot.energy;
@@ -371,6 +466,13 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
         weapons: flow.channels.weapons.effectiveUnitsPerSecond,
       };
       return {
+        base: createBaseHudTelemetry(
+          missionSession.getSnapshot(),
+          snapshot,
+          navigationSession.getSnapshot().mode === 'base' &&
+            !menuSession.getSnapshot().isOpen &&
+            startupOptions.benchmark === undefined,
+        ),
         combat: {
           activeScan: snapshot.encounter.activeScan,
           allowedPlayerEquipment: snapshot.encounter.allowedPlayerEquipment,
@@ -445,17 +547,32 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
     const refreshHud = (): void => {
       hudPublisher.publishNow(createHudTelemetry());
     };
+    const refreshMainMenu = (): void => {
+      shell.setMainMenuTelemetry(
+        createMainMenuHudTelemetry(
+          menuSession.getSnapshot(),
+          currentSaveTelemetry,
+          missionSession.getSnapshot(),
+        ),
+      );
+    };
+    const publishSaveStatus = (status: SaveControllerStatus): void => {
+      currentSaveTelemetry = toSaveHudTelemetry(status);
+      shell.setSaveStatus(currentSaveTelemetry);
+      if (menuSession.getSnapshot().isOpen) refreshMainMenu();
+    };
     const persistCheckpoint = (payload: GameSavePayload, recover = false): void => {
       lastSafePayload = payload;
       if (!persistenceEnabled) return;
       const operation = recover ? saveController.recover(payload) : saveController.save(payload);
-      void operation.then((status) => shell.setSaveStatus(toSaveHudTelemetry(status)));
+      void operation.then(publishSaveStatus);
     };
     const input = createFlightInputController({
       canvas: shell.canvas,
       fullscreenTarget: shell.fullscreenTarget,
       onControlFeedback: (message) => shell.setControlFeedback(message),
       onFocusLost() {
+        if (menuSession.getSnapshot().isOpen) return;
         if (navigationSession.getSnapshot().mode === 'encounter') {
           flightSession.pause('focus-lost');
         }
@@ -466,6 +583,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
         shell.setControlFeedback(active ? 'Tela cheia ativada.' : 'Tela cheia desativada.');
       },
       onPauseToggle() {
+        if (menuSession.getSnapshot().isOpen) return;
         if (navigationSession.getSnapshot().mode !== 'encounter') {
           shell.setControlFeedback(
             'Pausa manual e controles de voo só ficam disponíveis dentro da bolha tática.',
@@ -476,6 +594,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
         refreshHud();
       },
       onTacticalAction(action) {
+        if (menuSession.getSnapshot().isOpen) return;
         if (navigationSession.getSnapshot().mode !== 'encounter') {
           shell.setControlFeedback(
             'Controles táticos indisponíveis fora de um encontro. Abra o mapa para partir.',
@@ -503,6 +622,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       onFullscreen: () => void input.toggleFullscreen(),
       onPause() {
         input.releaseControls();
+        if (menuSession.getSnapshot().isOpen) return;
         if (navigationSession.getSnapshot().mode !== 'encounter') {
           shell.setControlFeedback(
             'Pausa manual e controles de voo só ficam disponíveis dentro da bolha tática.',
@@ -516,30 +636,52 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
     });
     const unbindEnergyControls = shell.bindEnergyControls({
       onAdjust(channel, deltaUnits) {
+        if (menuSession.getSnapshot().isOpen) return;
         flightSession.adjustEnergy(channel, deltaUnits);
         refreshHud();
       },
       onPreset(presetId) {
+        if (menuSession.getSnapshot().isOpen) return;
         flightSession.setEnergyProfile(presetId, ENERGY_PRESETS[presetId].allocation);
         refreshHud();
       },
     });
     const unbindCombatControls = shell.bindCombatControls({
       onClearTarget: () => {
-        if (navigationSession.getSnapshot().mode === 'encounter') flightSession.clearTarget();
+        if (
+          !menuSession.getSnapshot().isOpen &&
+          navigationSession.getSnapshot().mode === 'encounter'
+        ) {
+          flightSession.clearTarget();
+        }
       },
       onRestartEncounter() {
-        if (navigationSession.getSnapshot().mode !== 'encounter') return;
+        if (
+          menuSession.getSnapshot().isOpen ||
+          navigationSession.getSnapshot().mode !== 'encounter'
+        ) {
+          return;
+        }
         flightSession.restartEncounter();
         presentationEffectRetainer.clear();
         pendingPresentationEffect = undefined;
         refreshHud();
       },
       onSelectTarget: () => {
-        if (navigationSession.getSnapshot().mode === 'encounter') flightSession.selectNextTarget();
+        if (
+          !menuSession.getSnapshot().isOpen &&
+          navigationSession.getSnapshot().mode === 'encounter'
+        ) {
+          flightSession.selectNextTarget();
+        }
       },
       onToggleScan: () => {
-        if (navigationSession.getSnapshot().mode === 'encounter') flightSession.toggleActiveScan();
+        if (
+          !menuSession.getSnapshot().isOpen &&
+          navigationSession.getSnapshot().mode === 'encounter'
+        ) {
+          flightSession.toggleActiveScan();
+        }
       },
       onUseBeam: () => requestPlayerEffect('beam'),
       onUseTorpedo: () => requestPlayerEffect('torpedo'),
@@ -550,6 +692,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       pendingPresentationEffect = undefined;
     };
     const openMapForCurrentMission = (): void => {
+      if (menuSession.getSnapshot().isOpen) return;
       const before = missionSession.getSnapshot();
       if (before.phase === 'completed') {
         if (!missionSession.continueFromCompletion()) return;
@@ -605,6 +748,88 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       shell.setControlFeedback(mission.outboundObjective);
       refreshHud();
     };
+    const enterSession = (feedback: string): void => {
+      menuSession.enterSession();
+      input.releaseControls();
+      refreshHud();
+      refreshMainMenu();
+      shell.setControlFeedback(feedback);
+    };
+    const startNewTraining = async (): Promise<void> => {
+      const shouldReplaceStoredProgress =
+        persistenceEnabled && currentSaveTelemetry.state !== 'created';
+      shell.setNewTrainingConfirmation(false);
+      shell.setMainMenuTelemetry({
+        canClose: false,
+        canContinue: false,
+        progressLabel: 'Restaurando a primeira missão…',
+        saveDetail: 'O novo checkpoint seguro está sendo preparado neste dispositivo.',
+        statusLabel: 'Preparando sessão',
+        view: 'loading',
+      });
+      missionSession.reset();
+      const firstMission = getTutorialMissionContent(FIRST_TUTORIAL_MISSION.id);
+      encounterSession.setProfile({
+        allowedPlayerEquipment: firstMission.allowedEquipment,
+        contactDisplayName: firstMission.contactDisplayName,
+        contactId: firstMission.targetContactId,
+        contactInitialPosition: firstMission.contactInitialPosition,
+        disposition: firstMission.encounterMode,
+      });
+      flightSession.restartEncounter();
+      flightSession.pause('mission-base');
+      resetPresentationEffects();
+      lastSafePayload = defaultSavePayload;
+      if (shouldReplaceStoredProgress) {
+        publishSaveStatus(await saveController.recover(defaultSavePayload));
+      }
+      enterSession('Novo treinamento iniciado. A Base Aurora está pronta para a primeira missão.');
+    };
+    const unbindBaseControls = shell.bindBaseControls({
+      onOpenMenu() {
+        if (navigationSession.getSnapshot().mode !== 'base' || !menuSession.open()) return;
+        input.releaseControls();
+        refreshHud();
+        refreshMainMenu();
+      },
+      onPrepareMission: openMapForCurrentMission,
+    });
+    const unbindMainMenuControls = shell.bindMainMenuControls({
+      onBack() {
+        if (!menuSession.back()) return;
+        refreshHud();
+        refreshMainMenu();
+      },
+      onClose() {
+        if (!menuSession.back()) return;
+        refreshHud();
+        refreshMainMenu();
+      },
+      onConfirmNewTraining: () => void startNewTraining(),
+      onContinue() {
+        const menu = menuSession.getSnapshot();
+        const canContinue =
+          menu.canClose ||
+          currentSaveTelemetry.state === 'loaded' ||
+          currentSaveTelemetry.state === 'migrated' ||
+          currentSaveTelemetry.state === 'saved';
+        if (!canContinue) return;
+        enterSession('Checkpoint seguro carregado. A nave permanece atracada na Base Aurora.');
+      },
+      onNewTraining() {
+        const requiresConfirmation =
+          currentSaveTelemetry.state !== 'created' && currentSaveTelemetry.state !== 'disabled';
+        if (requiresConfirmation) {
+          shell.setNewTrainingConfirmation(true);
+        } else {
+          void startNewTraining();
+        }
+      },
+      onOpenView(view) {
+        if (!menuSession.show(view)) return;
+        refreshMainMenu();
+      },
+    });
     const unbindNavigationControls = shell.bindNavigationControls({
       onCloseMap() {
         const failure = navigationFailureMessage(navigationSession.closeMap());
@@ -661,6 +886,8 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       },
     });
     disposeFailedBootstrap = () => {
+      unbindMainMenuControls();
+      unbindBaseControls();
       unbindSaveControls();
       unbindMissionControls();
       unbindNavigationControls();
@@ -837,6 +1064,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
     shell.setFullscreenActive(false);
     refreshHud();
     shell.showReady(readiness);
+    refreshMainMenu();
     return scene;
   } catch (cause: unknown) {
     disposeFailedBootstrap?.();

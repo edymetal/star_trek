@@ -19,6 +19,148 @@
         aria-label="Arena tridimensional de voo espacial"
       ></canvas>
 
+      <section
+        class="main-menu"
+        data-main-menu
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="main-menu-title"
+      >
+        <div class="main-menu__backdrop" aria-hidden="true"></div>
+        <div class="main-menu__panel hud-card">
+          <header class="main-menu__header">
+            <div>
+              <p class="eyebrow">Experiência original para navegador</p>
+              <h1 id="main-menu-title">Comando Estelar</h1>
+            </div>
+            <span class="main-menu__status-chip" data-main-menu-status-chip>Inicializando</span>
+          </header>
+
+          <div data-main-menu-view="loading">
+            <p class="main-menu__lead">Preparando a Base Aurora e verificando o save local…</p>
+            <progress aria-label="Inicialização do jogo"></progress>
+          </div>
+
+          <div data-main-menu-view="home" hidden>
+            <p class="main-menu__lead">
+              Comande a Exploradora Aurora em três missões de sensores, assistência e combate.
+            </p>
+            <div class="main-menu__save-summary" aria-live="polite">
+              <span class="metric-label">Progresso neste dispositivo</span>
+              <strong data-main-menu-progress>Verificando save local…</strong>
+              <p data-main-menu-save-detail></p>
+            </div>
+            <div class="main-menu__primary-actions">
+              <button type="button" data-main-menu-continue disabled>Continuar treinamento</button>
+              <button type="button" data-main-menu-new>Iniciar novo treinamento</button>
+            </div>
+            <nav class="main-menu__secondary-actions" aria-label="Opções do menu principal">
+              <button type="button" data-main-menu-open="settings">Configurações</button>
+              <button type="button" data-main-menu-open="diagnostics">Diagnóstico</button>
+              <button type="button" data-main-menu-open="credits">Créditos e licenças</button>
+            </nav>
+            <button type="button" class="main-menu__close" data-main-menu-close hidden>
+              Voltar à Base Aurora (Esc)
+            </button>
+          </div>
+
+          <div data-main-menu-view="settings" hidden>
+            <p class="eyebrow">Configurações</p>
+            <h2>Preferências da experiência</h2>
+            <dl class="main-menu__facts">
+              <div>
+                <dt>Preset gráfico atual</dt>
+                <dd data-main-menu-preset>Verificando…</dd>
+              </div>
+              <div>
+                <dt>Controles</dt>
+                <dd>Teclado e mouse · configuração padrão</dd>
+              </div>
+            </dl>
+            <p class="main-menu__note">
+              Escala do HUD, áudio, redução de efeitos e remapeamento persistente serão concluídos
+              na etapa P1-C. Nenhuma preferência temporária é apresentada como se já estivesse
+              salva.
+            </p>
+            <button type="button" data-main-menu-back>Voltar ao menu (Esc)</button>
+          </div>
+
+          <div data-main-menu-view="diagnostics" hidden>
+            <p class="eyebrow">Diagnóstico local</p>
+            <h2>Compatibilidade gráfica</h2>
+            <dl class="main-menu__facts">
+              <div>
+                <dt>Backend</dt>
+                <dd data-main-menu-backend>Verificando…</dd>
+              </div>
+              <div>
+                <dt>Renderizador</dt>
+                <dd data-main-menu-renderer>Verificando…</dd>
+              </div>
+              <div>
+                <dt>Preset</dt>
+                <dd data-main-menu-diagnostic-preset>Verificando…</dd>
+              </div>
+              <div>
+                <dt>Quadros</dt>
+                <dd><span data-main-menu-fps>—</span> FPS</dd>
+              </div>
+            </dl>
+            <p class="main-menu__note">
+              O diagnóstico é local. Nenhuma informação é enviada para servidores externos.
+            </p>
+            <button type="button" data-main-menu-back>Voltar ao menu (Esc)</button>
+          </div>
+
+          <div data-main-menu-view="credits" hidden>
+            <p class="eyebrow">Créditos e licenças</p>
+            <h2>Construção original</h2>
+            <p>
+              Código, interface, nomes, formas procedurais e conteúdo do treinamento foram criados
+              para este projeto. Nenhum asset, logo, música ou personagem de Star Trek integra o
+              build.
+            </p>
+            <dl class="main-menu__facts">
+              <div>
+                <dt>Motor</dt>
+                <dd>PlayCanvas Engine</dd>
+              </div>
+              <div>
+                <dt>Distribuição</dt>
+                <dd>Jogo estático, gratuito e sem serviço externo em runtime</dd>
+              </div>
+              <div>
+                <dt>Assets atuais</dt>
+                <dd>Geometria, materiais e VFX procedurais próprios</dd>
+              </div>
+            </dl>
+            <p class="main-menu__note">
+              O inventário final de dependências e licenças será auditado na etapa P1-G antes da
+              publicação.
+            </p>
+            <button type="button" data-main-menu-back>Voltar ao menu (Esc)</button>
+          </div>
+        </div>
+      </section>
+
+      <dialog
+        class="new-training-dialog hud-card"
+        data-new-training-dialog
+        aria-labelledby="new-training-title"
+      >
+        <form method="dialog">
+          <p class="eyebrow">Confirmar novo treinamento</p>
+          <h2 id="new-training-title">Substituir o progresso atual?</h2>
+          <p data-new-training-message>
+            Um novo treinamento voltará à primeira missão e substituirá o checkpoint ativo.
+          </p>
+          <div class="new-training-dialog__actions">
+            <button type="submit" value="cancel" data-new-training-cancel>Cancelar</button>
+            <button type="button" data-new-training-confirm>Substituir e iniciar</button>
+          </div>
+        </form>
+      </dialog>
+
       <div class="center-reticle" aria-hidden="true" data-center-reticle>
         <span></span>
       </div>
@@ -75,6 +217,53 @@
             Consulte os pontos de interesse e selecione o destino atual da missão.
           </p>
           <button type="button" data-navigation-confirm disabled>Iniciar viagem</button>
+        </footer>
+      </section>
+
+      <section
+        class="base-dashboard hud-card"
+        data-base-dashboard
+        aria-labelledby="base-dashboard-title"
+        hidden
+      >
+        <header class="base-dashboard__header">
+          <div>
+            <p class="eyebrow">Doca segura e comando</p>
+            <h2 id="base-dashboard-title">Base Aurora</h2>
+          </div>
+          <strong class="base-dashboard__service" data-base-service>Serviços concluídos</strong>
+        </header>
+        <dl class="base-dashboard__resources">
+          <div>
+            <dt>Integridade</dt>
+            <dd data-base-integrity>Casco 100% · sistemas íntegros</dd>
+          </div>
+          <div>
+            <dt>Energia</dt>
+            <dd data-base-energy>100 / 100</dd>
+          </div>
+          <div>
+            <dt>Torpedos</dt>
+            <dd data-base-torpedoes>6 disponíveis</dd>
+          </div>
+          <div>
+            <dt>Estado da doca</dt>
+            <dd>Reparo e reabastecimento finalizados</dd>
+          </div>
+        </dl>
+        <div class="base-dashboard__objective">
+          <span class="metric-label">Próximo objetivo</span>
+          <strong data-base-next-mission>Levantamento de Nereida</strong>
+          <p data-base-next-objective>Prepare a nave para o levantamento de sensores.</p>
+        </div>
+        <ol class="base-dashboard__missions" data-base-missions aria-label="Progresso das missões">
+          <li data-base-mission-status="current">Levantamento de Nereida</li>
+          <li data-base-mission-status="locked">Socorro no Anel de Íris</li>
+          <li data-base-mission-status="locked">Defesa do Corredor Aurora</li>
+        </ol>
+        <footer class="base-dashboard__actions">
+          <button type="button" data-base-prepare>Abrir mapa e preparar partida</button>
+          <button type="button" data-base-menu>Menu principal</button>
         </footer>
       </section>
 

@@ -1,5 +1,6 @@
 import type { GraphicsPreset } from '../content/graphics-presets';
 import type { ArenaPresentationDto } from '../application/arena-presentation';
+import type { SessionMenuView } from '../application/session-menu';
 import type { ShieldSectorState, SubsystemIntegrity } from '../domain/combat/damage';
 import type { EnemyAiMode } from '../domain/combat/enemy-ai';
 import type { ContactAwareness } from '../domain/combat/sensors';
@@ -31,6 +32,8 @@ export interface AppShell {
   bindCombatControls(handlers: CombatControlHandlers): () => void;
   bindMissionControls(handlers: MissionControlHandlers): () => void;
   bindNavigationControls(handlers: NavigationControlHandlers): () => void;
+  bindBaseControls(handlers: BaseControlHandlers): () => void;
+  bindMainMenuControls(handlers: MainMenuControlHandlers): () => void;
   bindSaveControls(handlers: SaveControlHandlers): () => void;
   setBackend(label: string): void;
   setBenchmarkTelemetry(telemetry: BenchmarkHudTelemetry): void;
@@ -43,6 +46,9 @@ export interface AppShell {
   setFlightTelemetry(telemetry: FlightHudTelemetry): void;
   setMissionTelemetry(telemetry: MissionHudTelemetry): void;
   setNavigationTelemetry(telemetry: NavigationHudTelemetry): void;
+  setBaseTelemetry(telemetry: BaseHudTelemetry): void;
+  setMainMenuTelemetry(telemetry: MainMenuHudTelemetry): void;
+  setNewTrainingConfirmation(open: boolean): void;
   setSaveStatus(telemetry: SaveHudTelemetry): void;
   setFullscreenActive(active: boolean): void;
   setPointerCaptured(active: boolean): void;
@@ -98,6 +104,20 @@ export interface NavigationControlHandlers {
   readonly onSelectDestination: (nodeId: string) => void;
 }
 
+export interface BaseControlHandlers {
+  readonly onOpenMenu: () => void;
+  readonly onPrepareMission: () => void;
+}
+
+export interface MainMenuControlHandlers {
+  readonly onBack: () => void;
+  readonly onClose: () => void;
+  readonly onConfirmNewTraining: () => void;
+  readonly onContinue: () => void;
+  readonly onNewTraining: () => void;
+  readonly onOpenView: (view: Exclude<SessionMenuView, 'home'>) => void;
+}
+
 export interface SaveControlHandlers {
   readonly onRecover: () => void;
 }
@@ -151,6 +171,33 @@ export interface NavigationHudTelemetry {
   readonly routeLabel: string;
   readonly systemLabel: string;
   readonly travelProgress: number;
+}
+
+export interface BaseMissionHudTelemetry {
+  readonly id: string;
+  readonly status: 'completed' | 'current' | 'locked';
+  readonly title: string;
+}
+
+export interface BaseHudTelemetry {
+  readonly energyLabel: string;
+  readonly integrityLabel: string;
+  readonly missions: readonly BaseMissionHudTelemetry[];
+  readonly nextMissionTitle: string;
+  readonly nextObjective: string;
+  readonly prepareLabel: string;
+  readonly serviceLabel: string;
+  readonly torpedoLabel: string;
+  readonly visible: boolean;
+}
+
+export interface MainMenuHudTelemetry {
+  readonly canClose: boolean;
+  readonly canContinue: boolean;
+  readonly progressLabel: string;
+  readonly saveDetail: string;
+  readonly statusLabel: string;
+  readonly view: 'closed' | 'loading' | SessionMenuView;
 }
 
 export interface CombatHudTelemetry {
@@ -222,6 +269,12 @@ function isEnergyPresetId(value: string | undefined): value is EnergyPresetId {
   return value === 'balanced' || value === 'attack' || value === 'defense' || value === 'escape';
 }
 
+function isMainMenuDetailView(
+  value: string | undefined,
+): value is Exclude<SessionMenuView, 'home'> {
+  return value === 'credits' || value === 'diagnostics' || value === 'settings';
+}
+
 function requireElement<T extends Element>(root: ParentNode, selector: string): T {
   const element = root.querySelector<T>(selector);
   if (element === null) {
@@ -276,6 +329,42 @@ function roundAllocationForDisplay(
 
 export function createAppShell(root: HTMLElement): AppShell {
   const canvas = requireElement<HTMLCanvasElement>(root, '#game-canvas');
+  const mainMenu = requireElement<HTMLElement>(root, '[data-main-menu]');
+  const mainMenuViews = new Map<string, HTMLElement>(
+    Array.from(mainMenu.querySelectorAll<HTMLElement>('[data-main-menu-view]')).map((element) => [
+      element.dataset.mainMenuView ?? '',
+      element,
+    ]),
+  );
+  const mainMenuStatusChip = requireElement<HTMLElement>(mainMenu, '[data-main-menu-status-chip]');
+  const mainMenuProgress = requireElement<HTMLElement>(mainMenu, '[data-main-menu-progress]');
+  const mainMenuSaveDetail = requireElement<HTMLElement>(mainMenu, '[data-main-menu-save-detail]');
+  const mainMenuContinue = requireElement<HTMLButtonElement>(mainMenu, '[data-main-menu-continue]');
+  const mainMenuNew = requireElement<HTMLButtonElement>(mainMenu, '[data-main-menu-new]');
+  const mainMenuClose = requireElement<HTMLButtonElement>(mainMenu, '[data-main-menu-close]');
+  const mainMenuViewButtons = Array.from(
+    mainMenu.querySelectorAll<HTMLButtonElement>('[data-main-menu-open]'),
+  );
+  const mainMenuBackButtons = Array.from(
+    mainMenu.querySelectorAll<HTMLButtonElement>('[data-main-menu-back]'),
+  );
+  const mainMenuPreset = requireElement<HTMLElement>(mainMenu, '[data-main-menu-preset]');
+  const mainMenuBackend = requireElement<HTMLElement>(mainMenu, '[data-main-menu-backend]');
+  const mainMenuRenderer = requireElement<HTMLElement>(mainMenu, '[data-main-menu-renderer]');
+  const mainMenuDiagnosticPreset = requireElement<HTMLElement>(
+    mainMenu,
+    '[data-main-menu-diagnostic-preset]',
+  );
+  const mainMenuFps = requireElement<HTMLElement>(mainMenu, '[data-main-menu-fps]');
+  const newTrainingDialog = requireElement<HTMLDialogElement>(root, '[data-new-training-dialog]');
+  const newTrainingCancel = requireElement<HTMLButtonElement>(
+    newTrainingDialog,
+    '[data-new-training-cancel]',
+  );
+  const newTrainingConfirm = requireElement<HTMLButtonElement>(
+    newTrainingDialog,
+    '[data-new-training-confirm]',
+  );
   const objectiveCard = requireElement<HTMLElement>(root, '.objective-card');
   const centerReticle = requireElement<HTMLElement>(root, '[data-center-reticle]');
   const statusText = requireElement<HTMLElement>(root, '[data-status-text]');
@@ -300,6 +389,19 @@ export function createAppShell(root: HTMLElement): AppShell {
   const missionTitle = requireElement<HTMLElement>(root, '[data-mission-title]');
   const missionPhase = requireElement<HTMLElement>(root, '[data-mission-phase]');
   const missionAction = requireElement<HTMLButtonElement>(root, '[data-mission-action]');
+  const baseDashboard = requireElement<HTMLElement>(root, '[data-base-dashboard]');
+  const baseService = requireElement<HTMLElement>(baseDashboard, '[data-base-service]');
+  const baseIntegrity = requireElement<HTMLElement>(baseDashboard, '[data-base-integrity]');
+  const baseEnergy = requireElement<HTMLElement>(baseDashboard, '[data-base-energy]');
+  const baseTorpedoes = requireElement<HTMLElement>(baseDashboard, '[data-base-torpedoes]');
+  const baseNextMission = requireElement<HTMLElement>(baseDashboard, '[data-base-next-mission]');
+  const baseNextObjective = requireElement<HTMLElement>(
+    baseDashboard,
+    '[data-base-next-objective]',
+  );
+  const baseMissions = requireElement<HTMLOListElement>(baseDashboard, '[data-base-missions]');
+  const basePrepare = requireElement<HTMLButtonElement>(baseDashboard, '[data-base-prepare]');
+  const baseMenu = requireElement<HTMLButtonElement>(baseDashboard, '[data-base-menu]');
   const systemMap = requireElement<HTMLElement>(root, '[data-system-map]');
   const systemMapTitle = requireElement<HTMLElement>(systemMap, '[data-system-map-title]');
   const navigationDestinations = requireElement<HTMLElement>(
@@ -378,7 +480,10 @@ export function createAppShell(root: HTMLElement): AppShell {
     '[data-target-marker-caption]',
   );
   let lastPresentationKey = '';
+  let lastBaseMissionsKey = '';
   let lastNavigationNodesKey = '';
+  let lastMainMenuView = 'loading';
+  let mainMenuWasOpen = true;
   let mapWasOpen = false;
   const combatActionButtons = Array.from(
     combatPanel.querySelectorAll<HTMLButtonElement>('[data-combat-action]'),
@@ -432,6 +537,16 @@ export function createAppShell(root: HTMLElement): AppShell {
   return {
     canvas,
     fullscreenTarget: root,
+    bindBaseControls(handlers) {
+      const prepareListener = (): void => handlers.onPrepareMission();
+      const menuListener = (): void => handlers.onOpenMenu();
+      basePrepare.addEventListener('click', prepareListener);
+      baseMenu.addEventListener('click', menuListener);
+      return () => {
+        basePrepare.removeEventListener('click', prepareListener);
+        baseMenu.removeEventListener('click', menuListener);
+      };
+    },
     bindCombatControls(handlers) {
       const bindings = [
         [selectTargetButton, handlers.onSelectTarget],
@@ -445,6 +560,43 @@ export function createAppShell(root: HTMLElement): AppShell {
       for (const [button, listener] of bindings) button.addEventListener('click', listener);
       return () => {
         for (const [button, listener] of bindings) button.removeEventListener('click', listener);
+      };
+    },
+    bindMainMenuControls(handlers) {
+      const continueListener = (): void => handlers.onContinue();
+      const newListener = (): void => handlers.onNewTraining();
+      const closeListener = (): void => handlers.onClose();
+      const confirmListener = (): void => handlers.onConfirmNewTraining();
+      const backListener = (): void => handlers.onBack();
+      const viewListeners = mainMenuViewButtons.map((button) => {
+        const listener = (): void => {
+          const view = button.dataset.mainMenuOpen;
+          if (isMainMenuDetailView(view)) handlers.onOpenView(view);
+        };
+        button.addEventListener('click', listener);
+        return { button, listener };
+      });
+      const escapeListener = (event: KeyboardEvent): void => {
+        if (event.code !== 'Escape' || mainMenu.hidden || newTrainingDialog.open) return;
+        event.preventDefault();
+        handlers.onBack();
+      };
+      mainMenuContinue.addEventListener('click', continueListener);
+      mainMenuNew.addEventListener('click', newListener);
+      mainMenuClose.addEventListener('click', closeListener);
+      newTrainingConfirm.addEventListener('click', confirmListener);
+      for (const button of mainMenuBackButtons) button.addEventListener('click', backListener);
+      window.addEventListener('keydown', escapeListener);
+      return () => {
+        mainMenuContinue.removeEventListener('click', continueListener);
+        mainMenuNew.removeEventListener('click', newListener);
+        mainMenuClose.removeEventListener('click', closeListener);
+        newTrainingConfirm.removeEventListener('click', confirmListener);
+        for (const button of mainMenuBackButtons) button.removeEventListener('click', backListener);
+        for (const { button, listener } of viewListeners) {
+          button.removeEventListener('click', listener);
+        }
+        window.removeEventListener('keydown', escapeListener);
       };
     },
     bindEnergyControls(handlers) {
@@ -528,8 +680,48 @@ export function createAppShell(root: HTMLElement): AppShell {
         fullscreenButton.removeEventListener('click', handleFullscreen);
       };
     },
+    setBaseTelemetry(telemetry) {
+      setHiddenIfChanged(baseDashboard, !telemetry.visible);
+      setTextIfChanged(baseService, telemetry.serviceLabel);
+      setTextIfChanged(baseIntegrity, telemetry.integrityLabel);
+      setTextIfChanged(baseEnergy, telemetry.energyLabel);
+      setTextIfChanged(baseTorpedoes, telemetry.torpedoLabel);
+      setTextIfChanged(baseNextMission, telemetry.nextMissionTitle);
+      setTextIfChanged(baseNextObjective, telemetry.nextObjective);
+      setTextIfChanged(basePrepare, telemetry.prepareLabel);
+      const missionsKey = telemetry.missions
+        .map(({ id, status, title }) => `${id}|${status}|${title}`)
+        .join('||');
+      if (missionsKey !== lastBaseMissionsKey) {
+        baseMissions.replaceChildren(
+          ...telemetry.missions.map((mission) => {
+            const item = document.createElement('li');
+            item.dataset.baseMissionId = mission.id;
+            item.dataset.baseMissionStatus = mission.status;
+            const title = document.createElement('strong');
+            title.textContent = mission.title;
+            const status = document.createElement('span');
+            status.textContent =
+              mission.status === 'completed'
+                ? 'Concluída'
+                : mission.status === 'current'
+                  ? 'Missão atual'
+                  : 'Bloqueada';
+            item.append(title, status);
+            return item;
+          }),
+        );
+        lastBaseMissionsKey = missionsKey;
+      }
+      setAttributeIfChanged(
+        root,
+        'data-base-dashboard-state',
+        telemetry.visible ? 'visible' : 'hidden',
+      );
+    },
     setBackend(label) {
       setTextIfChanged(backendValue, label);
+      setTextIfChanged(mainMenuBackend, label);
     },
     setBenchmarkTelemetry(telemetry) {
       setHiddenIfChanged(benchmarkPanel, false);
@@ -837,9 +1029,11 @@ export function createAppShell(root: HTMLElement): AppShell {
     },
     setFps(fps) {
       setTextIfChanged(fpsValue, String(fps));
+      setTextIfChanged(mainMenuFps, String(fps));
     },
     setGraphicsCapability(capability) {
       setTextIfChanged(rendererValue, capability.rendererName);
+      setTextIfChanged(mainMenuRenderer, capability.rendererName);
       setAttributeIfChanged(
         rendererValue,
         'title',
@@ -948,6 +1142,52 @@ export function createAppShell(root: HTMLElement): AppShell {
       );
       setAttributeIfChanged(root, 'data-mission-progress', telemetry.transitionProgress.toFixed(3));
     },
+    setMainMenuTelemetry(telemetry) {
+      const menuOpen = telemetry.view !== 'closed';
+      setHiddenIfChanged(mainMenu, !menuOpen);
+      if (menuOpen) {
+        for (const [view, element] of mainMenuViews) {
+          setHiddenIfChanged(element, view !== telemetry.view);
+        }
+      }
+      setTextIfChanged(mainMenuStatusChip, telemetry.statusLabel);
+      setTextIfChanged(mainMenuProgress, telemetry.progressLabel);
+      setTextIfChanged(mainMenuSaveDetail, telemetry.saveDetail);
+      mainMenuContinue.disabled = !telemetry.canContinue;
+      setTextIfChanged(
+        mainMenuContinue,
+        telemetry.canClose ? 'Voltar à Base Aurora' : 'Continuar treinamento',
+      );
+      setHiddenIfChanged(mainMenuClose, !telemetry.canClose);
+
+      const gameplaySurfaces = [
+        canvas,
+        travelPresentation,
+        systemMap,
+        objectiveCard,
+        baseDashboard,
+        flightHud,
+        combatPanel,
+        energyPanel,
+        diagnosticsDrawer,
+        terminalBanner,
+      ];
+      for (const surface of gameplaySurfaces) surface.inert = menuOpen;
+      setAttributeIfChanged(root, 'data-menu-state', menuOpen ? telemetry.view : 'closed');
+
+      if (menuOpen && (!mainMenuWasOpen || lastMainMenuView !== telemetry.view)) {
+        if (telemetry.view === 'home') {
+          (telemetry.canContinue ? mainMenuContinue : mainMenuNew).focus();
+        } else if (telemetry.view !== 'loading') {
+          const view = mainMenuViews.get(telemetry.view);
+          view?.querySelector<HTMLButtonElement>('[data-main-menu-back]')?.focus();
+        }
+      } else if (!menuOpen && mainMenuWasOpen) {
+        basePrepare.focus();
+      }
+      lastMainMenuView = telemetry.view;
+      mainMenuWasOpen = menuOpen;
+    },
     setNavigationTelemetry(telemetry) {
       const mapOpen = telemetry.mode === 'map';
       const travelling = telemetry.mode === 'travel';
@@ -1013,7 +1253,8 @@ export function createAppShell(root: HTMLElement): AppShell {
       setHiddenIfChanged(navigationOpen, telemetry.mode !== 'base');
       captureButton.disabled = !encounterActive;
       const backgroundPanels = [objectiveCard, flightHud, energyPanel, diagnosticsDrawer];
-      for (const panel of backgroundPanels) panel.inert = mapOpen;
+      const menuOpen = root.dataset.menuState !== undefined && root.dataset.menuState !== 'closed';
+      for (const panel of backgroundPanels) panel.inert = mapOpen || menuOpen;
 
       setAttributeIfChanged(root, 'data-navigation-state', telemetry.mode);
       setAttributeIfChanged(root, 'data-current-location', telemetry.currentLocationLabel);
@@ -1028,6 +1269,15 @@ export function createAppShell(root: HTMLElement): AppShell {
         navigationOpen.focus();
       }
       mapWasOpen = mapOpen;
+    },
+    setNewTrainingConfirmation(open) {
+      if (open && !newTrainingDialog.open) {
+        newTrainingDialog.showModal();
+        newTrainingCancel.focus();
+      } else if (!open && newTrainingDialog.open) {
+        newTrainingDialog.close();
+        mainMenuNew.focus();
+      }
     },
     setSaveStatus(telemetry) {
       const labels: Readonly<Record<SaveHudTelemetry['state'], string>> = {
@@ -1064,12 +1314,17 @@ export function createAppShell(root: HTMLElement): AppShell {
     },
     setPreset(preset) {
       setTextIfChanged(presetValue, preset.label);
+      setTextIfChanged(mainMenuPreset, preset.label);
+      setTextIfChanged(mainMenuDiagnosticPreset, preset.label);
     },
     showBlocked(value) {
       renderNotice(value, true);
+      setHiddenIfChanged(mainMenu, true);
+      if (newTrainingDialog.open) newTrainingDialog.close();
       diagnosticsDrawer.open = true;
       root.dataset.appState = 'blocked';
       root.dataset.graphicsState = 'blocked';
+      root.dataset.menuState = 'blocked';
       root.setAttribute('aria-busy', 'false');
       statusText.textContent = 'A cena 3D não pôde ser iniciada.';
       canvas.hidden = true;

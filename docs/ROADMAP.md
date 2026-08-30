@@ -177,7 +177,7 @@ Critério de conclusão:
 
 ## Etapa 6 — Primeira fatia vertical P1
 
-**Status:** em desenvolvimento; campanha, persistência, base segura, mapa e viagem concluídos; configurações e recuperação de asset ainda pendentes
+**Status:** em desenvolvimento; campanha, persistência, base/mapa/viagem e menu inicial concluídos; configurações e recuperação de asset ainda pendentes
 
 **Objetivo:** implementar uma missão ponta a ponta antes de multiplicar conteúdo.
 
@@ -223,6 +223,14 @@ Quarta subfatia concluída:
 - raízes gráficas fixas alternam base e bolha tática sem crescimento por transição;
 - reload em viagem/encontro volta ao checkpoint seguro e a matriz integral passa em Chrome/Edge.
 
+Quinta subfatia concluída:
+
+- menu inicial acessível com novo treinamento, continuar, configurações, diagnóstico e créditos;
+- confirmação explícita protege progresso existente e campanha reiniciável volta ao primeiro briefing;
+- comando da base apresenta recursos, serviços, próximo objetivo e estado das três missões;
+- menu modal bloqueia entrada tática e mantém foco/retorno por teclado previsíveis;
+- estados de carregamento, save indisponível e recuperação continuam visíveis, sem tela vazia.
+
 Critério de conclusão:
 
 - ciclo completo funciona após reload;
@@ -232,7 +240,7 @@ Critério de conclusão:
 
 ## Etapa 7 — Vertical slice/MVP P1
 
-**Status:** em desenvolvimento; ciclo base–mapa–viagem–missões, variedade de contatos e tutorial contextual concluídos
+**Status:** em desenvolvimento; ciclo base–mapa–viagem–missões, variedade de contatos, tutorial e menu inicial concluídos
 
 **Objetivo:** completar variedade mínima e qualidade de demonstração.
 

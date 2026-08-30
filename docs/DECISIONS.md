@@ -283,6 +283,15 @@ Decisões aceitas só devem ser alteradas por nova entrada que referencie a ante
 **Motivo:** torna o ciclo espacial coerente e testável sem GPU, mantém a base segura, evita precisão e carregamento desnecessários e preserva o orçamento já aprovado. O DOM existente suporta mapa, foco e feedback sem justificar framework.  
 **Consequências:** não há combate na base ou na viagem; reparo, energia e munição só são restaurados ao concluir o retorno. Reload transitório volta ao briefing seguro e o schema de save continua v2. Novos setores entram como conteúdo validado, mas múltiplos sistemas, simulação orbital e streaming complexo permanecem fora do MVP. O benchmark de regressão em UHD 620/1600×900/médio manteve 60,01 FPS médios e p99 de 18,0 ms.
 
+## DECISION-032 — Menu modal de sessão e painel derivado tornam a base a fronteira segura
+
+**Status:** aceita para a quinta subfatia P1 (P1-B)  
+**Problema:** o jogo carregava diretamente a apresentação tática, sem uma fronteira clara entre escolha de sessão, progresso salvo e preparação na base. Uma nova sessão não podia substituir silenciosamente o progresso, mas o menu também não deveria se tornar autoridade da campanha, nave ou persistência.  
+**Opções consideradas:** manter ações no HUD da arena; criar páginas e recarregar a aplicação para cada tela; usar um estado efêmero pequeno na aplicação e uma camada modal DOM sobre a sessão carregada.  
+**Decisão:** `src/application/session-menu.ts` controla apenas as visões `home`, `settings`, `diagnostics` e `credits`, abertura, fechamento e retorno. A aplicação continua dona da campanha, save, navegação e encontro; o shell deriva deles a telemetria do menu e da base. A sessão inicia atrás do menu, com superfícies de jogo inertes e entradas táticas bloqueadas. `Continuar` fecha a fronteira somente para checkpoint válido; `Novo treinamento` exige `dialog` nativo quando existe progresso e reinicia campanha/encontro no primeiro briefing após confirmação. O comando da base expõe recursos restaurados, três estados de missão e a ação de abrir o mapa, sem duplicar estado persistente.  
+**Motivo:** entrega navegação por teclado, foco previsível, proteção de progresso e base semanticamente distinta com DOM existente, sem framework, novo schema, asset ou carga da cena.  
+**Consequências:** configurações ainda são apenas uma entrada informativa e serão implementadas em P1-C em repositório separado. Créditos identificam a autoria procedural atual, mas o inventário formal continua em P1-G. O menu pode ser reaberto somente da base; mapa, viagem e encontro permanecem estados próprios e não aceitam comandos enquanto a fronteira modal estiver aberta.
+
 ## Decisões futuras não bloqueantes
 
 | Tema | Padrão até decidir | Gate |

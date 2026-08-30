@@ -120,6 +120,22 @@ describe('createTutorialCampaign', () => {
     expect(finalCompleted.getSnapshot()).toMatchObject({ missionNumber: 1, phase: 'briefing' });
   });
 
+  it('reinicia toda a campanha no briefing da primeira missão', () => {
+    const campaign = createTutorialCampaign(definitions, {
+      checkpoint: 'completed',
+      missionId: 'combat-test',
+    });
+
+    expect(campaign.getSnapshot().campaignCompleted).toBe(true);
+    expect(campaign.reset()).toMatchObject({
+      campaignCompleted: false,
+      completedMissionCount: 0,
+      missionId: 'survey-test',
+      missionNumber: 1,
+      phase: 'briefing',
+    });
+  });
+
   it('valida definições, missão inicial e deltas', () => {
     expect(() => createTutorialCampaign([])).toThrow('ao menos uma missão');
     expect(() => createTutorialCampaign([definitions[0]!, definitions[0]!])).toThrow('duplicado');

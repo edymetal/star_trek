@@ -131,6 +131,25 @@ async function seedMissionBriefing(page: Page, missionId: string): Promise<void>
   await expect(root).toHaveAttribute('data-mission-id', missionId);
 }
 
+async function dismissMainMenu(page: Page): Promise<void> {
+  const menu = page.locator('[data-main-menu]');
+  await expect(menu).toBeVisible();
+  const continueButton = page.locator('[data-main-menu-continue]');
+  if (await continueButton.isEnabled()) {
+    await continueButton.click();
+  } else {
+    await page.locator('[data-main-menu-new]').click();
+  }
+  await expect(menu).toBeHidden();
+  await expect(page.locator('[data-base-dashboard]')).toBeVisible();
+}
+
+async function enterBase(page: Page): Promise<void> {
+  await page.goto('/');
+  await expect(page.locator('[data-app-root]')).toHaveAttribute('data-app-state', 'ready');
+  await dismissMainMenu(page);
+}
+
 async function departCurrentMission(
   page: Page,
   options: { readonly waitForObjective?: boolean } = {},
@@ -154,13 +173,13 @@ async function departCurrentMission(
 }
 
 async function enterFirstMission(page: Page): Promise<void> {
-  await page.goto('/');
-  await expect(page.locator('[data-app-root]')).toHaveAttribute('data-app-state', 'ready');
+  await enterBase(page);
   await departCurrentMission(page);
 }
 
 async function enterCombatMission(page: Page): Promise<void> {
   await seedMissionBriefing(page, 'vespa-combat-training');
+  await dismissMainMenu(page);
   await departCurrentMission(page);
 }
 
@@ -231,6 +250,7 @@ async function expectHudInsideViewport(page: Page): Promise<void> {
       '.energy-panel',
       '.diagnostics-drawer',
       '.terminal-banner',
+      '.base-dashboard',
     ];
     const rectangles = selectors.flatMap((selector) => {
       const element = document.querySelector<HTMLElement>(selector);
@@ -278,11 +298,53 @@ async function expectHudInsideViewport(page: Page): Promise<void> {
   expect(metrics.overlaps).toEqual([]);
 }
 
-test('inicia a arena de voo com WebGL 2 e telemetria', async ({ page }) => {
+test('abre o menu principal acessível e entra na base preparada', async ({ page }, testInfo) => {
   await page.goto('/');
 
   const root = page.locator('[data-app-root]');
   await expect(root).toHaveAttribute('data-app-state', 'ready');
+  const menu = page.locator('[data-main-menu]');
+  const newTraining = page.locator('[data-main-menu-new]');
+  await expect(menu).toBeVisible();
+  await expect(root).toHaveAttribute('data-menu-state', 'home');
+  await expect(newTraining).toBeFocused();
+  await expect(page.locator('[data-main-menu-continue]')).toBeDisabled();
+  await expect(page.locator('[data-main-menu-progress]')).toHaveText('Novo treinamento pronto');
+
+  const initialZ = await root.getAttribute('data-ship-z');
+  await page.keyboard.press('Digit2');
+  await page.keyboard.press('KeyN');
+  await page.keyboard.press('KeyW');
+  await page.waitForTimeout(250);
+  await expect(root).toHaveAttribute('data-ship-z', initialZ ?? '16.0000');
+  await expect(root).toHaveAttribute('data-projectile-count', '0');
+
+  await page.getByRole('button', { name: 'Configurações' }).click();
+  await expect(root).toHaveAttribute('data-menu-state', 'settings');
+  await expect(menu).toContainText('Nenhuma preferência temporária');
+  await page.keyboard.press('Escape');
+  await expect(root).toHaveAttribute('data-menu-state', 'home');
+  await expect(newTraining).toBeFocused();
+
+  await page.getByRole('button', { name: 'Diagnóstico' }).click();
+  await expect(page.locator('[data-main-menu-backend]')).toContainText('WebGL 2');
+  await expect(page.locator('[data-main-menu-renderer]')).not.toHaveText('Verificando…');
+  await page.getByRole('button', { name: /Voltar ao menu/ }).click();
+  await page.getByRole('button', { name: 'Créditos e licenças' }).click();
+  await expect(menu).toContainText('Nenhum asset, logo, música ou personagem de Star Trek');
+  await page.keyboard.press('Escape');
+
+  if (testInfo.project.name === 'Google Chrome') {
+    await page.screenshot({ path: 'docs/screenshots/p1-main-menu-1280x720.png' });
+  }
+  await newTraining.click();
+  await expect(menu).toBeHidden();
+  const base = page.locator('[data-base-dashboard]');
+  await expect(base).toBeVisible();
+  await expect(base).toContainText('Reparo e suprimentos concluídos');
+  await expect(base.locator('[data-base-mission-status]')).toHaveCount(3);
+  await expect(base.locator('[data-base-mission-status="current"]')).toHaveCount(1);
+  await expect(page.locator('[data-base-prepare]')).toBeFocused();
   await expect(page.locator('[data-diagnostic="backend"]')).toHaveText('WebGL 2');
   await expect(page.locator('[data-diagnostic="renderer"]')).not.toHaveText('Verificando…');
   await expect(page.locator('[data-diagnostic="preset"]')).toContainText(/Baixo|Médio/);
@@ -295,10 +357,83 @@ test('inicia a arena de voo com WebGL 2 e telemetria', async ({ page }) => {
   await expect(page.locator('[data-combat-panel]')).toBeHidden();
 });
 
+test('continua o checkpoint correto e confirma antes de iniciar novo treinamento', async ({
+  page,
+}) => {
+  await seedMissionBriefing(page, 'iris-assistance');
+  const root = page.locator('[data-app-root]');
+  const menu = page.locator('[data-main-menu]');
+  const dialog = page.locator('[data-new-training-dialog]');
+  await expect(menu).toBeVisible();
+  await expect(page.locator('[data-main-menu-progress]')).toContainText('Socorro no Anel de Íris');
+  await expect(page.locator('[data-main-menu-continue]')).toBeEnabled();
+
+  const snapshotsBeforeCancel = await countStoredSaveSnapshots(page);
+  await page.locator('[data-main-menu-new]').click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('Substituir o progresso atual');
+  await page.locator('[data-new-training-cancel]').click();
+  await expect(dialog).toBeHidden();
+  expect(await countStoredSaveSnapshots(page)).toBe(snapshotsBeforeCancel);
+  await expect(root).toHaveAttribute('data-mission-id', 'iris-assistance');
+
+  await page.locator('[data-main-menu-continue]').click();
+  await expect(menu).toBeHidden();
+  await expect(root).toHaveAttribute('data-mission-id', 'iris-assistance');
+  await expect(page.locator('[data-base-mission-status="completed"]')).toHaveCount(1);
+  await expect(page.locator('[data-base-mission-status="current"]')).toContainText(
+    'Socorro no Anel de Íris',
+  );
+
+  await page.locator('[data-base-menu]').click();
+  await expect(menu).toBeVisible();
+  await page.locator('[data-main-menu-new]').click();
+  await expect(dialog).toBeVisible();
+  await page.locator('[data-new-training-confirm]').click();
+  await expect(menu).toBeHidden();
+  await expect(root).toHaveAttribute('data-mission-id', 'nereida-survey');
+  await expect(root).toHaveAttribute('data-mission-phase', 'briefing');
+  await expect(root).toHaveAttribute('data-save-state', 'saved');
+
+  await page.reload();
+  await expect(root).toHaveAttribute('data-save-state', 'loaded');
+  await expect(page.locator('[data-main-menu-progress]')).toContainText('Levantamento de Nereida');
+  await page.locator('[data-main-menu-continue]').click();
+  await expect(root).toHaveAttribute('data-mission-id', 'nereida-survey');
+  await expect(page.locator('[data-base-mission-status="current"]')).toContainText(
+    'Levantamento de Nereida',
+  );
+});
+
+test('mantém menu e painel da base contidos em 1280x720 e 1600x900', async ({ page }, testInfo) => {
+  for (const viewport of [
+    { height: 720, width: 1280 },
+    { height: 900, width: 1600 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/');
+    const root = page.locator('[data-app-root]');
+    await expect(root).toHaveAttribute('data-app-state', 'ready');
+    const menuPanel = page.locator('.main-menu__panel');
+    const menuBox = await menuPanel.boundingBox();
+    expect(menuBox).not.toBeNull();
+    expect(menuBox!.x).toBeGreaterThanOrEqual(0);
+    expect(menuBox!.y).toBeGreaterThanOrEqual(0);
+    expect(menuBox!.x + menuBox!.width).toBeLessThanOrEqual(viewport.width);
+    expect(menuBox!.y + menuBox!.height).toBeLessThanOrEqual(viewport.height);
+
+    await dismissMainMenu(page);
+    await expectHudInsideViewport(page);
+    if (viewport.width === 1600 && testInfo.project.name === 'Google Chrome') {
+      await page.screenshot({ path: 'docs/screenshots/p1-base-dashboard-1600x900.png' });
+    }
+  }
+});
+
 test('mantém a base segura e percorre mapa, viagem, encontro e retorno', async ({
   page,
 }, testInfo) => {
-  await page.goto('/');
+  await enterBase(page);
   const root = page.locator('[data-app-root]');
   const missionAction = page.locator('[data-mission-action]');
   await expect(root).toHaveAttribute('data-app-state', 'ready');
@@ -436,6 +571,7 @@ test('não confunde renderizador não informado com renderização por software'
   await page.goto('/');
 
   await expect(page.locator('[data-app-root]')).toHaveAttribute('data-graphics-state', 'degraded');
+  await dismissMainMenu(page);
   const alert = page.getByRole('alert');
   await expect(alert).toContainText('Renderizador não confirmado');
   await expect(alert).toContainText('não significa renderização por software');
@@ -564,6 +700,8 @@ test('feixe, torpedo e raio trator têm resultados e restrições distintos', as
     .toBeGreaterThan(0);
 
   await page.goto('/');
+  await expect(root).toHaveAttribute('data-app-state', 'ready');
+  await dismissMainMenu(page);
   await departCurrentMission(page);
   await identifyEnemy(page);
   await openEnergyDrawer(page);
@@ -652,7 +790,7 @@ test('conclui o encontro com vitória e reinicia sem recarregar a página', asyn
 });
 
 test('expõe energia conservada e telemetria observável no HUD', async ({ page }) => {
-  await page.goto('/');
+  await enterBase(page);
   const root = page.locator('[data-app-root]');
   const energyPanel = page.locator('[data-energy-panel]');
 
@@ -671,7 +809,7 @@ test('expõe energia conservada e telemetria observável no HUD', async ({ page 
 });
 
 test('persiste a primeira missão concluída e a retoma após reload', async ({ page }) => {
-  await page.goto('/');
+  await enterBase(page);
   const root = page.locator('[data-app-root]');
   const missionAction = page.locator('[data-mission-action]');
 
@@ -703,6 +841,7 @@ test('persiste a primeira missão concluída e a retoma após reload', async ({ 
   await page.reload();
   await expect(root).toHaveAttribute('data-app-state', 'ready');
   await expect(root).toHaveAttribute('data-save-state', 'loaded');
+  await page.locator('[data-main-menu-continue]').click();
   await expect(root).toHaveAttribute('data-mission-phase', 'completed');
   await expect(root).toHaveAttribute('data-simulation-state', 'paused');
   await expect(missionAction).toHaveText('Preparar missão 2');
@@ -715,7 +854,7 @@ test('persiste a primeira missão concluída e a retoma após reload', async ({ 
 
 test('conclui as três missões iniciais do tutorial em sequência', async ({ page }) => {
   test.setTimeout(60_000);
-  await page.goto('/');
+  await enterBase(page);
   const root = page.locator('[data-app-root]');
   const missionAction = page.locator('[data-mission-action]');
   const tractorButton = page.locator('[data-combat-action="tractor"]');
@@ -772,6 +911,7 @@ test('conclui as três missões iniciais do tutorial em sequência', async ({ pa
 
   await page.reload();
   await expect(root).toHaveAttribute('data-save-state', 'loaded');
+  await page.locator('[data-main-menu-continue]').click();
   await expect(root).toHaveAttribute('data-mission-id', 'vespa-combat-training');
   await expect(root).toHaveAttribute('data-tutorial-completed', 'true');
 });
@@ -779,7 +919,7 @@ test('conclui as três missões iniciais do tutorial em sequência', async ({ pa
 test('retoma o último checkpoint seguro ao recarregar durante viagem ou encontro', async ({
   page,
 }) => {
-  await page.goto('/');
+  await enterBase(page);
   const root = page.locator('[data-app-root]');
 
   await expect(root).toHaveAttribute('data-save-state', 'created');
@@ -789,6 +929,7 @@ test('retoma o último checkpoint seguro ao recarregar durante viagem ou encontr
   await page.reload();
   await expect(root).toHaveAttribute('data-app-state', 'ready');
   await expect(root).toHaveAttribute('data-save-state', 'loaded');
+  await page.locator('[data-main-menu-continue]').click();
   await expect(root).toHaveAttribute('data-mission-phase', 'briefing');
   await expect(root).toHaveAttribute('data-navigation-state', 'base');
   await expect(root).toHaveAttribute('data-simulation-state', 'paused');
@@ -797,13 +938,14 @@ test('retoma o último checkpoint seguro ao recarregar durante viagem ou encontr
   await expect(root).toHaveAttribute('data-navigation-state', 'encounter');
   await page.reload();
   await expect(root).toHaveAttribute('data-save-state', 'loaded');
+  await page.locator('[data-main-menu-continue]').click();
   await expect(root).toHaveAttribute('data-mission-phase', 'briefing');
   await expect(root).toHaveAttribute('data-navigation-state', 'base');
   await expect(root).toHaveAttribute('data-simulation-state', 'paused');
 });
 
 test('preserva save corrompido e recupera somente após ação explícita', async ({ page }) => {
-  await page.goto('/');
+  await enterBase(page);
   const root = page.locator('[data-app-root]');
   await expect(root).toHaveAttribute('data-save-state', 'created');
   await corruptActiveSave(page);
@@ -813,14 +955,16 @@ test('preserva save corrompido e recupera somente após ação explícita', asyn
   await expect(root).toHaveAttribute('data-save-state', 'invalid');
   await expect(root).toHaveAttribute('data-mission-phase', 'briefing');
   await expect(page.locator('[data-save-status]')).toContainText('Save inválido preservado');
-  const recoveryButton = page.getByRole('button', { name: 'Criar save seguro' });
-  await expect(recoveryButton).toBeVisible();
-  await recoveryButton.click();
+  await expect(page.locator('[data-main-menu-progress]')).toHaveText('Continuar indisponível');
+  await page.locator('[data-main-menu-new]').click();
+  await expect(page.locator('[data-new-training-dialog]')).toBeVisible();
+  await page.locator('[data-new-training-confirm]').click();
   await expect(root).toHaveAttribute('data-save-state', 'saved');
   expect(await countStoredSaveSnapshots(page)).toBe(2);
 
   await page.reload();
   await expect(root).toHaveAttribute('data-save-state', 'loaded');
+  await page.locator('[data-main-menu-continue]').click();
   await expect(root).toHaveAttribute('data-mission-phase', 'briefing');
 });
 
@@ -1071,7 +1215,7 @@ test('mantém o mapa navegável e contido em 1280x720 e 1600x900', async ({ page
     { height: 900, width: 1600 },
   ]) {
     await page.setViewportSize(viewport);
-    await page.goto('/');
+    await enterBase(page);
     const root = page.locator('[data-app-root]');
     await expect(root).toHaveAttribute('data-app-state', 'ready');
     await page.locator('[data-mission-action]').click();

@@ -2,8 +2,8 @@
 
 Atualizado em: 30 de agosto de 2026  
 Etapa atual: P1 — Vertical slice/MVP  
-Estado do código: P0.5 aprovado; P1-A concluída com base segura, mapa do sistema e viagem apresentada  
-Próximo responsável: Senior Developer / P1-B — tela inicial e fluxo de preparação na base
+Estado do código: P0.5 aprovado; P1-B concluída com menu inicial e comando da base  
+Próximo responsável: Senior Developer / P1-C — configurações persistentes
 
 Handoff detalhado para continuação: `docs/HANDOFF_REMAINING_WORK.md`
 
@@ -99,6 +99,7 @@ Legenda:
 - [x] Base segura, mapa navegável e viagem — partida, retorno, reparo/reabastecimento e transição visual implementados
 - [x] Save IndexedDB versionado
 - [x] Tutorial contextual e progressão segura entre missões
+- [x] Menu inicial, continuar, diagnóstico, créditos e comando da base
 - [ ] Áudio e acessibilidade prioritária
 - [ ] Inventário de licenças
 - [ ] E2E, benchmark e revisão final do MVP
@@ -462,3 +463,39 @@ O mapa e a viagem preservam a autoridade do domínio e não introduzem coordenad
 - P1-C/P1-D: configurações persistentes, escala do HUD, redução de flashes/tremor/partículas e remapeamento essencial;
 - P1-E a P1-G: diário, áudio, fallback de asset, inventário de licenças e créditos;
 - P1-H: decisão offline/PWA, balanceamento, instalação limpa, benchmark e revisão formal final do MVP.
+
+## Último relatório — menu inicial e comando da base P1-B
+
+**ETAPA:** P1 — quinta subfatia da Etapa 6  
+**STATUS:** menu inicial, proteção de progresso e preparação na base concluídos
+
+### Implementado
+
+- menu inicial modal com `Novo treinamento`, `Continuar`, `Configurações`, `Diagnóstico` e `Créditos e licenças`, usando controles HTML nativos;
+- foco inicial e retorno por `Esc`, sem landmarks duplicados, com base/mapa/viagem/encontro inertes enquanto o menu está aberto;
+- confirmação por `dialog` antes de substituir progresso existente; save novo não é regravado desnecessariamente;
+- reinício determinístico da campanha, encontro, voo e VFX no primeiro briefing após confirmação;
+- comando da Base Aurora com integridade, energia, torpedos, reparo/reabastecimento, próximo objetivo e estado das três missões;
+- continuar preserva checkpoint carregado e save inválido permanece protegido até recuperação explícita;
+- configurações e créditos possuem suas entradas próprias, deixando claro o que será concluído nas fatias P1-C e P1-G.
+
+### Revisão e correções
+
+O estado efêmero do menu foi extraído para a aplicação, sem mover campanha, save ou nave para a UI. O shell deriva telemetria e usa `textContent`; não há HTML não confiável, dependência ou asset externo novo. O gate completo encontrou uma regressão em que iniciar o primeiro treinamento regravava o save recém-criado; a recuperação passou a ocorrer somente quando existe progresso ou registro inválido a substituir. A inspeção visual confirmou hierarquia, foco e contenção nos dois viewports obrigatórios. Nenhum achado CRITICAL/HIGH permaneceu.
+
+### Verificação
+
+- `npm run verify`: 162/162 testes em 27 arquivos, formatação, lint, typecheck e build aprovados;
+- testes novos cobrem transições do menu e reinício da campanha sem DOM/GPU;
+- Playwright completo: 56/56 casos em Chrome/Edge, um worker e nenhum `skip`;
+- navegador real cobre mouse, teclado, foco, `Esc`, bloqueio de comandos, continuar, confirmação, reinício e recuperação de save corrompido;
+- benchmark físico Chrome 151, WebGL 2, UHD 620, 1600×900/médio: 60,011 FPS médios, p95 de 17,4 ms e p99 de 18,1 ms, com 88 draw calls e 21 VFX;
+- aplicação principal: 30,79 kB gzip; engine permanece em 510,52 kB gzip;
+- capturas `p1-main-menu-1280x720.png` e `p1-base-dashboard-1600x900.png` inspecionadas sem scroll ou sobreposição.
+
+### Pendências do P1
+
+- P1-C: configurações persistentes separadas do save, escala do HUD, volumes, redução de efeitos e controles essenciais;
+- P1-D: acessibilidade prioritária e validação completa por teclado;
+- P1-E a P1-G: diário, áudio, fallback de asset e inventário formal de licenças/créditos;
+- P1-H: decisão offline/PWA, playtest, balanceamento, instalação limpa, benchmark e revisão formal final do MVP.

@@ -78,7 +78,7 @@ Concluído quando o dano lógico e visual não divergirem; não houver crescimen
 - inventário de autoria/licença de todos os assets do build;
 - cache offline/PWA somente se a medição mostrar que não complica atualizações e saves.
 
-Estado atual do P1: o Sistema Hélios já oferece base segura, mapa acessível, três destinos de missão, dois pontos de interesse e transição visual de viagem. As três missões, o retorno com reparo/reabastecimento e o save IndexedDB v2 também estão concluídos. Menu inicial/base de preparação, configurações e acessibilidade persistentes, diário, áudio, licenças e gate final continuam obrigatórios antes de declarar o MVP concluído.
+Estado atual do P1: o Sistema Hélios já oferece base segura, mapa acessível, três destinos de missão, dois pontos de interesse e transição visual de viagem. As três missões, o retorno com reparo/reabastecimento, o save IndexedDB v2, o menu inicial e o comando da base também estão concluídos. Configurações e acessibilidade persistentes, diário, áudio, licenças e gate final continuam obrigatórios antes de declarar o MVP concluído.
 
 ### Gate de saída do MVP (P0 + P1)
 

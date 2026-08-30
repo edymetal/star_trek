@@ -3,7 +3,7 @@
 Atualizado em: 30 de agosto de 2026  
 Branch esperada: `main`  
 Baseline anterior ao P1-A: commit `f9750ee` (`feat: adicionar campanha tutorial de tres missoes`)  
-Marco atual: P1-A concluída; consulte o último relatório em `docs/PROGRESS.md`
+Marco atual: P1-B concluída; consulte o último relatório em `docs/PROGRESS.md`
 
 ## 1. Finalidade deste documento
 
@@ -20,7 +20,7 @@ Ao receber uma solicitação genérica como “continue” ou “finalize o jogo
 
 Use este texto como prompt inicial:
 
-> Continue o projeto a partir de `docs/HANDOFF_REMAINING_WORK.md`. Leia integralmente `AGENTS.md` e todas as fontes canônicas na ordem indicada antes de alterar código. Trabalhe uma fatia vertical por vez, preserve as decisões aceitas, não refaça o P0, as três missões ou o P1-A concluídos e não adicione conteúdo de Star Trek. Implemente primeiro o P1-B e depois os itens P1 obrigatórios na ordem do handoff. Para cada fatia, crie testes sem GPU para regras, E2E em Chrome/Edge para fluxos visuais, execute `npm run verify` e os testes E2E relevantes, atualize a documentação e faça commit/push somente quando o gate estiver verde. Não publique nem faça deploy sem autorização explícita.
+> Continue o projeto a partir de `docs/HANDOFF_REMAINING_WORK.md`. Leia integralmente `AGENTS.md` e todas as fontes canônicas na ordem indicada antes de alterar código. Trabalhe uma fatia vertical por vez, preserve as decisões aceitas, não refaça o P0 nem as fatias P1-A/P1-B concluídas e não adicione conteúdo de Star Trek. Implemente primeiro o P1-C e depois os itens P1 obrigatórios na ordem do handoff. Para cada fatia, crie testes sem GPU para regras, E2E em Chrome/Edge para fluxos visuais, execute `npm run verify` e os testes E2E relevantes, atualize a documentação e faça commit/push somente quando o gate estiver verde. Não publique nem faça deploy sem autorização explícita.
 
 ## 3. Fontes de verdade e ordem de leitura
 
@@ -68,11 +68,11 @@ O P0 está aprovado e não deve ser reimplementado:
 - base segura e raízes gráficas fixas, sem IA, projéteis ou VFX fora da bolha tática;
 - contatos e posições próprios por missão, com checkpoints transitórios ainda retornando ao briefing.
 
-Gate atual verificado após o P1-A:
+Gate atual verificado após o P1-B:
 
-- `npm run verify`: 158/158 testes em 26 arquivos;
-- Playwright: 52/52 casos em Chrome e Edge;
-- benchmark físico aprovado na UHD 620/médio, 1600×900, WebGL 2: 60,01 FPS médios e p99 de 18,0 ms;
+- `npm run verify`: 162/162 testes em 27 arquivos;
+- Playwright: 56/56 casos em Chrome e Edge;
+- benchmark físico aprovado na UHD 620/médio, 1600×900, WebGL 2: 60,011 FPS médios e p99 de 18,1 ms;
 - nenhum achado CRITICAL/HIGH conhecido;
 - chunk do engine em aproximadamente 510,52 kB gzip.
 
@@ -83,7 +83,7 @@ Os totais de testes podem crescer. Eles são uma referência, não um motivo par
 Execute na ordem abaixo, salvo nova prioridade explícita do usuário:
 
 1. [x] coerência do estado de base, mapa do sistema e apresentação da viagem;
-2. tela inicial e fluxo base/preparação/seleção de missão;
+2. [x] tela inicial e fluxo base/preparação/seleção de missão;
 3. configurações persistentes e controles essenciais;
 4. acessibilidade prioritária;
 5. diário de objetivos e descobertas;
@@ -155,11 +155,11 @@ A campanha possuía fases lógicas de partida e retorno, mas a viagem era apenas
 - capturas 1280×720 e 1600×900 inspecionadas sem scroll ou sobreposição;
 - decisão arquitetural registrada em `DECISION-031`.
 
-## 7. Fatia P1-B — tela inicial e base funcional
+## 7. Fatia P1-B — tela inicial e base funcional — concluída
 
-### Problema atual
+### Situação resolvida
 
-O aplicativo abre diretamente na arena. Existe painel de missão, mas ainda não há um fluxo completo de menu inicial, continuar, configurações, créditos e preparação de missão como previsto no produto.
+O aplicativo agora abre em menu modal próprio antes de liberar a sessão. Continuar respeita o checkpoint válido, novo treinamento exige confirmação quando há progresso, e a Base Aurora apresenta serviços, recursos, sequência das três missões e partida sem expor controles táticos.
 
 ### Criar
 
@@ -186,6 +186,16 @@ O aplicativo abre diretamente na arena. Existe painel de missão, mas ainda não
 - novo treinamento não apaga save sem confirmação explícita;
 - menus não permitem que comandos de voo/combate vazem para a sessão;
 - fluxo é coberto por E2E em Chrome e Edge.
+
+### Gate realizado
+
+- máquina de estado do menu coberta sem DOM, incluindo abertura, fechamento, detalhes e retorno por `Esc`;
+- novo treinamento reinicia campanha e encontro, mas só substitui progresso existente após confirmação explícita;
+- base apresenta integridade, energia, munição, serviços concluídos, objetivo seguinte e estado das três missões;
+- menu torna base/mapa/viagem/encontro inertes e libera foco/ponteiro, impedindo vazamento de voo ou combate;
+- carregamento, save válido, save inválido e recuperação permanecem visíveis e acionáveis;
+- inspeção 1280×720 e 1600×900 aprovada nas capturas `p1-main-menu-1280x720.png` e `p1-base-dashboard-1600x900.png`;
+- decisão arquitetural registrada em `DECISION-032`.
 
 ## 8. Fatia P1-C — configurações persistentes
 
@@ -507,6 +517,7 @@ Os nomes são sugestões; o conteúdo e os gates importam mais que a quantidade 
 ## 19. Mapa rápido do código existente
 
 - `src/application/bootstrap.ts`: composição atual, campanha, save, loop e publicação de telemetria; já está grande, portanto novas responsabilidades duradouras podem justificar sessões/casos de uso próprios;
+- `src/application/session-menu.ts`: estado efêmero do menu inicial, detalhes, retorno e fronteira de entrada da sessão;
 - `src/application/flight-session.ts`: coordena voo, energia e encontro;
 - `src/application/encounter-session.ts`: sensores, equipamento, IA, dano e perfis passivo/hostil;
 - `src/application/game-save.ts`: envelope e migração do save;
@@ -531,7 +542,7 @@ Os nomes são sugestões; o conteúdo e os gates importam mais que a quantidade 
 - [x] mapa de um sistema implementado;
 - [x] base, mapa, viagem e encontro têm estados coerentes e distintos;
 - [x] apresentação visual da viagem implementada e leve;
-- [ ] menu inicial/continuar/configurações/créditos implementado;
+- [x] menu inicial/continuar/acesso a configurações/créditos implementado;
 - [ ] configurações persistentes separadas do save;
 - [ ] escala do HUD e redução de flashes/tremor/partículas funcionais;
 - [ ] remapeamento essencial funcional;

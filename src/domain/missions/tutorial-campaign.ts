@@ -36,6 +36,7 @@ export interface TutorialCampaignSession {
   continueFromCompletion(): boolean;
   getSnapshot(): TutorialCampaignSnapshot;
   recordObjective(event: TutorialObjectiveEvent): boolean;
+  reset(): TutorialCampaignSnapshot;
   start(): boolean;
 }
 
@@ -160,6 +161,13 @@ export function createTutorialCampaign(
       }
       objectiveCompleted = true;
       return true;
+    },
+    reset() {
+      missionIndex = 0;
+      phase = 'briefing';
+      objectiveCompleted = false;
+      transitionElapsedSeconds = 0;
+      return snapshot();
     },
     start() {
       if (phase !== 'briefing') return false;
