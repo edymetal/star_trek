@@ -5,6 +5,8 @@ Etapa atual: P1 — Vertical slice/MVP
 Estado do código: P0.5 aprovado; campanha tutorial de três missões e persistência local concluídas  
 Próximo responsável: Senior Developer / mapa de sistema e apresentação da viagem
 
+Handoff detalhado para continuação: `docs/HANDOFF_REMAINING_WORK.md`
+
 Legenda:
 
 - [ ] Não iniciado

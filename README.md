@@ -118,3 +118,7 @@ npm run preview
 ```
 
 O conteúdo de `dist/` é totalmente estático e usa caminhos relativos, permanecendo compatível com hospedagem futura em subdiretório. Publicação e deploy não fazem parte desta etapa.
+
+## Continuação do desenvolvimento
+
+O estado concluído, todas as pendências e a ordem recomendada para outra IA finalizar o MVP estão em [`docs/HANDOFF_REMAINING_WORK.md`](docs/HANDOFF_REMAINING_WORK.md).
