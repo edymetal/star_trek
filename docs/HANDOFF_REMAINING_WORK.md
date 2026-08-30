@@ -2,7 +2,8 @@
 
 Atualizado em: 30 de agosto de 2026  
 Branch esperada: `main`  
-Baseline no momento deste handoff: commit `f9750ee` (`feat: adicionar campanha tutorial de tres missoes`)
+Baseline anterior ao P1-A: commit `f9750ee` (`feat: adicionar campanha tutorial de tres missoes`)  
+Marco atual: P1-A concluída; consulte o último relatório em `docs/PROGRESS.md`
 
 ## 1. Finalidade deste documento
 
@@ -19,7 +20,7 @@ Ao receber uma solicitação genérica como “continue” ou “finalize o jogo
 
 Use este texto como prompt inicial:
 
-> Continue o projeto a partir de `docs/HANDOFF_REMAINING_WORK.md`. Leia integralmente `AGENTS.md` e todas as fontes canônicas na ordem indicada antes de alterar código. Trabalhe uma fatia vertical por vez, preserve as decisões aceitas, não refaça o P0 nem as três missões concluídas e não adicione conteúdo de Star Trek. Implemente primeiro os itens P1 obrigatórios na ordem do handoff. Para cada fatia, crie testes sem GPU para regras, E2E em Chrome/Edge para fluxos visuais, execute `npm run verify` e os testes E2E relevantes, atualize a documentação e faça commit/push somente quando o gate estiver verde. Não publique nem faça deploy sem autorização explícita.
+> Continue o projeto a partir de `docs/HANDOFF_REMAINING_WORK.md`. Leia integralmente `AGENTS.md` e todas as fontes canônicas na ordem indicada antes de alterar código. Trabalhe uma fatia vertical por vez, preserve as decisões aceitas, não refaça o P0, as três missões ou o P1-A concluídos e não adicione conteúdo de Star Trek. Implemente primeiro o P1-B e depois os itens P1 obrigatórios na ordem do handoff. Para cada fatia, crie testes sem GPU para regras, E2E em Chrome/Edge para fluxos visuais, execute `npm run verify` e os testes E2E relevantes, atualize a documentação e faça commit/push somente quando o gate estiver verde. Não publique nem faça deploy sem autorização explícita.
 
 ## 3. Fontes de verdade e ordem de leitura
 
@@ -62,14 +63,18 @@ O P0 está aprovado e não deve ser reimplementado:
   - `Socorro no Anel de Íris`: sensores, aproximação e raio trator;
   - `Defesa do Corredor Aurora`: energia, escudos, feixe e torpedos;
 - teste integral das três missões e retomada do checkpoint final.
+- Sistema Hélios com base, três setores de missão, dois pontos de interesse e rotas validadas;
+- mapa acessível, apresentação de viagem e estados distintos de base/mapa/trânsito/encontro;
+- base segura e raízes gráficas fixas, sem IA, projéteis ou VFX fora da bolha tática;
+- contatos e posições próprios por missão, com checkpoints transitórios ainda retornando ao briefing.
 
-Baseline verificada no commit indicado:
+Gate atual verificado após o P1-A:
 
-- `npm run verify`: 151/151 testes em 24 arquivos;
-- Playwright: 48/48 casos em Chrome e Edge;
-- benchmark físico aprovado na UHD 620/baixo, 1280×720, WebGL 2: 60,010 FPS médios e p99 de 18,9 ms;
-- nenhum achado CRITICAL/HIGH conhecido naquele gate;
-- chunk do engine em aproximadamente 510,37 kB gzip.
+- `npm run verify`: 158/158 testes em 26 arquivos;
+- Playwright: 52/52 casos em Chrome e Edge;
+- benchmark físico aprovado na UHD 620/médio, 1600×900, WebGL 2: 60,01 FPS médios e p99 de 18,0 ms;
+- nenhum achado CRITICAL/HIGH conhecido;
+- chunk do engine em aproximadamente 510,52 kB gzip.
 
 Os totais de testes podem crescer. Eles são uma referência, não um motivo para remover ou esconder novos testes.
 
@@ -77,7 +82,7 @@ Os totais de testes podem crescer. Eles são uma referência, não um motivo par
 
 Execute na ordem abaixo, salvo nova prioridade explícita do usuário:
 
-1. coerência do estado de base, mapa do sistema e apresentação da viagem;
+1. [x] coerência do estado de base, mapa do sistema e apresentação da viagem;
 2. tela inicial e fluxo base/preparação/seleção de missão;
 3. configurações persistentes e controles essenciais;
 4. acessibilidade prioritária;
@@ -91,11 +96,11 @@ Execute na ordem abaixo, salvo nova prioridade explícita do usuário:
 
 Cada item deve ser entregue como uma fatia vertical pequena, testada e documentada. Não criar diretórios vazios ou infraestrutura de fases futuras.
 
-## 6. Fatia P1-A — base coerente, mapa e viagem
+## 6. Fatia P1-A — base coerente, mapa e viagem — concluída
 
-### Problema atual
+### Situação resolvida
 
-A campanha possui fases lógicas de partida e retorno, mas a viagem ainda é apenas uma transição temporal curta. Não existe mapa navegável. As três missões compartilham a mesma arena e o mesmo ID lógico de contato, alterando somente nome, disposição e equipamentos. A apresentação inicial pode mostrar o briefing “na base” enquanto o encontro tático padrão continua ativo ao fundo; isso deve ser verificado e corrigido para que não haja combate ou dano durante um estado de base.
+A campanha possuía fases lógicas de partida e retorno, mas a viagem era apenas uma transição temporal curta e não existia mapa navegável. O P1-A adicionou o Sistema Hélios, destinos e contatos próprios, mapa por teclado, apresentação de viagem e separação gráfica entre base e bolha tática. A base agora mantém encontro pausado, controles de combate indisponíveis e zero projétil/VFX ativo.
 
 ### Criar
 
@@ -140,6 +145,15 @@ A campanha possui fases lógicas de partida e retorno, mas a viagem ainda é ape
 - nenhuma entidade/VFX cresce a cada ida e volta;
 - HUD permanece sem scroll ou sobreposição em 1280×720 e 1600×900;
 - Chrome e Edge passam o ciclo completo das três missões.
+
+### Gate realizado
+
+- domínio e conteúdo de navegação cobertos sem GPU, inclusive entradas e rotas inválidas;
+- ciclo base → mapa → viagem → encontro → retorno aprovado nos dois navegadores;
+- reload em viagem e encontro volta ao briefing seguro;
+- matriz completa 52/52, `npm run verify` 158/158 e benchmark UHD 620/médio aprovado;
+- capturas 1280×720 e 1600×900 inspecionadas sem scroll ou sobreposição;
+- decisão arquitetural registrada em `DECISION-031`.
 
 ## 7. Fatia P1-B — tela inicial e base funcional
 
@@ -514,9 +528,9 @@ Os nomes são sugestões; o conteúdo e os gates importam mais que a quantidade 
 
 ### MVP P1
 
-- [ ] mapa de um sistema implementado;
-- [ ] base, mapa, viagem e encontro têm estados coerentes e distintos;
-- [ ] apresentação visual da viagem implementada e leve;
+- [x] mapa de um sistema implementado;
+- [x] base, mapa, viagem e encontro têm estados coerentes e distintos;
+- [x] apresentação visual da viagem implementada e leve;
 - [ ] menu inicial/continuar/configurações/créditos implementado;
 - [ ] configurações persistentes separadas do save;
 - [ ] escala do HUD e redução de flashes/tremor/partículas funcionais;

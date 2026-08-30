@@ -1,7 +1,7 @@
 # Especificação do produto
 
 Status: P0 aprovado; P1 em implementação  
-Atualizado em: 29 de agosto de 2026
+Atualizado em: 30 de agosto de 2026
 
 Este é o documento canônico para o que o produto deve fazer. A pesquisa técnica, os orçamentos de arte e as fontes consultadas permanecem em [`PLANEJAMENTO.md`](../PLANEJAMENTO.md). Prioridades de entrega ficam em [`MVP.md`](MVP.md) e decisões técnicas em [`ARCHITECTURE.md`](../ARCHITECTURE.md) e [`DECISIONS.md`](DECISIONS.md).
 
@@ -118,6 +118,8 @@ Multiplayer, interiores caminháveis, pouso em planetas, galáxia 1:1, física o
 8. Ao retornar à base, o jogador repara, recebe o resultado e escolhe o próximo objetivo.
 
 O treinamento inicial materializa esse fluxo em três missões curtas e ordenadas: sensores/scan sem armamento, assistência com contato passivo e raio trator, e combate com energia, escudos e arsenal completo. A HUD libera ações gradualmente, informa a posição na sequência e preserva a conclusão de cada missão em checkpoint seguro.
+
+O mapa inicial representa o Sistema Hélios em escala artística. A Base Aurora, os três setores de missão e dois pontos de interesse são nós lógicos ligados por rotas configuráveis; a viagem é uma transição apresentada, não deslocamento contínuo em escala astronômica. Na base e durante o trânsito não existem IA hostil, projéteis ou controles táticos ativos. O retorno concluído restaura nave, energia e munição antes de liberar a missão seguinte.
 
 No P0, esse fluxo é reduzido a abrir → pilotar → escanear → combater/testar raio trator → pausar/configurar. O ciclo com missão, viagem, base funcional e save pertence ao P1.
 

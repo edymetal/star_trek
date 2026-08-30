@@ -6,6 +6,7 @@ export type TutorialMissionCheckpoint = Extract<TutorialMissionPhase, 'briefing'
 export type TutorialObjectiveType = 'identify-contact' | 'tractor-lock' | 'combat-victory';
 
 export interface TutorialMissionDefinition {
+  readonly destinationNodeId: string;
   readonly id: string;
   readonly objectiveType: TutorialObjectiveType;
   readonly targetContactId: string;
@@ -58,7 +59,11 @@ function validateDefinitions(definitions: readonly TutorialMissionDefinition[]):
   if (definitions.length === 0) throw new Error('A campanha tutorial requer ao menos uma missão.');
   const ids = new Set<string>();
   for (const definition of definitions) {
-    if (definition.id.length === 0 || definition.targetContactId.length === 0) {
+    if (
+      definition.id.length === 0 ||
+      definition.destinationNodeId.length === 0 ||
+      definition.targetContactId.length === 0
+    ) {
       throw new Error('Missões do tutorial exigem IDs não vazios.');
     }
     if (ids.has(definition.id)) throw new Error(`ID de missão duplicado: ${definition.id}.`);

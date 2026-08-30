@@ -56,6 +56,8 @@ export type EncounterDisposition = 'hostile' | 'passive';
 
 export interface EncounterProfile {
   readonly allowedPlayerEquipment: readonly EquipmentId[];
+  readonly contactId: string;
+  readonly contactInitialPosition: Vector3Value;
   readonly contactDisplayName: string;
   readonly disposition: EncounterDisposition;
 }
@@ -150,11 +152,12 @@ interface MutableEffect {
 
 const RADIANS_TO_DEGREES = 180 / Math.PI;
 const DEGREES_TO_RADIANS = Math.PI / 180;
-const DEFAULT_ENCOUNTER_PROFILE: EncounterProfile = {
+const DEFAULT_ENCOUNTER_PROFILE = {
   allowedPlayerEquipment: ['beam', 'torpedo', 'tractor'],
+  contactId: ENEMY_CONTENT.id,
   contactDisplayName: ENEMY_CONTENT.displayName,
   disposition: 'hostile',
-};
+} as const;
 
 function add(left: Vector3Value, right: Vector3Value): Vector3Value {
   return { x: left.x + right.x, y: left.y + right.y, z: left.z + right.z };
@@ -298,10 +301,13 @@ const FAILURE_MESSAGES: Readonly<Record<EquipmentFailureReason, string>> = {
 
 export function createEncounterSession(options: EncounterSessionOptions): EncounterSession {
   const lineOfSightObstacles = options.lineOfSightObstacles ?? COMBAT_LINE_OF_SIGHT_OBSTACLES;
-  let encounterProfile = DEFAULT_ENCOUNTER_PROFILE;
+  let encounterProfile: EncounterProfile = {
+    ...DEFAULT_ENCOUNTER_PROFILE,
+    contactInitialPosition: { ...options.enemyInitialPosition },
+  };
   let activeScan = false;
   let aiState = createInitialEnemyAiState();
-  let contact = createUnknownContact(ENEMY_CONTENT.id);
+  let contact = createUnknownContact(encounterProfile.contactId);
   let effect: MutableEffect | undefined;
   let effectSerial = 0;
   let enemyContact = createUnknownContact('player-aurora');
@@ -314,7 +320,7 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
     weaponHeatUnits: 0,
   });
   let enemyOrientation: Vector3Value = { x: 0, y: -166, z: 0 };
-  let enemyPosition = { ...options.enemyInitialPosition };
+  let enemyPosition = { ...encounterProfile.contactInitialPosition };
   let enemyWeaponState = createInitialWeaponSystemState(0);
   let feedback = 'Detecte um contato e pressione Selecionar alvo.';
   let feedbackHoldSeconds = 0;
@@ -332,7 +338,7 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
   function reset(): void {
     activeScan = false;
     aiState = createInitialEnemyAiState();
-    contact = createUnknownContact(ENEMY_CONTENT.id);
+    contact = createUnknownContact(encounterProfile.contactId);
     effect = undefined;
     enemyContact = createUnknownContact('player-aurora');
     enemyDamage = createInitialDamageState(ENEMY_DAMAGE_DEFINITION);
@@ -344,7 +350,7 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
       weaponHeatUnits: 0,
     });
     enemyOrientation = { x: 0, y: -166, z: 0 };
-    enemyPosition = { ...options.enemyInitialPosition };
+    enemyPosition = { ...encounterProfile.contactInitialPosition };
     enemyWeaponState = createInitialWeaponSystemState(0);
     feedback = 'Encontro reiniciado. Detecte e selecione o contato.';
     feedbackHoldSeconds = 0;
@@ -780,11 +786,20 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
     getSnapshot: snapshot,
     restart: reset,
     setProfile(profile) {
-      if (profile.contactDisplayName.length === 0) {
-        throw new Error('O perfil do encontro requer um nome de contato.');
+      if (profile.contactId.length === 0 || profile.contactDisplayName.length === 0) {
+        throw new Error('O perfil do encontro requer ID e nome de contato.');
+      }
+      if (
+        !Number.isFinite(profile.contactInitialPosition.x) ||
+        !Number.isFinite(profile.contactInitialPosition.y) ||
+        !Number.isFinite(profile.contactInitialPosition.z)
+      ) {
+        throw new Error('O perfil do encontro requer posição inicial finita.');
       }
       encounterProfile = {
         allowedPlayerEquipment: [...profile.allowedPlayerEquipment],
+        contactId: profile.contactId,
+        contactInitialPosition: { ...profile.contactInitialPosition },
         contactDisplayName: profile.contactDisplayName,
         disposition: profile.disposition,
       };

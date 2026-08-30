@@ -72,9 +72,12 @@ describe('sessão de encontro', () => {
     const harness = createHarness();
     harness.session.setProfile({
       allowedPlayerEquipment: ['tractor'],
+      contactId: 'iris-research-vessel',
+      contactInitialPosition: TRAINING_ARENA.enemyPosition,
       contactDisplayName: 'Nave de pesquisa Íris',
       disposition: 'passive',
     });
+    harness.session.restart();
     identifyContact(harness);
 
     let snapshot = harness.command({ equipmentId: 'beam', type: 'use-equipment' });
@@ -82,6 +85,8 @@ describe('sessão de encontro', () => {
     expect(snapshot.enemy.shieldPercent).toBe(100);
     for (let index = 0; index < 1_200; index += 1) snapshot = harness.advance();
     expect(snapshot.contact.displayName).toBe('Nave de pesquisa Íris');
+    expect(snapshot.contact.contactId).toBe('iris-research-vessel');
+    expect(snapshot.enemy.position).toEqual(TRAINING_ARENA.enemyPosition);
     expect(snapshot.disposition).toBe('passive');
     expect(snapshot.playerHullPercent).toBe(100);
   });

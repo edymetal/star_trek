@@ -2,8 +2,8 @@
 
 Atualizado em: 30 de agosto de 2026  
 Etapa atual: P1 — Vertical slice/MVP  
-Estado do código: P0.5 aprovado; campanha tutorial de três missões e persistência local concluídas  
-Próximo responsável: Senior Developer / mapa de sistema e apresentação da viagem
+Estado do código: P0.5 aprovado; P1-A concluída com base segura, mapa do sistema e viagem apresentada  
+Próximo responsável: Senior Developer / P1-B — tela inicial e fluxo de preparação na base
 
 Handoff detalhado para continuação: `docs/HANDOFF_REMAINING_WORK.md`
 
@@ -96,7 +96,7 @@ Legenda:
 ## P1 — Vertical slice/MVP
 
 - [x] Três missões tutoriais ponta a ponta: sensores, assistência e combate
-- [~] Base funcional e viagem — partida, retorno, reparo/reabastecimento e transição implementados; mapa ainda pendente
+- [x] Base segura, mapa navegável e viagem — partida, retorno, reparo/reabastecimento e transição visual implementados
 - [x] Save IndexedDB versionado
 - [x] Tutorial contextual e progressão segura entre missões
 - [ ] Áudio e acessibilidade prioritária
@@ -425,3 +425,40 @@ As missões reutilizam sensores, raio trator, combate, energia, dano e reparo ex
 - configurações persistentes, escala do HUD e redução de flashes/tremor;
 - áudio, diário de objetivo/descoberta mais completo, inventário de licenças e recuperação de falha de asset;
 - benchmark de regressão e revisão formal final do MVP.
+
+## Último relatório — base coerente, mapa e viagem P1-A
+
+**ETAPA:** P1 — quarta subfatia da Etapa 6  
+**STATUS:** base segura, mapa do Sistema Hélios e viagem setorial concluídos
+
+### Implementado
+
+- domínio determinístico de navegação com estados `base`, `map`, `travel` e `encounter`, rotas bidirecionais, falhas estruturadas e validação de conteúdo;
+- Sistema Hélios com Base Aurora, três destinos próprios de missão e dois pontos de interesse, todos com IDs estáveis;
+- mapa DOM navegável por teclado, foco restaurado ao fechar, objetivo destacado sem depender somente de cor e mensagem acionável para destino incorreto;
+- viagem visual leve com origem, destino, distância, duração e progresso, integrada às fases `outbound` e `returning` da campanha;
+- base realmente segura: encontro tático, IA, projéteis e VFX ficam indisponíveis; reparo, energia e munição são restaurados somente após o retorno;
+- raízes gráficas fixas para base e bolha tática, alternadas sem alocar entidades por transição;
+- contato e posição próprios para cada uma das três missões, sem alterar o schema v2 do save;
+- reload em viagem ou encontro continua retornando ao checkpoint seguro de briefing.
+
+### Revisão e correções
+
+O mapa e a viagem preservam a autoridade do domínio e não introduzem coordenadas astronômicas, física, dependências ou assets externos. A inspeção visual em 1280×720 e 1600×900 confirmou mapa e transição contidos, legíveis e sem sobreposição. O ciclo completo revelou e corrigiu o posicionamento do diagnóstico depois da nova ação de mapa; um teste integrado também passou a reiniciar explicitamente o encontro após trocar seu perfil, conforme o contrato já usado pela aplicação. Nenhum achado CRITICAL/HIGH permaneceu.
+
+### Verificação
+
+- `npm run verify`: 158/158 testes em 26 arquivos, formatação, lint, typecheck e build aprovados;
+- Playwright completo: 52/52 casos em Chrome/Edge, um worker e nenhum `skip`;
+- navegador real cobre base → mapa → viagem → encontro → retorno, as três missões e reload nos estados transitórios;
+- benchmark físico Chrome 151, WebGL 2, UHD 620, 1600×900/médio: 60,01 FPS médios, p95 de 17,4 ms e p99 de 18,0 ms;
+- cena determinística permaneceu em 88 draw calls e 21 VFX ativos no pior caso medido; base/viagem registram zero VFX de combate;
+- chunks principais: aplicação 28,48 kB gzip e engine 510,52 kB gzip;
+- capturas `p1-system-map-1600x900.png` e `p1-travel-1280x720.png` geradas e inspecionadas.
+
+### Pendências do P1
+
+- P1-B: tela inicial e preparação/seleção na base;
+- P1-C/P1-D: configurações persistentes, escala do HUD, redução de flashes/tremor/partículas e remapeamento essencial;
+- P1-E a P1-G: diário, áudio, fallback de asset, inventário de licenças e créditos;
+- P1-H: decisão offline/PWA, balanceamento, instalação limpa, benchmark e revisão formal final do MVP.

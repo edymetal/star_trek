@@ -11,6 +11,12 @@ describe('initial tutorial mission content', () => {
       'combat-victory',
     ]);
     expect(new Set(INITIAL_TUTORIAL_MISSIONS.map(({ id }) => id)).size).toBe(3);
+    expect(
+      new Set(INITIAL_TUTORIAL_MISSIONS.map(({ destinationNodeId }) => destinationNodeId)).size,
+    ).toBe(3);
+    expect(
+      new Set(INITIAL_TUTORIAL_MISSIONS.map(({ targetContactId }) => targetContactId)).size,
+    ).toBe(3);
     expect(() => createTutorialCampaign(INITIAL_TUTORIAL_MISSIONS)).not.toThrow();
   });
 

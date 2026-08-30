@@ -1,6 +1,6 @@
 # Registro de decisões
 
-Atualizado em: 29 de agosto de 2026
+Atualizado em: 30 de agosto de 2026
 
 Decisões aceitas só devem ser alteradas por nova entrada que referencie a anterior, apresente evidência e descreva migração. Decisões provisórias têm gate explícito.
 
@@ -254,7 +254,7 @@ Decisões aceitas só devem ser alteradas por nova entrada que referencie a ante
 **Opções consideradas:** criar imediatamente mapa, setor e save completos; controlar a missão pela UI; criar uma máquina de estados de domínio pequena e integrá-la à arena existente.  
 **Decisão:** `Levantamento de Nereida` usa uma máquina de estados determinística com briefing, partida, levantamento, retorno e conclusão. O objetivo só é satisfeito quando o snapshot público dos sensores identifica o ID configurado; HUD e PlayCanvas não se tornam autoridades. Partida/retorno usam transição temporal curta e bloqueiam voo, enquanto a conclusão reinicia o encontro para representar reparo, energia e reabastecimento na base. A ação contextual permite repetir o ciclo.  
 **Motivo:** entrega uma missão jogável completa em sessão com regras testáveis sem GPU, reutiliza os sistemas P0 e não adiciona biblioteca, entidade ou efeito gráfico.  
-**Consequências:** a missão ainda não sobrevivia a reload e a viagem ainda não tinha mapa/apresentação própria. A persistência foi resolvida posteriormente por `DECISION-029`; mapa e apresentação de viagem permanecem pendentes.
+**Consequências:** a missão inicialmente não sobrevivia a reload e a viagem não tinha mapa/apresentação própria. A persistência foi resolvida por `DECISION-029`; mapa e apresentação de viagem foram resolvidos posteriormente por `DECISION-031`.
 
 ## DECISION-029 — Snapshots transacionais e checkpoints seguros no save local
 
@@ -272,7 +272,16 @@ Decisões aceitas só devem ser alteradas por nova entrada que referencie a ante
 **Opções consideradas:** três fluxos específicos acoplados ao boot; tutorial apenas textual sobre a arena hostil; campanha de domínio orientada a dados com objetivos validados por eventos autoritativos.  
 **Decisão:** usar uma campanha determinística ordenada com objetivos `identify-contact`, `tractor-lock` e `combat-victory`. O conteúdo define briefing, instruções, contato, disposição e equipamentos permitidos. Os encontros das duas primeiras missões são passivos e liberam, respectivamente, nenhum armamento e somente o raio trator; a terceira missão restaura o perfil hostil e todo o arsenal. A aplicação converte snapshots já validados de sensores, trator e combate em eventos de objetivo. Apenas `briefing` e `completed` são checkpoints. O envelope permanece v2 porque seu contrato já era `{ missionId, checkpoint }`; mudar a versão sem alterar a estrutura criaria uma migração artificial.  
 **Motivo:** ensina uma mecânica por vez, reutiliza os sistemas P0, mantém regras testáveis sem GPU e preserva saves existentes que concluíram a primeira missão. Um save concluído de `Levantamento de Nereida` oferece diretamente a segunda missão.  
-**Consequências:** as três missões compartilham por enquanto a mesma arena e o mesmo ID lógico de contato, com nomes e perfis diferentes. Mapa, apresentação de viagem, diário ampliado, áudio e configurações continuam pendentes. Novos tipos de objetivo devem ser adicionados como dados e eventos explícitos, sem inferência na UI.
+**Consequências:** as três missões inicialmente compartilhavam a mesma arena e o mesmo ID lógico de contato, com nomes e perfis diferentes. `DECISION-031` preservou a bolha tática reutilizada, mas atribuiu setor, contato e posição próprios a cada missão e entregou o mapa/viagem. Diário ampliado, áudio e configurações continuam pendentes. Novos tipos de objetivo devem ser adicionados como dados e eventos explícitos, sem inferência na UI.
+
+## DECISION-031 — Navegação lógica e raízes gráficas fixas separam base, viagem e encontro
+
+**Status:** aceita para a quarta subfatia P1 (P1-A)  
+**Problema:** briefing, partida e retorno existiam apenas como fases temporais sobre a arena ativa. O jogador não tinha mapa, as missões reutilizavam o mesmo contato lógico e o estado de base podia manter apresentação tática incompatível com uma doca segura. A solução não podia introduzir universo 1:1, física orbital, crescimento de entidades ou novo checkpoint instável.  
+**Opções consideradas:** carregar uma cena PlayCanvas distinta a cada estado; simular deslocamento contínuo entre coordenadas astronômicas; manter um grafo lógico no domínio e alternar grupos gráficos prealocados.  
+**Decisão:** o Sistema Hélios é conteúdo imutável validado, composto por Base Aurora, três nós de missão, dois pontos de interesse e rotas bidirecionais com distância e duração artísticas. Uma sessão de domínio controla `base`, `map`, `travel` e `encounter`, seleção de destino e falhas estruturadas. A campanha exige o destino da missão atual, usa a duração da rota nas fases `outbound`/`returning` e conserva apenas os checkpoints v2 `briefing`/`completed`. O PlayCanvas cria uma única vez raízes de base e bolha tática, alterna visibilidade e zera VFX fora do encontro; a viagem é uma apresentação DOM/CSS leve. Cada missão recebe ID e posição de contato próprios.  
+**Motivo:** torna o ciclo espacial coerente e testável sem GPU, mantém a base segura, evita precisão e carregamento desnecessários e preserva o orçamento já aprovado. O DOM existente suporta mapa, foco e feedback sem justificar framework.  
+**Consequências:** não há combate na base ou na viagem; reparo, energia e munição só são restaurados ao concluir o retorno. Reload transitório volta ao briefing seguro e o schema de save continua v2. Novos setores entram como conteúdo validado, mas múltiplos sistemas, simulação orbital e streaming complexo permanecem fora do MVP. O benchmark de regressão em UHD 620/1600×900/médio manteve 60,01 FPS médios e p99 de 18,0 ms.
 
 ## Decisões futuras não bloqueantes
 

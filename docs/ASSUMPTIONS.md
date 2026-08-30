@@ -1,6 +1,6 @@
 # Premissas de trabalho
 
-Atualizado em: 29 de agosto de 2026
+Atualizado em: 30 de agosto de 2026
 
 Estas premissas permitem avançar sem interromper o projeto por preferências que ainda podem ser validadas. Quando uma premissa for confirmada ou rejeitada, atualize seu status e, se afetar arquitetura/escopo, registre uma decisão em `docs/DECISIONS.md`.
 
@@ -18,7 +18,7 @@ Estas premissas permitem avançar sem interromper o projeto por preferências qu
 | A-010 | Português brasileiro é o único idioma necessário no MVP. | Não há requisito de internacionalização inicial. | Usuário confirma antes do P2; evitar texto impossível de extrair. | A validar |
 | A-011 | A câmera principal é terceira pessoa externa, com visão tática complementar. | Melhor demonstra modelos/danos e reduz custo de interiores. | Câmera externa ficou funcional e legível no P0.2; sensação ainda requer playtest do usuário. | Parcialmente validada |
 | A-012 | O voo é cinematográfico com inércia moderada e assistência opcional. | Mais acessível e barato que física realista 6DoF. | Inércia, assistência, freio e impulso passaram testes/E2E; ajustar sensação por playtest. | Parcialmente validada no P0.2 |
-| A-013 | Dobra é uma transição de viagem/carregamento, não velocidade contínua em escala astronômica. | Evita precisão e espaços vazios. | A primeira missão P1 usa transições determinísticas de partida e retorno; apresentação gráfica de viagem continua futura. | Parcialmente validada no P1 |
+| A-013 | Dobra é uma transição de viagem/carregamento, não velocidade contínua em escala astronômica. | Evita precisão e espaços vazios. | O P1-A integrou rotas lógicas, duração configurável e apresentação visual leve às fases de partida e retorno; o ciclo passou em Chrome/Edge e no benchmark de regressão. | Validada no P1-A |
 | A-014 | Planetas são observáveis/escaneáveis; não haverá pouso no MVP. | Pouso é outro jogo em conteúdo e arquitetura. | Reavaliar somente após MVP. | Adotada |
 | A-015 | A primeira narrativa será uma pequena sequência guiada com três missões reutilizando sistemas. | Fecha o ciclo com escopo controlado. | As três missões sequenciais reutilizam sensores, energia, raio trator, combate, arena, base e save; o ciclo integral passou em Chrome/Edge. | Validada no P1 |
 | A-016 | Balanceamento final não é conhecido; P0 usa valores claramente configuráveis. | Protótipo precisa medir antes de polir números. | Telemetria local e playtests P0/P1. | Adotada |
@@ -39,6 +39,7 @@ Estas premissas permitem avançar sem interromper o projeto por preferências qu
 | A-031 | A interceptadora de treinamento deve oferecer pelo menos seis segundos de reação antes de causar dano ao casco do jogador parado. | Permite selecionar, escanear e executar uma primeira decisão tática sem remover o risco do encontro. | Teste de domínio preserva casco e sensores por seis segundos; matriz E2E completa valida que o encontro ainda termina em vitória ou derrota. Valores continuam sujeitos a playtest no P0.5. | Parcialmente validada no P0.4 ciclo 2 |
 | A-032 | Uma carga visual determinística de 4/6/8 naves com corpos, instancing e VFX permanentes representa o pior caso inicial do P0 sem duplicar a simulação de combate. | Permite comparar presets/GPU com a mesma cena e evita um segundo conjunto autoritativo de regras. | E2E confirma repetibilidade estrutural, inspeção confirma composição e a UHD 620 sustentou o perfil baixo com margem sobre o gate escalável. | Validada para o P0.5 |
 | A-033 | Quatro decalques preparados e três sparks geométricos em pool por nave bastam para tornar dano por seção legível sem crescimento de entidades por impacto. | Mantém o dano visível dentro do orçamento de hardware e ligado ao estado lógico. | Testes de apresentação e E2E confirmam seção, ocultação sensorial e subsistemas; inspeção visual e benchmark UHD 620 confirmam carga limitada. Reavaliar com assets finais. | Validada para P0.5 |
+| A-034 | Um grafo de seis nós, rotas artísticas e raízes gráficas fixas bastam para comunicar um sistema estelar no MVP sem universo contínuo. | Fecha o ciclo base–missão com custo previsível e conteúdo expansível. | Testes puros validam o grafo e transições; 52/52 E2E confirmam teclado, três missões e checkpoints; inspeção visual e benchmark UHD 620/médio confirmam apresentação e carga. | Validada no P1-A |
 
 ## Premissas que exigem evidência no P0
 

@@ -4,18 +4,21 @@ import { createTutorialCampaign, type TutorialMissionDefinition } from './tutori
 
 const definitions: readonly TutorialMissionDefinition[] = [
   {
+    destinationNodeId: 'destination-a',
     id: 'survey-test',
     objectiveType: 'identify-contact',
     targetContactId: 'contact-test',
     travelDurationSeconds: 2,
   },
   {
+    destinationNodeId: 'destination-b',
     id: 'assistance-test',
     objectiveType: 'tractor-lock',
     targetContactId: 'contact-test',
     travelDurationSeconds: 2,
   },
   {
+    destinationNodeId: 'destination-c',
     id: 'combat-test',
     objectiveType: 'combat-victory',
     targetContactId: 'contact-test',

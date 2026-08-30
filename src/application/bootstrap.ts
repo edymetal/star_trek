@@ -7,6 +7,7 @@ import {
   getTutorialMissionContent,
   INITIAL_TUTORIAL_MISSIONS,
 } from '../content/mission-content';
+import { getTrainingSystemNode, TRAINING_SYSTEM } from '../content/system-content';
 import { resolveShieldSector, type ShieldSectorId } from '../domain/combat/damage';
 import { createInitialEnergyState, type EnergyAllocation } from '../domain/energy/energy-system';
 import { createInitialShipState } from '../domain/flight/ship-flight';
@@ -16,6 +17,11 @@ import {
   type TutorialCampaignSnapshot,
   type TutorialObjectiveEvent,
 } from '../domain/missions/tutorial-campaign';
+import {
+  createSystemNavigation,
+  type NavigationCommandResult,
+  type SystemNavigationSnapshot,
+} from '../domain/navigation/system-navigation';
 import type { ArenaScene, EngineTelemetry } from '../engine/create-arena-scene';
 import { createFlightInputController } from '../platform/flight-input';
 import { inspectWebGl2Capability } from '../platform/graphics-diagnostics';
@@ -27,6 +33,7 @@ import type {
   EnergyHudTelemetry,
   FlightHudTelemetry,
   MissionHudTelemetry,
+  NavigationHudTelemetry,
   SaveHudTelemetry,
 } from '../ui/app-shell';
 import { createFlightSession } from './flight-session';
@@ -105,7 +112,7 @@ function createMissionHudTelemetry(snapshot: TutorialCampaignSnapshot): MissionH
       return {
         ...shared,
         actionEnabled: true,
-        actionLabel: 'Iniciar missão',
+        actionLabel: 'Abrir mapa do sistema',
         objective: mission.briefing,
         phaseLabel: `${snapshot.missionNumber}/${snapshot.missionCount} · Na base`,
       };
@@ -140,12 +147,76 @@ function createMissionHudTelemetry(snapshot: TutorialCampaignSnapshot): MissionH
         ...shared,
         actionEnabled: true,
         actionLabel: snapshot.campaignCompleted
-          ? 'Reiniciar treinamento'
-          : `Iniciar missão ${snapshot.missionNumber + 1}`,
+          ? 'Reiniciar treinamento pelo mapa'
+          : `Preparar missão ${snapshot.missionNumber + 1}`,
         objective: mission.completedObjective,
         phaseLabel: `${snapshot.missionNumber}/${snapshot.missionCount} · Concluída`,
       };
   }
+}
+
+function navigationFailureMessage(result: NavigationCommandResult): string | undefined {
+  if (result.accepted) return undefined;
+  const messages = {
+    'destination-required': 'Selecione um destino conectado antes de iniciar a viagem.',
+    'invalid-state': 'Este comando de navegação não está disponível no estado atual.',
+    'route-unavailable': 'Não existe uma rota segura entre estes pontos. Selecione outro destino.',
+    'unknown-destination': 'O destino selecionado não existe no conteúdo carregado.',
+  } as const;
+  return messages[result.reason];
+}
+
+function createNavigationHudTelemetry(
+  navigation: SystemNavigationSnapshot,
+  mission: TutorialCampaignSnapshot,
+): NavigationHudTelemetry {
+  const missionContent = getTutorialMissionContent(mission.missionId);
+  const currentNode = getTrainingSystemNode(navigation.currentNodeId);
+  const route = navigation.activeRoute ?? navigation.selectedRoute;
+  const destinationNode =
+    route === undefined ? undefined : getTrainingSystemNode(route.destinationNodeId);
+  const originNode = route === undefined ? undefined : getTrainingSystemNode(route.originNodeId);
+  const correctDestination =
+    navigation.selectedRoute?.destinationNodeId === missionContent.destinationNodeId;
+  const routeLabel =
+    route === undefined || destinationNode === undefined || originNode === undefined
+      ? `${currentNode.label} · nenhuma rota ativa`
+      : `${originNode.label} → ${destinationNode.label}`;
+  const routeDetail =
+    route === undefined
+      ? 'Abra o mapa e escolha o destino indicado pelo objetivo atual.'
+      : `${route.distanceUnits.toFixed(0)} unidades setoriais · ${route.durationSeconds.toFixed(1)} s de transição configurada`;
+  const guidance =
+    navigation.mode === 'map'
+      ? navigation.selectedRoute === undefined
+        ? `Selecione ${getTrainingSystemNode(missionContent.destinationNodeId).label}, marcado como destino da missão.`
+        : correctDestination
+          ? 'Rota validada. Confirme para desacoplar da base e iniciar a viagem.'
+          : 'Este ponto pode ser consultado, mas não é o destino da missão atual.'
+      : navigation.mode === 'travel'
+        ? 'Controles de voo e combate permanecem bloqueados durante a transição.'
+        : navigation.mode === 'encounter'
+          ? 'Bolha tática ativa. O retorno usará a rota segura de origem.'
+          : 'Base segura: nave reparada, energia restaurada e torpedos reabastecidos.';
+  return {
+    canConfirmTravel: navigation.mode === 'map' && correctDestination,
+    currentLocationLabel: currentNode.label,
+    guidance,
+    mapNodes: TRAINING_SYSTEM.nodes.map((node) => ({
+      id: node.id,
+      isCurrentLocation: node.id === navigation.currentNodeId,
+      isMissionDestination: node.id === missionContent.destinationNodeId,
+      isSelected: node.id === navigation.selectedRoute?.destinationNodeId,
+      kind: node.kind,
+      label: node.label,
+      summary: node.summary,
+    })),
+    mode: navigation.mode,
+    routeDetail,
+    routeLabel,
+    systemLabel: TRAINING_SYSTEM.label,
+    travelProgress: navigation.mode === 'travel' ? mission.transitionProgress : 0,
+  };
 }
 
 function toSaveHudTelemetry(status: SaveControllerStatus): SaveHudTelemetry {
@@ -210,9 +281,17 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       checkpoint: saveInitialization.payload.mission.checkpoint,
       missionId: saveInitialization.payload.mission.missionId,
     });
-    if (saveInitialization.payload.mission.checkpoint === 'completed') {
-      flightSession.pause('mission-complete');
-    }
+    const navigationSession = createSystemNavigation(TRAINING_SYSTEM);
+    const initialMissionContent = getTutorialMissionContent(missionSession.getSnapshot().missionId);
+    encounterSession.setProfile({
+      allowedPlayerEquipment: initialMissionContent.allowedEquipment,
+      contactDisplayName: initialMissionContent.contactDisplayName,
+      contactId: initialMissionContent.targetContactId,
+      contactInitialPosition: initialMissionContent.contactInitialPosition,
+      disposition: initialMissionContent.encounterMode,
+    });
+    flightSession.restartEncounter();
+    flightSession.pause('mission-base');
     const presentationEffectRetainer = createPresentationEffectRetainer();
     let pendingPresentationEffect:
       | {
@@ -224,6 +303,10 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       | undefined;
     let presentationEffectSerial = 0;
     const requestPlayerEffect = (equipmentId: PlayerPresentationEquipmentId): void => {
+      if (navigationSession.getSnapshot().mode !== 'encounter') {
+        shell.setControlFeedback('Equipamentos táticos estão indisponíveis fora do encontro.');
+        return;
+      }
       const beforeSnapshot = flightSession.getSnapshot();
       const before = beforeSnapshot.encounter;
       const ship = beforeSnapshot.ship;
@@ -264,6 +347,9 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       shell.setFlightTelemetry(telemetry.flight);
       shell.setEnergyTelemetry(telemetry.energy);
       shell.setMissionTelemetry(telemetry.mission);
+      shell.setNavigationTelemetry(
+        createNavigationHudTelemetry(navigationSession.getSnapshot(), missionSession.getSnapshot()),
+      );
     });
     const createHudTelemetry = (snapshot = flightSession.getSnapshot()): PublishedHudTelemetry => {
       const { effects, flow, profileId, state } = snapshot.energy;
@@ -370,9 +456,9 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       fullscreenTarget: shell.fullscreenTarget,
       onControlFeedback: (message) => shell.setControlFeedback(message),
       onFocusLost() {
-        flightSession.pause(
-          missionSession.getSnapshot().phase === 'completed' ? 'mission-complete' : 'focus-lost',
-        );
+        if (navigationSession.getSnapshot().mode === 'encounter') {
+          flightSession.pause('focus-lost');
+        }
         refreshHud();
       },
       onFullscreenChange(active) {
@@ -380,14 +466,9 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
         shell.setControlFeedback(active ? 'Tela cheia ativada.' : 'Tela cheia desativada.');
       },
       onPauseToggle() {
-        const missionPhase = missionSession.getSnapshot().phase;
-        if (
-          missionPhase === 'outbound' ||
-          missionPhase === 'returning' ||
-          missionPhase === 'completed'
-        ) {
+        if (navigationSession.getSnapshot().mode !== 'encounter') {
           shell.setControlFeedback(
-            'O controle de voo está bloqueado durante esta etapa da missão.',
+            'Pausa manual e controles de voo só ficam disponíveis dentro da bolha tática.',
           );
           return;
         }
@@ -395,6 +476,12 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
         refreshHud();
       },
       onTacticalAction(action) {
+        if (navigationSession.getSnapshot().mode !== 'encounter') {
+          shell.setControlFeedback(
+            'Controles táticos indisponíveis fora de um encontro. Abra o mapa para partir.',
+          );
+          return;
+        }
         if (action === 'select-target') flightSession.selectNextTarget();
         else if (action === 'clear-target') flightSession.clearTarget();
         else if (action === 'toggle-scan') flightSession.toggleActiveScan();
@@ -416,14 +503,9 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       onFullscreen: () => void input.toggleFullscreen(),
       onPause() {
         input.releaseControls();
-        const missionPhase = missionSession.getSnapshot().phase;
-        if (
-          missionPhase === 'outbound' ||
-          missionPhase === 'returning' ||
-          missionPhase === 'completed'
-        ) {
+        if (navigationSession.getSnapshot().mode !== 'encounter') {
           shell.setControlFeedback(
-            'O controle de voo está bloqueado durante esta etapa da missão.',
+            'Pausa manual e controles de voo só ficam disponíveis dentro da bolha tática.',
           );
           return;
         }
@@ -443,15 +525,22 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       },
     });
     const unbindCombatControls = shell.bindCombatControls({
-      onClearTarget: () => flightSession.clearTarget(),
+      onClearTarget: () => {
+        if (navigationSession.getSnapshot().mode === 'encounter') flightSession.clearTarget();
+      },
       onRestartEncounter() {
+        if (navigationSession.getSnapshot().mode !== 'encounter') return;
         flightSession.restartEncounter();
         presentationEffectRetainer.clear();
         pendingPresentationEffect = undefined;
         refreshHud();
       },
-      onSelectTarget: () => flightSession.selectNextTarget(),
-      onToggleScan: () => flightSession.toggleActiveScan(),
+      onSelectTarget: () => {
+        if (navigationSession.getSnapshot().mode === 'encounter') flightSession.selectNextTarget();
+      },
+      onToggleScan: () => {
+        if (navigationSession.getSnapshot().mode === 'encounter') flightSession.toggleActiveScan();
+      },
       onUseBeam: () => requestPlayerEffect('beam'),
       onUseTorpedo: () => requestPlayerEffect('torpedo'),
       onUseTractor: () => requestPlayerEffect('tractor'),
@@ -460,13 +549,52 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       presentationEffectRetainer.clear();
       pendingPresentationEffect = undefined;
     };
-    const startMission = (): void => {
-      const missionBeforeStart = missionSession.getSnapshot();
-      if (!missionSession.start()) return;
-      const mission = getTutorialMissionContent(missionBeforeStart.missionId);
+    const openMapForCurrentMission = (): void => {
+      const before = missionSession.getSnapshot();
+      if (before.phase === 'completed') {
+        if (!missionSession.continueFromCompletion()) return;
+        const nextMission = missionSession.getSnapshot();
+        persistCheckpoint(createGameSavePayload(nextMission.missionId, 'briefing'));
+      } else if (before.phase !== 'briefing') {
+        shell.setControlFeedback(
+          'O mapa de partida só pode ser aberto enquanto a nave está na base.',
+        );
+        return;
+      }
+      const result = navigationSession.openMap();
+      const failure = navigationFailureMessage(result);
+      shell.setControlFeedback(
+        failure ?? 'Mapa aberto. Selecione o destino marcado para a missão atual.',
+      );
+      input.releaseControls();
+      refreshHud();
+    };
+    const confirmMissionTravel = (): void => {
+      const missionSnapshot = missionSession.getSnapshot();
+      const mission = getTutorialMissionContent(missionSnapshot.missionId);
+      const selectedDestination = navigationSession.getSnapshot().selectedRoute?.destinationNodeId;
+      if (selectedDestination !== mission.destinationNodeId) {
+        shell.setControlFeedback(
+          `Selecione ${getTrainingSystemNode(mission.destinationNodeId).label}, o destino marcado para esta missão.`,
+        );
+        refreshHud();
+        return;
+      }
+      const navigationResult = navigationSession.beginOutboundTravel();
+      const failure = navigationFailureMessage(navigationResult);
+      if (failure !== undefined) {
+        shell.setControlFeedback(failure);
+        refreshHud();
+        return;
+      }
+      if (!missionSession.start()) {
+        throw new Error('A campanha rejeitou uma rota já validada no briefing.');
+      }
       persistCheckpoint(createGameSavePayload(mission.id, 'briefing'));
       encounterSession.setProfile({
         allowedPlayerEquipment: mission.allowedEquipment,
+        contactId: mission.targetContactId,
+        contactInitialPosition: mission.contactInitialPosition,
         contactDisplayName: mission.contactDisplayName,
         disposition: mission.encounterMode,
       });
@@ -477,18 +605,47 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       shell.setControlFeedback(mission.outboundObjective);
       refreshHud();
     };
+    const unbindNavigationControls = shell.bindNavigationControls({
+      onCloseMap() {
+        const failure = navigationFailureMessage(navigationSession.closeMap());
+        shell.setControlFeedback(failure ?? 'Mapa fechado. A nave permanece segura na base.');
+        refreshHud();
+      },
+      onConfirmTravel: confirmMissionTravel,
+      onOpenMap: openMapForCurrentMission,
+      onSelectDestination(nodeId) {
+        const result = navigationSession.selectDestination(nodeId);
+        const failure = navigationFailureMessage(result);
+        if (failure !== undefined) {
+          shell.setControlFeedback(failure);
+        } else {
+          const mission = getTutorialMissionContent(missionSession.getSnapshot().missionId);
+          shell.setControlFeedback(
+            nodeId === mission.destinationNodeId
+              ? 'Destino da missão selecionado. Confirme para iniciar a viagem.'
+              : 'Ponto consultado. Selecione o destino marcado para iniciar a missão.',
+          );
+        }
+        refreshHud();
+      },
+    });
     const unbindMissionControls = shell.bindMissionControls({
       onPrimaryAction() {
         const mission = missionSession.getSnapshot();
-        if (mission.phase === 'briefing') {
-          startMission();
+        if (mission.phase === 'briefing' || mission.phase === 'completed') {
+          openMapForCurrentMission();
           return;
         }
-        if (mission.phase === 'completed' && missionSession.continueFromCompletion()) {
-          startMission();
-          return;
-        }
-        if (mission.phase === 'objective' && missionSession.beginReturn()) {
+        if (mission.phase === 'objective' && mission.objectiveCompleted) {
+          const navigationFailure = navigationFailureMessage(navigationSession.beginReturnTravel());
+          if (navigationFailure !== undefined) {
+            shell.setControlFeedback(navigationFailure);
+            refreshHud();
+            return;
+          }
+          if (!missionSession.beginReturn()) {
+            throw new Error('A campanha rejeitou um retorno já validado pela navegação.');
+          }
           const content = getTutorialMissionContent(mission.missionId);
           input.releaseControls();
           flightSession.pause('mission-transition');
@@ -506,6 +663,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
     disposeFailedBootstrap = () => {
       unbindSaveControls();
       unbindMissionControls();
+      unbindNavigationControls();
       unbindCombatControls();
       unbindEnergyControls();
       unbindControls();
@@ -545,13 +703,21 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
               missionAfterAdvance.phase === 'objective' &&
               flightSession.getSnapshot().pauseReason === 'mission-transition'
             ) {
+              const navigationFailure = navigationFailureMessage(navigationSession.arrive());
+              if (navigationFailure !== undefined) {
+                throw new Error(`A chegada ao encontro falhou: ${navigationFailure}`);
+              }
               const mission = getTutorialMissionContent(missionAfterAdvance.missionId);
               flightSession.resume();
               shell.setControlFeedback(mission.arrivalFeedback);
             } else if (missionAfterAdvance.phase === 'completed') {
+              const navigationFailure = navigationFailureMessage(navigationSession.arrive());
+              if (navigationFailure !== undefined) {
+                throw new Error(`A chegada à base falhou: ${navigationFailure}`);
+              }
               const mission = getTutorialMissionContent(missionAfterAdvance.missionId);
               flightSession.restartEncounter();
-              flightSession.pause('mission-complete');
+              flightSession.pause('mission-base');
               resetPresentationEffects();
               persistCheckpoint(createGameSavePayload(mission.id, 'completed'));
               shell.setControlFeedback(mission.completionFeedback);
@@ -640,9 +806,13 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
             authoritativeEffect,
             retainedPlayerEffects,
           );
-          if (presentationEffects.length === 0) return snapshot;
-          return {
+          const renderSnapshot = {
             ...snapshot,
+            navigationMode: navigationSession.getSnapshot().mode,
+          } as const;
+          if (presentationEffects.length === 0) return renderSnapshot;
+          return {
+            ...renderSnapshot,
             presentationEffects,
           };
         },

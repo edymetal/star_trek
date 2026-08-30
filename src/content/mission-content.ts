@@ -1,5 +1,7 @@
 import { ENEMY_CONTENT } from './combat-content';
+import { getTrainingRouteFromBase } from './system-content';
 import type { EquipmentId } from '../domain/combat/weapons';
+import type { Vector3Value } from '../domain/flight/ship-flight';
 import type {
   TutorialMissionDefinition,
   TutorialObjectiveType,
@@ -12,6 +14,7 @@ export interface TutorialMissionContent extends TutorialMissionDefinition {
   readonly completedObjective: string;
   readonly completionFeedback: string;
   readonly contactDisplayName: string;
+  readonly contactInitialPosition: Vector3Value;
   readonly encounterMode: 'hostile' | 'passive';
   readonly objectiveCompleteText: string;
   readonly objectiveInstruction: string;
@@ -23,14 +26,14 @@ export interface TutorialMissionContent extends TutorialMissionDefinition {
 }
 
 function tutorialMission(
-  content: Omit<TutorialMissionContent, 'targetContactId' | 'travelDurationSeconds'> & {
+  content: Omit<TutorialMissionContent, 'travelDurationSeconds'> & {
     readonly objectiveType: TutorialObjectiveType;
   },
 ): TutorialMissionContent {
+  const route = getTrainingRouteFromBase(content.destinationNodeId);
   return {
     ...content,
-    targetContactId: ENEMY_CONTENT.id,
-    travelDurationSeconds: 1.2,
+    travelDurationSeconds: route.durationSeconds,
   };
 }
 
@@ -43,6 +46,8 @@ export const INITIAL_TUTORIAL_MISSIONS: readonly TutorialMissionContent[] = [
     completedObjective: 'Sensores dominados. Dados entregues e nave revisada na base.',
     completionFeedback: 'Missão 1 concluída. Sensores e navegação básica aprovados.',
     contactDisplayName: 'Sonda de Nereida',
+    contactInitialPosition: { x: -18, y: 4, z: -55 },
+    destinationNodeId: 'nereida-corridor',
     encounterMode: 'passive',
     id: 'nereida-survey',
     objectiveCompleteText: 'Sonda identificada. Retorne à base com os dados do levantamento.',
@@ -50,6 +55,7 @@ export const INITIAL_TUTORIAL_MISSIONS: readonly TutorialMissionContent[] = [
       'Pressione T para selecionar, R para escanear e mantenha o contato dentro do alcance dos sensores.',
     objectiveLabel: 'Levantamento',
     objectiveType: 'identify-contact',
+    targetContactId: 'nereida-probe',
     outboundObjective: 'Em trânsito para o corredor de Nereida. Sistemas táticos em espera.',
     returnFeedback: 'Dados protegidos. Retornando à base.',
     returningObjective: 'Retornando à base com os dados do levantamento.',
@@ -64,6 +70,8 @@ export const INITIAL_TUTORIAL_MISSIONS: readonly TutorialMissionContent[] = [
     completedObjective: 'Resgate concluído. Emissor trator revisado e nave reabastecida na base.',
     completionFeedback: 'Missão 2 concluída. Assistência e raio trator aprovados.',
     contactDisplayName: 'Nave de pesquisa Íris',
+    contactInitialPosition: { x: 12, y: -3, z: -58 },
+    destinationNodeId: 'iris-ring',
     encounterMode: 'passive',
     id: 'iris-assistance',
     objectiveCompleteText:
@@ -72,6 +80,7 @@ export const INITIAL_TUTORIAL_MISSIONS: readonly TutorialMissionContent[] = [
       'Identifique o contato, aproxime-se a menos de 72 u, alinhe a proa e use 3. Mais auxiliares fortalecem sensores e trator.',
     objectiveLabel: 'Assistência',
     objectiveType: 'tractor-lock',
+    targetContactId: 'iris-research-vessel',
     outboundObjective: 'Em trânsito para o anel de Íris. Armas ofensivas permanecerão bloqueadas.',
     returnFeedback: 'Nave estabilizada. Retornando à base em formação de resgate.',
     returningObjective: 'Escoltando a nave de pesquisa estabilizada de volta à base.',
@@ -86,6 +95,8 @@ export const INITIAL_TUTORIAL_MISSIONS: readonly TutorialMissionContent[] = [
     completedObjective: 'Treinamento inicial concluído. Nave reparada e tripulação certificada.',
     completionFeedback: 'Missão 3 concluída. Treinamento inicial completo.',
     contactDisplayName: ENEMY_CONTENT.displayName,
+    contactInitialPosition: { x: -24, y: 6, z: -61 },
+    destinationNodeId: 'aurora-defense-corridor',
     encounterMode: 'hostile',
     id: 'vespa-combat-training',
     objectiveCompleteText: 'Ameaça neutralizada. Retorne à base para concluir o treinamento.',
@@ -93,6 +104,7 @@ export const INITIAL_TUTORIAL_MISSIONS: readonly TutorialMissionContent[] = [
       'Identifique o alvo, escolha Ataque ou Defesa e use feixe (1) e torpedos (2) até obter vitória.',
     objectiveLabel: 'Combate',
     objectiveType: 'combat-victory',
+    targetContactId: ENEMY_CONTENT.id,
     outboundObjective: 'Em trânsito para a área de combate. Revise energia, escudos e armamentos.',
     returnFeedback: 'Área segura. Retornando à base para avaliação final.',
     returningObjective: 'Retornando à base após neutralizar a interceptadora.',

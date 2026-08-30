@@ -33,6 +33,7 @@ import type { GraphicsPreset } from '../content/graphics-presets';
 import { TRAINING_ARENA } from '../content/arena-content';
 import { ENEMY_DAMAGE_DEFINITION, PLAYER_DAMAGE_DEFINITION } from '../content/combat-content';
 import { HULL_SECTIONS, type HullSectionId, type SubsystemId } from '../domain/combat/damage';
+import type { NavigationMode } from '../domain/navigation/system-navigation';
 import { FpsMeter } from '../platform/fps-meter';
 import { FrameTimeProfiler, type FrameTimeProfile } from '../platform/frame-time-profiler';
 import { createResourceTransaction } from './resource-transaction';
@@ -80,6 +81,7 @@ export interface BenchmarkTelemetry {
 }
 
 export interface ArenaRenderSnapshot extends FlightSessionSnapshot {
+  readonly navigationMode: NavigationMode;
   readonly presentationEffects?: readonly CombatEffectSnapshot[];
 }
 
@@ -1072,23 +1074,27 @@ export async function createArenaScene(
 
     const player = createDetailedShip('Player Aurora', materials, materials.hull);
     app.root.addChild(player.root);
+    const baseEnvironment = new Entity('Base sector environment');
+    const tacticalEnvironment = new Entity('Tactical bubble environment');
+    app.root.addChild(baseEnvironment);
+    app.root.addChild(tacticalEnvironment);
     const remote = createRemoteShip(materials);
-    app.root.addChild(remote.root);
+    tacticalEnvironment.addChild(remote.root);
     remote.root.enabled = false;
     const benchmarkFleet =
       options.benchmark === undefined
         ? []
         : createBenchmarkFleet(
-            app.root,
+            tacticalEnvironment,
             materials,
             preset.benchmarkShipCount,
             preset.maxVisualDamageBursts,
           );
-    const combatVfx = createCombatVfx(app.root, materials);
-    createStarbase(app.root, materials);
+    const combatVfx = createCombatVfx(tacticalEnvironment, materials);
+    createStarbase(baseEnvironment, materials);
     createCelestialBodies(app.root, materials);
     const instanceBuffer = createInstancedAsteroids(
-      app.root,
+      tacticalEnvironment,
       graphicsDevice,
       materials.asteroid,
       preset.asteroidCount,
@@ -1201,14 +1207,21 @@ export async function createArenaScene(
               ],
             };
       const { orientationDegrees, position } = snapshot.ship;
+      const encounterVisible =
+        options.benchmark !== undefined || snapshot.navigationMode === 'encounter';
+      baseEnvironment.enabled =
+        options.benchmark === undefined &&
+        (snapshot.navigationMode === 'base' || snapshot.navigationMode === 'map');
+      tacticalEnvironment.enabled = encounterVisible;
       player.root.setPosition(position.x, position.y, position.z);
       player.root.setEulerAngles(orientationDegrees.x, orientationDegrees.y, orientationDegrees.z);
       const encounter = snapshot.encounter;
       const remoteVessel = deriveRemoteVesselPresentation(encounter.contact);
+      const remoteVisible = encounterVisible && remoteVessel.visible;
       const presentationEffect = snapshot.presentationEffects?.at(-1);
       const combatVisuals = deriveCombatVisualPresentation(
         presentationEffect === undefined ? encounter : { ...encounter, effect: presentationEffect },
-        remoteVessel.visible,
+        remoteVisible,
         COMBAT_VISUAL_CAPACITIES,
       );
       applyHullSectionVisualStates(
@@ -1219,8 +1232,8 @@ export async function createArenaScene(
         preset.maxVisualDamageBursts,
         benchmarkElapsedSeconds,
       );
-      remote.root.enabled = remoteVessel.visible;
-      if (remoteVessel.visible && remoteVessel.position !== undefined) {
+      remote.root.enabled = remoteVisible;
+      if (remoteVisible && remoteVessel.position !== undefined) {
         remote.root.setPosition(
           remoteVessel.position.x,
           remoteVessel.position.y,
@@ -1254,14 +1267,19 @@ export async function createArenaScene(
                 : materials.damageCritical;
         }
       }
-      const combatVfxCount = updateCombatVfx(
-        combatVfx,
-        snapshot,
-        player,
-        remote,
-        remoteVessel.visible,
-        materials,
-      );
+      let combatVfxCount = 0;
+      if (encounterVisible) {
+        combatVfxCount = updateCombatVfx(
+          combatVfx,
+          snapshot,
+          player,
+          remote,
+          remoteVisible,
+          materials,
+        );
+      } else {
+        combatVfx.pooledEntities.forEach((entity) => (entity.enabled = false));
+      }
       renderedTelemetry.activeVfxCount =
         combatVfxCount +
         countActiveDamageVfx(player) +
@@ -1277,6 +1295,7 @@ export async function createArenaScene(
       camera.lookAt(cameraTarget);
 
       const selectedContact =
+        encounterVisible &&
         encounter.selectedContactId !== undefined &&
         encounter.selectedContactId === encounter.contact.contactId;
       if (
@@ -1322,17 +1341,21 @@ export async function createArenaScene(
       }
       handlers.onPresentationFrame({ combatVisuals, targetMarker: targetMarkerPresentation });
 
-      const distanceToRemote = remoteVessel.visible
+      const distanceToRemote = remoteVisible
         ? player.root.getPosition().distance(remote.root.getPosition())
         : Number.POSITIVE_INFINITY;
-      const detailedLod = remoteVessel.visible && distanceToRemote < preset.lodDistanceUnits;
+      const detailedLod = remoteVisible && distanceToRemote < preset.lodDistanceUnits;
       remote.detailed.root.enabled = detailedLod;
-      remote.low.enabled = remoteVessel.visible && !detailedLod;
-      lodLabel = remoteVessel.visible
+      remote.low.enabled = remoteVisible && !detailedLod;
+      lodLabel = remoteVisible
         ? detailedLod
           ? 'Nave remota · detalhada'
           : 'Nave remota · silhueta'
-        : 'Nave remota · oculta sem percepção';
+        : snapshot.navigationMode === 'base' || snapshot.navigationMode === 'map'
+          ? 'Base Aurora · setor seguro'
+          : snapshot.navigationMode === 'travel'
+            ? 'Transição setorial · bolha descarregada'
+            : 'Nave remota · oculta sem percepção';
 
       const fps = fpsMeter.recordFrame(performance.now());
       if (fps !== undefined) {

@@ -1,7 +1,7 @@
 # Arquitetura do jogo
 
-Status: aceita para P0  
-Versão: 1.0 — 20 de agosto de 2026
+Status: aceita para P0 e P1-A  
+Versão: 1.1 — 30 de agosto de 2026
 
 Este documento define como o produto será construído. Requisitos pertencem a [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md), prioridade a [`docs/MVP.md`](docs/MVP.md), decisões justificadas a [`docs/DECISIONS.md`](docs/DECISIONS.md) e pesquisa/orçamentos detalhados a [`PLANEJAMENTO.md`](PLANEJAMENTO.md).
 
@@ -250,6 +250,8 @@ Três escalas evitam precisão ruim e simulação desnecessária:
 3. **Bolha tática:** jogador, contatos próximos, projéteis e efeitos em simulação completa.
 
 O adaptador gráfico aplica origem flutuante/recenteamento sem mudar coordenadas lógicas de missão de forma observável. Planetas usam escala artística, não distâncias astronômicas no espaço local. Colisões usam volumes simples, nunca a malha visual detalhada.
+
+No P1-A, `src/domain/navigation` implementa a máquina de estados e valida o grafo lógico do Sistema Hélios sem DOM, GPU ou relógio global. `src/content/system-content.ts` define nós e rotas imutáveis; a aplicação coordena seus tempos com as fases da campanha. O adaptador PlayCanvas mantém raízes fixas de base e bolha tática e apenas alterna sua visibilidade, zerando VFX fora do encontro. A apresentação de viagem permanece no adaptador DOM/CSS e não cria outra simulação espacial.
 
 ## 9. Persistência
 

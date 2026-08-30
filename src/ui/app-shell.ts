@@ -13,6 +13,7 @@ import {
 import type { GraphicsCapability, GraphicsReadiness } from '../domain/graphics-readiness';
 import type { Vector3Value } from '../domain/flight/ship-flight';
 import type { TutorialMissionPhase } from '../domain/missions/tutorial-campaign';
+import type { NavigationMode, NavigationNodeKind } from '../domain/navigation/system-navigation';
 import { conditionLabel } from './condition-label';
 
 export interface CompatibilityNotice {
@@ -29,6 +30,7 @@ export interface AppShell {
   bindFlightControls(handlers: FlightControlHandlers): () => void;
   bindCombatControls(handlers: CombatControlHandlers): () => void;
   bindMissionControls(handlers: MissionControlHandlers): () => void;
+  bindNavigationControls(handlers: NavigationControlHandlers): () => void;
   bindSaveControls(handlers: SaveControlHandlers): () => void;
   setBackend(label: string): void;
   setBenchmarkTelemetry(telemetry: BenchmarkHudTelemetry): void;
@@ -40,6 +42,7 @@ export interface AppShell {
   setGraphicsCapability(capability: GraphicsCapability): void;
   setFlightTelemetry(telemetry: FlightHudTelemetry): void;
   setMissionTelemetry(telemetry: MissionHudTelemetry): void;
+  setNavigationTelemetry(telemetry: NavigationHudTelemetry): void;
   setSaveStatus(telemetry: SaveHudTelemetry): void;
   setFullscreenActive(active: boolean): void;
   setPointerCaptured(active: boolean): void;
@@ -88,6 +91,13 @@ export interface MissionControlHandlers {
   readonly onPrimaryAction: () => void;
 }
 
+export interface NavigationControlHandlers {
+  readonly onCloseMap: () => void;
+  readonly onConfirmTravel: () => void;
+  readonly onOpenMap: () => void;
+  readonly onSelectDestination: (nodeId: string) => void;
+}
+
 export interface SaveControlHandlers {
   readonly onRecover: () => void;
 }
@@ -119,6 +129,28 @@ export interface MissionHudTelemetry {
   readonly phaseLabel: string;
   readonly title: string;
   readonly transitionProgress: number;
+}
+
+export interface NavigationMapNodeTelemetry {
+  readonly id: string;
+  readonly isCurrentLocation: boolean;
+  readonly isMissionDestination: boolean;
+  readonly isSelected: boolean;
+  readonly kind: NavigationNodeKind;
+  readonly label: string;
+  readonly summary: string;
+}
+
+export interface NavigationHudTelemetry {
+  readonly canConfirmTravel: boolean;
+  readonly currentLocationLabel: string;
+  readonly guidance: string;
+  readonly mapNodes: readonly NavigationMapNodeTelemetry[];
+  readonly mode: NavigationMode;
+  readonly routeDetail: string;
+  readonly routeLabel: string;
+  readonly systemLabel: string;
+  readonly travelProgress: number;
 }
 
 export interface CombatHudTelemetry {
@@ -154,7 +186,12 @@ export interface FlightHudTelemetry {
   readonly instancedObjects: number;
   readonly lodLabel: string;
   readonly pauseReason:
-    'focus-lost' | 'manual' | 'mission-complete' | 'mission-transition' | undefined;
+    | 'focus-lost'
+    | 'manual'
+    | 'mission-base'
+    | 'mission-complete'
+    | 'mission-transition'
+    | undefined;
   readonly paused: boolean;
   readonly position: Vector3Value;
   readonly sensorRangeUnits: number;
@@ -239,6 +276,8 @@ function roundAllocationForDisplay(
 
 export function createAppShell(root: HTMLElement): AppShell {
   const canvas = requireElement<HTMLCanvasElement>(root, '#game-canvas');
+  const objectiveCard = requireElement<HTMLElement>(root, '.objective-card');
+  const centerReticle = requireElement<HTMLElement>(root, '[data-center-reticle]');
   const statusText = requireElement<HTMLElement>(root, '[data-status-text]');
   const backendValue = requireElement<HTMLElement>(root, '[data-diagnostic="backend"]');
   const rendererValue = requireElement<HTMLElement>(root, '[data-diagnostic="renderer"]');
@@ -261,6 +300,30 @@ export function createAppShell(root: HTMLElement): AppShell {
   const missionTitle = requireElement<HTMLElement>(root, '[data-mission-title]');
   const missionPhase = requireElement<HTMLElement>(root, '[data-mission-phase]');
   const missionAction = requireElement<HTMLButtonElement>(root, '[data-mission-action]');
+  const systemMap = requireElement<HTMLElement>(root, '[data-system-map]');
+  const systemMapTitle = requireElement<HTMLElement>(systemMap, '[data-system-map-title]');
+  const navigationDestinations = requireElement<HTMLElement>(
+    systemMap,
+    '[data-navigation-destinations]',
+  );
+  const navigationRoute = requireElement<HTMLElement>(systemMap, '[data-navigation-route]');
+  const navigationRouteDetail = requireElement<HTMLElement>(
+    systemMap,
+    '[data-navigation-route-detail]',
+  );
+  const navigationGuidance = requireElement<HTMLElement>(systemMap, '[data-navigation-guidance]');
+  const navigationClose = requireElement<HTMLButtonElement>(systemMap, '[data-navigation-close]');
+  const navigationConfirm = requireElement<HTMLButtonElement>(
+    systemMap,
+    '[data-navigation-confirm]',
+  );
+  const travelPresentation = requireElement<HTMLElement>(root, '[data-travel-presentation]');
+  const travelTitle = requireElement<HTMLElement>(travelPresentation, '[data-travel-title]');
+  const travelRoute = requireElement<HTMLElement>(travelPresentation, '[data-travel-route]');
+  const travelProgress = requireElement<HTMLProgressElement>(
+    travelPresentation,
+    '[data-travel-progress]',
+  );
   const saveStatus = requireElement<HTMLElement>(root, '[data-save-status]');
   const saveRecovery = requireElement<HTMLButtonElement>(root, '[data-save-recovery]');
   const speedValue = requireElement<HTMLElement>(flightHud, '[data-flight-speed]');
@@ -279,6 +342,7 @@ export function createAppShell(root: HTMLElement): AppShell {
   const pauseButton = requireElement<HTMLButtonElement>(flightHud, '[data-flight-pause]');
   const captureButton = requireElement<HTMLButtonElement>(flightHud, '[data-flight-capture]');
   const fullscreenButton = requireElement<HTMLButtonElement>(flightHud, '[data-flight-fullscreen]');
+  const navigationOpen = requireElement<HTMLButtonElement>(flightHud, '[data-navigation-open]');
   const controlFeedback = requireElement<HTMLElement>(flightHud, '[data-control-feedback]');
   const energyPanel = requireElement<HTMLElement>(root, '[data-energy-panel]');
   const combatPanel = requireElement<HTMLElement>(root, '[data-combat-panel]');
@@ -314,6 +378,8 @@ export function createAppShell(root: HTMLElement): AppShell {
     '[data-target-marker-caption]',
   );
   let lastPresentationKey = '';
+  let lastNavigationNodesKey = '';
+  let mapWasOpen = false;
   const combatActionButtons = Array.from(
     combatPanel.querySelectorAll<HTMLButtonElement>('[data-combat-action]'),
   );
@@ -415,6 +481,34 @@ export function createAppShell(root: HTMLElement): AppShell {
       const listener = (): void => handlers.onPrimaryAction();
       missionAction.addEventListener('click', listener);
       return () => missionAction.removeEventListener('click', listener);
+    },
+    bindNavigationControls(handlers) {
+      const openListener = (): void => handlers.onOpenMap();
+      const closeListener = (): void => handlers.onCloseMap();
+      const confirmListener = (): void => handlers.onConfirmTravel();
+      const destinationListener = (event: MouseEvent): void => {
+        if (!(event.target instanceof Element)) return;
+        const button = event.target.closest<HTMLButtonElement>('[data-navigation-destination]');
+        const nodeId = button?.dataset.navigationDestination;
+        if (nodeId !== undefined) handlers.onSelectDestination(nodeId);
+      };
+      const escapeListener = (event: KeyboardEvent): void => {
+        if (event.code !== 'Escape' || systemMap.hidden) return;
+        event.preventDefault();
+        handlers.onCloseMap();
+      };
+      navigationOpen.addEventListener('click', openListener);
+      navigationClose.addEventListener('click', closeListener);
+      navigationConfirm.addEventListener('click', confirmListener);
+      navigationDestinations.addEventListener('click', destinationListener);
+      window.addEventListener('keydown', escapeListener);
+      return () => {
+        navigationOpen.removeEventListener('click', openListener);
+        navigationClose.removeEventListener('click', closeListener);
+        navigationConfirm.removeEventListener('click', confirmListener);
+        navigationDestinations.removeEventListener('click', destinationListener);
+        window.removeEventListener('keydown', escapeListener);
+      };
     },
     bindSaveControls(handlers) {
       const listener = (): void => handlers.onRecover();
@@ -770,9 +864,11 @@ export function createAppShell(root: HTMLElement): AppShell {
             ? 'Pausada · foco perdido'
             : telemetry.pauseReason === 'mission-transition'
               ? 'Pausada · em trânsito'
-              : telemetry.pauseReason === 'mission-complete'
-                ? 'Atracada na base'
-                : 'Pausada'
+              : telemetry.pauseReason === 'mission-base'
+                ? 'Atracada na Base Aurora'
+                : telemetry.pauseReason === 'mission-complete'
+                  ? 'Atracada na base'
+                  : 'Pausada'
           : 'Em execução',
       );
       setTextIfChanged(frameTimeValue, `${telemetry.frameTimeMs.toFixed(1)} ms`);
@@ -797,7 +893,8 @@ export function createAppShell(root: HTMLElement): AppShell {
       setTextIfChanged(sensorValue, `${telemetry.sensorRangeUnits.toFixed(0)} u`);
       const missionLocked =
         telemetry.pauseReason === 'mission-transition' ||
-        telemetry.pauseReason === 'mission-complete';
+        telemetry.pauseReason === 'mission-complete' ||
+        telemetry.pauseReason === 'mission-base';
       setTextIfChanged(
         pauseButton,
         missionLocked
@@ -850,6 +947,87 @@ export function createAppShell(root: HTMLElement): AppShell {
         telemetry.campaignCompleted ? 'true' : 'false',
       );
       setAttributeIfChanged(root, 'data-mission-progress', telemetry.transitionProgress.toFixed(3));
+    },
+    setNavigationTelemetry(telemetry) {
+      const mapOpen = telemetry.mode === 'map';
+      const travelling = telemetry.mode === 'travel';
+      const encounterActive = telemetry.mode === 'encounter';
+      setHiddenIfChanged(systemMap, !mapOpen);
+      setHiddenIfChanged(travelPresentation, !travelling);
+      setHiddenIfChanged(combatPanel, !encounterActive);
+      setHiddenIfChanged(centerReticle, !encounterActive);
+      if (!encounterActive) {
+        setHiddenIfChanged(targetTracker, true);
+        setHiddenIfChanged(targetLine, true);
+      }
+
+      setTextIfChanged(systemMapTitle, telemetry.systemLabel);
+      setTextIfChanged(navigationRoute, telemetry.routeLabel);
+      setTextIfChanged(navigationRouteDetail, telemetry.routeDetail);
+      setTextIfChanged(navigationGuidance, telemetry.guidance);
+      setTextIfChanged(travelTitle, telemetry.routeLabel);
+      setTextIfChanged(travelRoute, telemetry.routeDetail);
+      if (travelProgress.value !== telemetry.travelProgress) {
+        travelProgress.value = telemetry.travelProgress;
+      }
+      if (navigationConfirm.disabled === telemetry.canConfirmTravel) {
+        navigationConfirm.disabled = !telemetry.canConfirmTravel;
+      }
+
+      const nodesKey = telemetry.mapNodes
+        .map(
+          (node) =>
+            `${node.id}|${node.label}|${node.summary}|${node.kind}|${node.isCurrentLocation}|${node.isMissionDestination}|${node.isSelected}`,
+        )
+        .join('||');
+      if (nodesKey !== lastNavigationNodesKey) {
+        navigationDestinations.replaceChildren(
+          ...telemetry.mapNodes.map((node) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'system-map-node';
+            button.dataset.navigationDestination = node.id;
+            button.dataset.navigationKind = node.kind;
+            button.dataset.missionDestination = node.isMissionDestination ? 'true' : 'false';
+            button.setAttribute('aria-pressed', node.isSelected ? 'true' : 'false');
+            if (node.isCurrentLocation) button.disabled = true;
+            const heading = document.createElement('strong');
+            heading.textContent = node.label;
+            const summary = document.createElement('span');
+            summary.textContent = node.summary;
+            const status = document.createElement('small');
+            status.textContent = node.isCurrentLocation
+              ? 'LOCAL ATUAL'
+              : node.isMissionDestination
+                ? 'DESTINO DA MISSÃO'
+                : node.kind === 'point-of-interest'
+                  ? 'PONTO DE INTERESSE'
+                  : 'SETOR DE MISSÃO';
+            button.append(heading, summary, status);
+            return button;
+          }),
+        );
+        lastNavigationNodesKey = nodesKey;
+      }
+
+      setHiddenIfChanged(navigationOpen, telemetry.mode !== 'base');
+      captureButton.disabled = !encounterActive;
+      const backgroundPanels = [objectiveCard, flightHud, energyPanel, diagnosticsDrawer];
+      for (const panel of backgroundPanels) panel.inert = mapOpen;
+
+      setAttributeIfChanged(root, 'data-navigation-state', telemetry.mode);
+      setAttributeIfChanged(root, 'data-current-location', telemetry.currentLocationLabel);
+      setAttributeIfChanged(root, 'data-travel-progress', telemetry.travelProgress.toFixed(3));
+
+      if (mapOpen && !mapWasOpen) {
+        const preferred = navigationDestinations.querySelector<HTMLButtonElement>(
+          '[data-mission-destination="true"]',
+        );
+        (preferred ?? navigationClose).focus();
+      } else if (!mapOpen && mapWasOpen && telemetry.mode === 'base') {
+        navigationOpen.focus();
+      }
+      mapWasOpen = mapOpen;
     },
     setSaveStatus(telemetry) {
       const labels: Readonly<Record<SaveHudTelemetry['state'], string>> = {
@@ -906,7 +1084,7 @@ export function createAppShell(root: HTMLElement): AppShell {
           : 'Arena de voo pronta.';
       setHiddenIfChanged(flightHud, false);
       setHiddenIfChanged(energyPanel, false);
-      setHiddenIfChanged(combatPanel, false);
+      setHiddenIfChanged(combatPanel, root.dataset.navigationState !== 'encounter');
     },
     showWarning(value) {
       renderNotice(value, false);

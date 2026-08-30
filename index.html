@@ -31,6 +31,53 @@
         <span class="target-tracker__caption" data-target-marker-caption>ALVO</span>
       </div>
 
+      <div class="travel-presentation" data-travel-presentation hidden>
+        <div class="travel-presentation__streaks" aria-hidden="true"></div>
+        <section class="travel-presentation__status hud-card" role="status" aria-live="polite">
+          <span class="eyebrow">Trânsito entre setores</span>
+          <strong data-travel-title>Preparando corredor de viagem</strong>
+          <p data-travel-route>Calculando rota segura…</p>
+          <progress
+            data-travel-progress
+            aria-label="Progresso da viagem"
+            max="1"
+            value="0"
+          ></progress>
+        </section>
+      </div>
+
+      <section
+        class="system-map hud-card"
+        data-system-map
+        aria-labelledby="system-map-title"
+        hidden
+      >
+        <header class="system-map__header">
+          <div>
+            <p class="eyebrow">Navegação setorial</p>
+            <h2 id="system-map-title" data-system-map-title>Sistema Hélios</h2>
+          </div>
+          <button type="button" data-navigation-close>Fechar mapa (Esc)</button>
+        </header>
+        <div class="system-map__route" aria-live="polite">
+          <span class="metric-label">Rota planejada</span>
+          <strong data-navigation-route>Selecione o destino marcado para a missão.</strong>
+          <p data-navigation-route-detail>Partida e retorno usam a mesma rota segura.</p>
+        </div>
+        <div
+          class="system-map__nodes"
+          data-navigation-destinations
+          role="group"
+          aria-label="Destinos do Sistema Hélios"
+        ></div>
+        <footer class="system-map__footer">
+          <p data-navigation-guidance>
+            Consulte os pontos de interesse e selecione o destino atual da missão.
+          </p>
+          <button type="button" data-navigation-confirm disabled>Iniciar viagem</button>
+        </footer>
+      </section>
+
       <section class="objective-card hud-card status-panel" aria-labelledby="app-title">
         <p class="eyebrow">Comando de missão</p>
         <div class="objective-card__title">
@@ -66,6 +113,7 @@
             <button type="button" data-flight-pause>Pausar (P)</button>
             <button type="button" data-flight-capture>Capturar mouse</button>
             <button type="button" data-flight-fullscreen>Tela cheia (F)</button>
+            <button type="button" data-navigation-open hidden>Abrir mapa</button>
           </div>
           <p
             class="control-feedback"

@@ -1,6 +1,6 @@
 # Roadmap de desenvolvimento
 
-Atualizado em: 29 de agosto de 2026
+Atualizado em: 30 de agosto de 2026
 
 O roadmap usa gates objetivos, não datas rígidas. Uma etapa só fecha com evidência de teste e revisão. Cada etapa funcional admite no máximo cinco ciclos `review → implement → test`; problemas remanescentes vão para `docs/KNOWN_ISSUES.md`, mas CRITICAL/HIGH impedem avanço.
 
@@ -177,7 +177,7 @@ Critério de conclusão:
 
 ## Etapa 6 — Primeira fatia vertical P1
 
-**Status:** em desenvolvimento; campanha tutorial de três missões e persistência concluídas, mapa e configurações ainda pendentes
+**Status:** em desenvolvimento; campanha, persistência, base segura, mapa e viagem concluídos; configurações e recuperação de asset ainda pendentes
 
 **Objetivo:** implementar uma missão ponta a ponta antes de multiplicar conteúdo.
 
@@ -214,6 +214,15 @@ Terceira subfatia concluída por prioridade explícita do usuário:
 - progresso entre as três missões usa os checkpoints seguros do schema v2 sem alterar seu formato;
 - fluxo integral e retomada final são cobertos em Chrome/Edge.
 
+Quarta subfatia concluída:
+
+- domínio de navegação validado para base, mapa, viagem e encontro no Sistema Hélios;
+- três setores de missão, dois pontos de interesse e rotas configuráveis com IDs estáveis;
+- mapa acessível por teclado e viagem visual integrados às fases de partida e retorno;
+- base sem IA, projéteis, dano ou controles de combate; reparo e reabastecimento ocorrem ao concluir o retorno;
+- raízes gráficas fixas alternam base e bolha tática sem crescimento por transição;
+- reload em viagem/encontro volta ao checkpoint seguro e a matriz integral passa em Chrome/Edge.
+
 Critério de conclusão:
 
 - ciclo completo funciona após reload;
@@ -223,7 +232,7 @@ Critério de conclusão:
 
 ## Etapa 7 — Vertical slice/MVP P1
 
-**Status:** em desenvolvimento; variedade mínima de missões, contatos e tutorial contextual concluída
+**Status:** em desenvolvimento; ciclo base–mapa–viagem–missões, variedade de contatos e tutorial contextual concluídos
 
 **Objetivo:** completar variedade mínima e qualidade de demonstração.
 
