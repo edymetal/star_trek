@@ -177,7 +177,7 @@ Critério de conclusão:
 
 ## Etapa 6 — Primeira fatia vertical P1
 
-**Status:** em desenvolvimento; primeira missão e persistência do progresso concluídas, mapa e configurações ainda pendentes
+**Status:** em desenvolvimento; campanha tutorial de três missões e persistência concluídas, mapa e configurações ainda pendentes
 
 **Objetivo:** implementar uma missão ponta a ponta antes de multiplicar conteúdo.
 
@@ -206,6 +206,14 @@ Segunda subfatia concluída:
 - falhas simuladas de leitura/quota mantêm uma sessão segura e o último save válido;
 - benchmark não abre nem altera a persistência do jogador.
 
+Terceira subfatia concluída por prioridade explícita do usuário:
+
+- campanha orientada a dados com três missões sequenciais: sensores, assistência e combate;
+- contatos passivos nas duas primeiras lições e contato hostil na última;
+- equipamentos são liberados gradualmente e objetivos usam os sistemas autoritativos existentes;
+- progresso entre as três missões usa os checkpoints seguros do schema v2 sem alterar seu formato;
+- fluxo integral e retomada final são cobertos em Chrome/Edge.
+
 Critério de conclusão:
 
 - ciclo completo funciona após reload;
@@ -215,13 +223,15 @@ Critério de conclusão:
 
 ## Etapa 7 — Vertical slice/MVP P1
 
+**Status:** em desenvolvimento; variedade mínima de missões, contatos e tutorial contextual concluída
+
 **Objetivo:** completar variedade mínima e qualidade de demonstração.
 
 Entregas:
 
-- missão de assistência com raio trator e missão de combate;
-- duas variações de contato/IA;
-- tutorial contextual e diário de objetivo;
+- [x] missão de assistência com raio trator e missão de combate;
+- [x] duas variações de contato/IA;
+- [~] tutorial contextual concluído; diário de objetivo/descoberta ainda parcial;
 - áudio e feedback refinados;
 - configurações e acessibilidade prioritária;
 - inventário final de licenças do build;

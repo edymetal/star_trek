@@ -117,6 +117,8 @@ Multiplayer, interiores caminháveis, pouso em planetas, galáxia 1:1, física o
 7. Danos persistem até reparo; conclusão e descobertas atualizam o save.
 8. Ao retornar à base, o jogador repara, recebe o resultado e escolhe o próximo objetivo.
 
+O treinamento inicial materializa esse fluxo em três missões curtas e ordenadas: sensores/scan sem armamento, assistência com contato passivo e raio trator, e combate com energia, escudos e arsenal completo. A HUD libera ações gradualmente, informa a posição na sequência e preserva a conclusão de cada missão em checkpoint seguro.
+
 No P0, esse fluxo é reduzido a abrir → pilotar → escanear → combater/testar raio trator → pausar/configurar. O ciclo com missão, viagem, base funcional e save pertence ao P1.
 
 ## 10. Telas e estados de interface

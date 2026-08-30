@@ -1,8 +1,8 @@
 # Progresso do projeto
 
-Atualizado em: 29 de agosto de 2026  
-Etapa atual: P1 — Primeira fatia vertical  
-Estado do código: P0.5 aprovado; primeira missão e persistência local do progresso concluídas  
+Atualizado em: 30 de agosto de 2026  
+Etapa atual: P1 — Vertical slice/MVP  
+Estado do código: P0.5 aprovado; campanha tutorial de três missões e persistência local concluídas  
 Próximo responsável: Senior Developer / mapa de sistema e apresentação da viagem
 
 Legenda:
@@ -93,11 +93,11 @@ Legenda:
 
 ## P1 — Vertical slice/MVP
 
-- [x] Primeira missão ponta a ponta em uma sessão
+- [x] Três missões tutoriais ponta a ponta: sensores, assistência e combate
 - [~] Base funcional e viagem — partida, retorno, reparo/reabastecimento e transição implementados; mapa ainda pendente
 - [x] Save IndexedDB versionado
-- [ ] Missões de assistência e combate
-- [ ] Tutorial, áudio e acessibilidade prioritária
+- [x] Tutorial contextual e progressão segura entre missões
+- [ ] Áudio e acessibilidade prioritária
 - [ ] Inventário de licenças
 - [ ] E2E, benchmark e revisão final do MVP
 
@@ -355,7 +355,7 @@ O requisito explícito de 29/08/2026 substituiu a personalização e medição o
 - capturas oficiais atualizadas e inspecionadas: ação da missão legível, centro tático livre e sem sobreposição nova;
 - nenhum achado CRITICAL/HIGH; o aviso conhecido de chunk lazy do PlayCanvas continua não bloqueante.
 
-## Último relatório — persistência local P1
+## Relatório anterior — persistência local P1
 
 **ETAPA:** P1 — segunda subfatia da Etapa 6  
 **STATUS:** save da primeira missão, retomada e recuperação concluídos
@@ -388,3 +388,38 @@ O domínio da missão recebeu somente o checkpoint inicial e continua sem DOM, I
 - mapa de um sistema e apresentação gráfica da transição de viagem;
 - configurações persistentes em registro/repositório separado do progresso;
 - completar a recuperação de falha de asset no ciclo P1 antes do gate da etapa.
+
+## Último relatório — campanha tutorial de três missões P1
+
+**ETAPA:** P1 — variedade mínima de missões e tutorial contextual  
+**STATUS:** três missões iniciais concluíveis, reiniciáveis e persistentes
+
+### Implementado
+
+- `Levantamento de Nereida` ensina seleção e scan com armas bloqueadas;
+- `Socorro no Anel de Íris` ensina aproximação, energia auxiliar e raio trator, com contato passivo e armas ofensivas bloqueadas;
+- `Defesa do Corredor Aurora` ensina gerenciamento de energia, escudos, feixe e torpedos contra contato hostil;
+- uma campanha determinística orientada a dados controla ordem, objetivos, partida, retorno e conclusão sem depender de DOM, PlayCanvas, IndexedDB ou GPU;
+- contatos passivos não perseguem nem atacam e usam material verde-azulado distinto do casco hostil;
+- HUD exibe missão atual, posição `1/3` a `3/3`, instrução contextual, equipamentos permitidos e conclusão do treinamento;
+- checkpoints `briefing` e `completed` continuam seguros; o schema v2 já comportava qualquer ID de missão e não exigiu migração artificial.
+
+### Revisão e correções
+
+As missões reutilizam sensores, raio trator, combate, energia, dano e reparo existentes sem duplicar suas regras. Eventos de objetivo só são aceitos para o contato configurado, na fase correta e uma única vez. O encontro recebeu perfis explícitos `passive` e `hostile`; atalhos de teclado também são rejeitados pelo domínio da aplicação quando o equipamento está bloqueado. O cenário E2E integral precisou de limite próprio de 60 s porque executa as três missões e um reload real; ambos os navegadores completaram o fluxo em menos de 40 s. Nenhuma dependência, asset externo, transparência, sombra ou entidade foi adicionada.
+
+### Verificação
+
+- testes focados: 22/22 para campanha, conteúdo, encontro e save;
+- cenário E2E completo das três missões: 2/2 em Chrome/Edge;
+- `npm run verify`: 151/151 testes em 24 arquivos, formatação, lint, typecheck e build aprovados;
+- Playwright completo: 48/48 casos em Chrome/Edge, um worker e nenhum `skip`;
+- capturas oficiais 1280×720 e 1600×900 atualizadas e inspecionadas sem sobreposição ou regressão de hierarquia;
+- nenhum achado CRITICAL/HIGH identificado.
+
+### Pendências do P1
+
+- mapa de um sistema e apresentação gráfica da transição de viagem;
+- configurações persistentes, escala do HUD e redução de flashes/tremor;
+- áudio, diário de objetivo/descoberta mais completo, inventário de licenças e recuperação de falha de asset;
+- benchmark de regressão e revisão formal final do MVP.

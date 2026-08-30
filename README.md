@@ -1,6 +1,6 @@
 # Comando Estelar — protótipo técnico
 
-Protótipo de um jogo 3D original de exploração espacial executado no navegador. O **P0 está aprovado**: arena, voo, energia, sensores, três equipamentos, escudos direcionais, dano, IA, HUD nas bordas, naves procedurais, VFX em pool e benchmark escalável. O **P1 está em desenvolvimento** e já contém a primeira missão de reconhecimento, save local versionado, retomada após recarregar e recuperação visível de falha.
+Protótipo de um jogo 3D original de exploração espacial executado no navegador. O **P0 está aprovado**: arena, voo, energia, sensores, três equipamentos, escudos direcionais, dano, IA, HUD nas bordas, naves procedurais, VFX em pool e benchmark escalável. O **P1 está em desenvolvimento** e já contém uma campanha tutorial de três missões, save local versionado, retomada após recarregar e recuperação visível de falha.
 
 ## Requisitos
 
@@ -60,6 +60,16 @@ Se uma rede corporativa interceptar TLS, configure o Node para confiar no reposi
 - botão **Capturar mouse**: usar mouse para guinada/inclinação; `Esc` libera.
 
 Perder foco ou ocultar a aba limpa todas as entradas, libera o ponteiro e mantém a sessão pausada até o jogador retomar.
+
+## Treinamento inicial
+
+O botão do painel **Comando de missão** conduz três lições em sequência:
+
+1. **Levantamento de Nereida:** selecionar e identificar uma sonda com os sensores;
+2. **Socorro no Anel de Íris:** aproximar, alinhar e estabilizar uma nave passiva com o raio trator;
+3. **Defesa do Corredor Aurora:** gerenciar energia, escudos e armas para neutralizar uma interceptadora hostil.
+
+O HUD mostra a instrução atual e libera equipamentos gradualmente. Ao retornar à base, o jogo repara e reabastece a nave, salva o checkpoint local e oferece a próxima missão. A terceira conclusão permanece disponível após recarregar e permite reiniciar todo o treinamento.
 
 ## Controles de energia
 

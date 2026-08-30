@@ -1,10 +1,10 @@
-import type { ExplorationMissionCheckpoint } from '../domain/missions/exploration-mission';
+import type { TutorialMissionCheckpoint } from '../domain/missions/tutorial-campaign';
 
 export const GAME_SAVE_SCHEMA_VERSION = 2 as const;
 
 export interface GameSavePayload {
   readonly mission: {
-    readonly checkpoint: ExplorationMissionCheckpoint;
+    readonly checkpoint: TutorialMissionCheckpoint;
     readonly missionId: string;
   };
 }
@@ -54,7 +54,7 @@ function isValidTimestamp(value: unknown): value is string {
   );
 }
 
-function isMissionCheckpoint(value: unknown): value is ExplorationMissionCheckpoint {
+function isMissionCheckpoint(value: unknown): value is TutorialMissionCheckpoint {
   return value === 'briefing' || value === 'completed';
 }
 
@@ -105,7 +105,7 @@ function legacyChecksum(savedAtIso: string, payload: LegacyGameSavePayloadV1): s
 
 export function createGameSavePayload(
   missionId: string,
-  checkpoint: ExplorationMissionCheckpoint,
+  checkpoint: TutorialMissionCheckpoint,
 ): GameSavePayload {
   if (missionId.length === 0) throw new Error('O ID da missão do save não pode ser vazio.');
   return { mission: { checkpoint, missionId } };

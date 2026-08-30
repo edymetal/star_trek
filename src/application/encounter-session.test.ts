@@ -68,6 +68,24 @@ function identifyContact(harness: ReturnType<typeof createHarness>): void {
 }
 
 describe('sessão de encontro', () => {
+  it('mantém exercícios passivos sem ataque e bloqueia equipamento fora do roteiro', () => {
+    const harness = createHarness();
+    harness.session.setProfile({
+      allowedPlayerEquipment: ['tractor'],
+      contactDisplayName: 'Nave de pesquisa Íris',
+      disposition: 'passive',
+    });
+    identifyContact(harness);
+
+    let snapshot = harness.command({ equipmentId: 'beam', type: 'use-equipment' });
+    expect(snapshot.feedback).toContain('bloqueado neste exercício');
+    expect(snapshot.enemy.shieldPercent).toBe(100);
+    for (let index = 0; index < 1_200; index += 1) snapshot = harness.advance();
+    expect(snapshot.contact.displayName).toBe('Nave de pesquisa Íris');
+    expect(snapshot.disposition).toBe('passive');
+    expect(snapshot.playerHullPercent).toBe(100);
+  });
+
   it('detecta, seleciona e identifica sem revelar nome antes do scan', () => {
     const harness = createHarness();
     expect(harness.session.getSnapshot().contact.awareness).toBe('unknown');

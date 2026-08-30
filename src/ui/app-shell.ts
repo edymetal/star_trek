@@ -3,6 +3,7 @@ import type { ArenaPresentationDto } from '../application/arena-presentation';
 import type { ShieldSectorState, SubsystemIntegrity } from '../domain/combat/damage';
 import type { EnemyAiMode } from '../domain/combat/enemy-ai';
 import type { ContactAwareness } from '../domain/combat/sensors';
+import type { EquipmentId } from '../domain/combat/weapons';
 import {
   ENERGY_CHANNELS,
   type EnergyAllocation,
@@ -11,7 +12,7 @@ import {
 } from '../domain/energy/energy-system';
 import type { GraphicsCapability, GraphicsReadiness } from '../domain/graphics-readiness';
 import type { Vector3Value } from '../domain/flight/ship-flight';
-import type { ExplorationMissionPhase } from '../domain/missions/exploration-mission';
+import type { TutorialMissionPhase } from '../domain/missions/tutorial-campaign';
 import { conditionLabel } from './condition-label';
 
 export interface CompatibilityNotice {
@@ -108,9 +109,13 @@ export interface SaveHudTelemetry {
 export interface MissionHudTelemetry {
   readonly actionEnabled: boolean;
   readonly actionLabel: string;
-  readonly identifiedTarget: boolean;
+  readonly campaignCompleted: boolean;
+  readonly missionCount: number;
+  readonly missionId: string;
+  readonly missionNumber: number;
   readonly objective: string;
-  readonly phase: ExplorationMissionPhase;
+  readonly objectiveCompleted: boolean;
+  readonly phase: TutorialMissionPhase;
   readonly phaseLabel: string;
   readonly title: string;
   readonly transitionProgress: number;
@@ -118,9 +123,11 @@ export interface MissionHudTelemetry {
 
 export interface CombatHudTelemetry {
   readonly activeScan: boolean;
+  readonly allowedPlayerEquipment: readonly EquipmentId[];
   readonly awareness: ContactAwareness;
   readonly contactLabel: string;
   readonly distanceUnits?: number;
+  readonly disposition: 'hostile' | 'passive';
   readonly enemyAiMode?: EnemyAiMode;
   readonly enemyHullPercent?: number;
   readonly enemyShieldPercent?: number;
@@ -575,7 +582,11 @@ export function createAppShell(root: HTMLElement): AppShell {
       };
       setTextIfChanged(
         combatAi,
-        telemetry.enemyAiMode === undefined ? 'Não identificada' : aiLabels[telemetry.enemyAiMode],
+        telemetry.enemyAiMode === undefined
+          ? 'Não identificada'
+          : telemetry.disposition === 'passive'
+            ? 'Não hostil · cooperando'
+            : aiLabels[telemetry.enemyAiMode],
       );
       const shields = telemetry.playerShieldSectorsPercent;
       for (const [sector, value] of shieldSectorValues) {
@@ -610,6 +621,14 @@ export function createAppShell(root: HTMLElement): AppShell {
       for (const button of combatActionButtons) {
         if (button === restartEncounterButton) continue;
         if (button.disabled !== encounterEnded) button.disabled = encounterEnded;
+      }
+      for (const [equipmentId, button] of [
+        ['beam', beamButton],
+        ['torpedo', torpedoButton],
+        ['tractor', tractorButton],
+      ] as const) {
+        const disabled = encounterEnded || !telemetry.allowedPlayerEquipment.includes(equipmentId);
+        if (button.disabled !== disabled) button.disabled = disabled;
       }
       setHiddenIfChanged(restartEncounterButton, !encounterEnded);
       setAttributeIfChanged(root, 'data-combat-phase', telemetry.phase);
@@ -652,6 +671,12 @@ export function createAppShell(root: HTMLElement): AppShell {
         telemetry.enemyShieldPercent?.toFixed(3) ?? 'unknown',
       );
       setAttributeIfChanged(root, 'data-enemy-ai', telemetry.enemyAiMode ?? 'unknown');
+      setAttributeIfChanged(root, 'data-encounter-disposition', telemetry.disposition);
+      setAttributeIfChanged(
+        root,
+        'data-allowed-equipment',
+        telemetry.allowedPlayerEquipment.join(','),
+      );
       const terminal = telemetry.phase !== 'active';
       setHiddenIfChanged(terminalBanner, !terminal);
       if (terminal) {
@@ -813,8 +838,16 @@ export function createAppShell(root: HTMLElement): AppShell {
       setAttributeIfChanged(root, 'data-mission-phase', telemetry.phase);
       setAttributeIfChanged(
         root,
-        'data-mission-target-identified',
-        telemetry.identifiedTarget ? 'true' : 'false',
+        'data-mission-objective-completed',
+        telemetry.objectiveCompleted ? 'true' : 'false',
+      );
+      setAttributeIfChanged(root, 'data-mission-id', telemetry.missionId);
+      setAttributeIfChanged(root, 'data-mission-number', String(telemetry.missionNumber));
+      setAttributeIfChanged(root, 'data-mission-count', String(telemetry.missionCount));
+      setAttributeIfChanged(
+        root,
+        'data-tutorial-completed',
+        telemetry.campaignCompleted ? 'true' : 'false',
       );
       setAttributeIfChanged(root, 'data-mission-progress', telemetry.transitionProgress.toFixed(3));
     },

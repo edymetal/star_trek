@@ -52,6 +52,13 @@ import type { ShipState, Vector3Value } from '../domain/flight/ship-flight';
 
 export type EncounterPhase = 'active' | 'victory' | 'defeat';
 export type CombatEffectKind = 'beam' | 'enemy-beam' | 'torpedo' | 'tractor';
+export type EncounterDisposition = 'hostile' | 'passive';
+
+export interface EncounterProfile {
+  readonly allowedPlayerEquipment: readonly EquipmentId[];
+  readonly contactDisplayName: string;
+  readonly disposition: EncounterDisposition;
+}
 
 export type EncounterCommand =
   | { readonly type: 'select-next-target' }
@@ -79,7 +86,9 @@ export interface EncounterEnemySnapshot {
 
 export interface EncounterSnapshot {
   readonly activeScan: boolean;
+  readonly allowedPlayerEquipment: readonly EquipmentId[];
   readonly contact: PublicContact;
+  readonly disposition: EncounterDisposition;
   readonly effect?: CombatEffectSnapshot;
   readonly enemy: EncounterEnemySnapshot;
   readonly feedback: string;
@@ -112,6 +121,7 @@ export interface EncounterSession {
   applyCommand(command: EncounterCommand, context: EncounterStepContext): EncounterStepResult;
   getSnapshot(): EncounterSnapshot;
   restart(): void;
+  setProfile(profile: EncounterProfile): void;
   step(context: EncounterStepContext): EncounterStepResult;
 }
 
@@ -140,6 +150,11 @@ interface MutableEffect {
 
 const RADIANS_TO_DEGREES = 180 / Math.PI;
 const DEGREES_TO_RADIANS = Math.PI / 180;
+const DEFAULT_ENCOUNTER_PROFILE: EncounterProfile = {
+  allowedPlayerEquipment: ['beam', 'torpedo', 'tractor'],
+  contactDisplayName: ENEMY_CONTENT.displayName,
+  disposition: 'hostile',
+};
 
 function add(left: Vector3Value, right: Vector3Value): Vector3Value {
   return { x: left.x + right.x, y: left.y + right.y, z: left.z + right.z };
@@ -283,6 +298,7 @@ const FAILURE_MESSAGES: Readonly<Record<EquipmentFailureReason, string>> = {
 
 export function createEncounterSession(options: EncounterSessionOptions): EncounterSession {
   const lineOfSightObstacles = options.lineOfSightObstacles ?? COMBAT_LINE_OF_SIGHT_OBSTACLES;
+  let encounterProfile = DEFAULT_ENCOUNTER_PROFILE;
   let activeScan = false;
   let aiState = createInitialEnemyAiState();
   let contact = createUnknownContact(ENEMY_CONTENT.id);
@@ -361,13 +377,19 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
   }
 
   function snapshot(): EncounterSnapshot {
-    const publicContact = toPublicContact(SENSOR_DEFINITION, contact, ENEMY_CONTENT.displayName);
+    const publicContact = toPublicContact(
+      SENSOR_DEFINITION,
+      contact,
+      encounterProfile.contactDisplayName,
+    );
     const firstProjectile = projectiles[0];
     const projectilePosition =
       firstProjectile === undefined ? undefined : { ...firstProjectile.position };
     return {
       activeScan,
+      allowedPlayerEquipment: encounterProfile.allowedPlayerEquipment,
       contact: publicContact,
+      disposition: encounterProfile.disposition,
       ...(effect === undefined
         ? {}
         : {
@@ -414,6 +436,11 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
     equipmentId: EquipmentId,
     context: EncounterStepContext,
   ): EnergySystemState {
+    if (!encounterProfile.allowedPlayerEquipment.includes(equipmentId)) {
+      feedback = 'Equipamento bloqueado neste exercício. Siga o objetivo tutorial atual.';
+      feedbackHoldSeconds = 0.8;
+      return context.playerEnergyState;
+    }
     const targetObservation = contact.observedNow ? contact.lastObservation : undefined;
     const distanceUnits = targetObservation?.distanceUnits ?? 0;
     const targetPosition = targetObservation?.position ?? context.playerShip.position;
@@ -582,7 +609,8 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
         enemyEnergyStep.flow.channels.auxiliary.effectiveUnitsPerSecond / auxiliaryBalancedPower,
       sensorRangeUnits: enemyEnergyStep.effects.sensorRangeUnits,
     });
-    const perceivedPlayer = enemyContact.lastObservation;
+    const perceivedPlayer =
+      encounterProfile.disposition === 'hostile' ? enemyContact.lastObservation : undefined;
     const aiStep = stepEnemyAi(ENEMY_AI_DEFINITION, aiState, {
       deltaSeconds,
       hullFraction: totalHullIntegrity(ENEMY_DAMAGE_DEFINITION, enemyDamage),
@@ -747,5 +775,20 @@ export function createEncounterSession(options: EncounterSessionOptions): Encoun
     return result(playerEnergyState);
   }
 
-  return { applyCommand, getSnapshot: snapshot, restart: reset, step };
+  return {
+    applyCommand,
+    getSnapshot: snapshot,
+    restart: reset,
+    setProfile(profile) {
+      if (profile.contactDisplayName.length === 0) {
+        throw new Error('O perfil do encontro requer um nome de contato.');
+      }
+      encounterProfile = {
+        allowedPlayerEquipment: [...profile.allowedPlayerEquipment],
+        contactDisplayName: profile.contactDisplayName,
+        disposition: profile.disposition,
+      };
+    },
+    step,
+  };
 }

@@ -2,15 +2,20 @@ import { getGraphicsPreset } from '../content/graphics-presets';
 import { PLAYER_SHIP_DEFINITION, TRAINING_ARENA } from '../content/arena-content';
 import { ENERGY_PRESETS, PLAYER_ENERGY_DEFINITION } from '../content/energy-content';
 import { PLAYER_DAMAGE_DEFINITION } from '../content/combat-content';
-import { FIRST_EXPLORATION_MISSION } from '../content/mission-content';
+import {
+  FIRST_TUTORIAL_MISSION,
+  getTutorialMissionContent,
+  INITIAL_TUTORIAL_MISSIONS,
+} from '../content/mission-content';
 import { resolveShieldSector, type ShieldSectorId } from '../domain/combat/damage';
 import { createInitialEnergyState, type EnergyAllocation } from '../domain/energy/energy-system';
 import { createInitialShipState } from '../domain/flight/ship-flight';
 import { evaluateGraphicsReadiness } from '../domain/graphics-readiness';
 import {
-  createExplorationMission,
-  type ExplorationMissionSnapshot,
-} from '../domain/missions/exploration-mission';
+  createTutorialCampaign,
+  type TutorialCampaignSnapshot,
+  type TutorialObjectiveEvent,
+} from '../domain/missions/tutorial-campaign';
 import type { ArenaScene, EngineTelemetry } from '../engine/create-arena-scene';
 import { createFlightInputController } from '../platform/flight-input';
 import { inspectWebGl2Capability } from '../platform/graphics-diagnostics';
@@ -83,65 +88,62 @@ interface PublishedHudTelemetry {
   readonly mission: MissionHudTelemetry;
 }
 
-function createMissionHudTelemetry(snapshot: ExplorationMissionSnapshot): MissionHudTelemetry {
-  const mission = FIRST_EXPLORATION_MISSION;
+function createMissionHudTelemetry(snapshot: TutorialCampaignSnapshot): MissionHudTelemetry {
+  const mission = getTutorialMissionContent(snapshot.missionId);
+  const shared = {
+    campaignCompleted: snapshot.campaignCompleted,
+    missionCount: snapshot.missionCount,
+    missionId: snapshot.missionId,
+    missionNumber: snapshot.missionNumber,
+    objectiveCompleted: snapshot.objectiveCompleted,
+    phase: snapshot.phase,
+    title: mission.title,
+    transitionProgress: snapshot.transitionProgress,
+  } as const;
   switch (snapshot.phase) {
     case 'briefing':
       return {
+        ...shared,
         actionEnabled: true,
         actionLabel: 'Iniciar missão',
-        identifiedTarget: false,
         objective: mission.briefing,
-        phase: snapshot.phase,
-        phaseLabel: 'Na base',
-        title: mission.title,
-        transitionProgress: snapshot.transitionProgress,
+        phaseLabel: `${snapshot.missionNumber}/${snapshot.missionCount} · Na base`,
       };
     case 'outbound':
       return {
+        ...shared,
         actionEnabled: false,
         actionLabel: `Em trânsito · ${(snapshot.transitionProgress * 100).toFixed(0)}%`,
-        identifiedTarget: false,
-        objective: 'Em trânsito para o corredor de Nereida. Sistemas táticos em espera.',
-        phase: snapshot.phase,
-        phaseLabel: 'Partida',
-        title: mission.title,
-        transitionProgress: snapshot.transitionProgress,
+        objective: mission.outboundObjective,
+        phaseLabel: `${snapshot.missionNumber}/${snapshot.missionCount} · Partida`,
       };
-    case 'survey':
+    case 'objective':
       return {
-        actionEnabled: snapshot.identifiedTarget,
-        actionLabel: snapshot.identifiedTarget ? 'Retornar à base' : 'Identifique o contato',
-        identifiedTarget: snapshot.identifiedTarget,
-        objective: snapshot.identifiedTarget
-          ? 'Assinatura registrada. Retorne à base para concluir o levantamento.'
-          : mission.surveyObjective,
-        phase: snapshot.phase,
-        phaseLabel: 'Levantamento',
-        title: mission.title,
-        transitionProgress: snapshot.transitionProgress,
+        ...shared,
+        actionEnabled: snapshot.objectiveCompleted,
+        actionLabel: snapshot.objectiveCompleted ? 'Retornar à base' : 'Conclua o objetivo',
+        objective: snapshot.objectiveCompleted
+          ? mission.objectiveCompleteText
+          : mission.objectiveInstruction,
+        phaseLabel: `${snapshot.missionNumber}/${snapshot.missionCount} · ${mission.objectiveLabel}`,
       };
     case 'returning':
       return {
+        ...shared,
         actionEnabled: false,
         actionLabel: `Retornando · ${(snapshot.transitionProgress * 100).toFixed(0)}%`,
-        identifiedTarget: true,
-        objective: 'Retornando à base com os dados do levantamento.',
-        phase: snapshot.phase,
-        phaseLabel: 'Retorno',
-        title: mission.title,
-        transitionProgress: snapshot.transitionProgress,
+        objective: mission.returningObjective,
+        phaseLabel: `${snapshot.missionNumber}/${snapshot.missionCount} · Retorno`,
       };
     case 'completed':
       return {
+        ...shared,
         actionEnabled: true,
-        actionLabel: 'Repetir missão',
-        identifiedTarget: true,
+        actionLabel: snapshot.campaignCompleted
+          ? 'Reiniciar treinamento'
+          : `Iniciar missão ${snapshot.missionNumber + 1}`,
         objective: mission.completedObjective,
-        phase: snapshot.phase,
-        phaseLabel: 'Concluída',
-        title: mission.title,
-        transitionProgress: snapshot.transitionProgress,
+        phaseLabel: `${snapshot.missionNumber}/${snapshot.missionCount} · Concluída`,
       };
   }
 }
@@ -177,10 +179,11 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
 
   try {
     const persistenceEnabled = startupOptions.benchmark === undefined;
-    const defaultSavePayload = createGameSavePayload(FIRST_EXPLORATION_MISSION.id, 'briefing');
+    const defaultSavePayload = createGameSavePayload(FIRST_TUTORIAL_MISSION.id, 'briefing');
     const saveController = createSaveController({
       clock: { nowIso: () => new Date().toISOString() },
-      isPayloadSupported: (payload) => payload.mission.missionId === FIRST_EXPLORATION_MISSION.id,
+      isPayloadSupported: (payload) =>
+        INITIAL_TUTORIAL_MISSIONS.some(({ id }) => id === payload.mission.missionId),
       repository: createIndexedDbSaveRepository(),
     });
     shell.setSaveStatus({ state: persistenceEnabled ? 'loading' : 'disabled' });
@@ -191,19 +194,21 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       shell.setSaveStatus(toSaveHudTelemetry(saveInitialization.status));
     }
     let lastSafePayload: GameSavePayload = saveInitialization.payload;
+    const encounterSession = createEncounterSession({
+      enemyInitialPosition: TRAINING_ARENA.enemyPosition,
+      playerInitialShieldChargeUnits: 70,
+    });
     const flightSession = createFlightSession({
       arenaRadiusUnits: TRAINING_ARENA.radiusUnits,
       definition: PLAYER_SHIP_DEFINITION,
       energyDefinition: PLAYER_ENERGY_DEFINITION,
-      encounter: createEncounterSession({
-        enemyInitialPosition: TRAINING_ARENA.enemyPosition,
-        playerInitialShieldChargeUnits: 70,
-      }),
+      encounter: encounterSession,
       initialEnergyState: createInitialEnergyState(PLAYER_ENERGY_DEFINITION),
       initialState: createInitialShipState({ x: 0, y: 0, z: 16 }),
     });
-    const missionSession = createExplorationMission(FIRST_EXPLORATION_MISSION, {
+    const missionSession = createTutorialCampaign(INITIAL_TUTORIAL_MISSIONS, {
       checkpoint: saveInitialization.payload.mission.checkpoint,
+      missionId: saveInitialization.payload.mission.missionId,
     });
     if (saveInitialization.payload.mission.checkpoint === 'completed') {
       flightSession.pause('mission-complete');
@@ -282,9 +287,11 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       return {
         combat: {
           activeScan: snapshot.encounter.activeScan,
+          allowedPlayerEquipment: snapshot.encounter.allowedPlayerEquipment,
           awareness: contact.awareness,
           contactLabel,
           ...(contact.distanceUnits === undefined ? {} : { distanceUnits: contact.distanceUnits }),
+          disposition: snapshot.encounter.disposition,
           ...(contact.awareness === 'identified'
             ? {
                 enemyAiMode: enemy.aiMode,
@@ -454,27 +461,39 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       pendingPresentationEffect = undefined;
     };
     const startMission = (): void => {
+      const missionBeforeStart = missionSession.getSnapshot();
       if (!missionSession.start()) return;
-      persistCheckpoint(createGameSavePayload(FIRST_EXPLORATION_MISSION.id, 'briefing'));
+      const mission = getTutorialMissionContent(missionBeforeStart.missionId);
+      persistCheckpoint(createGameSavePayload(mission.id, 'briefing'));
+      encounterSession.setProfile({
+        allowedPlayerEquipment: mission.allowedEquipment,
+        contactDisplayName: mission.contactDisplayName,
+        disposition: mission.encounterMode,
+      });
       input.releaseControls();
       flightSession.restartEncounter();
       flightSession.pause('mission-transition');
       resetPresentationEffects();
-      shell.setControlFeedback('Rota definida. Iniciando viagem para o corredor de Nereida.');
+      shell.setControlFeedback(mission.outboundObjective);
       refreshHud();
     };
     const unbindMissionControls = shell.bindMissionControls({
       onPrimaryAction() {
         const mission = missionSession.getSnapshot();
-        if (mission.phase === 'briefing' || mission.phase === 'completed') {
+        if (mission.phase === 'briefing') {
           startMission();
           return;
         }
-        if (mission.phase === 'survey' && missionSession.beginReturn()) {
+        if (mission.phase === 'completed' && missionSession.continueFromCompletion()) {
+          startMission();
+          return;
+        }
+        if (mission.phase === 'objective' && missionSession.beginReturn()) {
+          const content = getTutorialMissionContent(mission.missionId);
           input.releaseControls();
           flightSession.pause('mission-transition');
           resetPresentationEffects();
-          shell.setControlFeedback('Dados protegidos. Retornando à base.');
+          shell.setControlFeedback(content.returnFeedback);
           refreshHud();
         }
       },
@@ -523,25 +542,55 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
           const missionAfterAdvance = missionSession.advance(deltaSeconds);
           if (missionBeforeAdvance.phase !== missionAfterAdvance.phase) {
             if (
-              missionAfterAdvance.phase === 'survey' &&
+              missionAfterAdvance.phase === 'objective' &&
               flightSession.getSnapshot().pauseReason === 'mission-transition'
             ) {
+              const mission = getTutorialMissionContent(missionAfterAdvance.missionId);
               flightSession.resume();
-              shell.setControlFeedback('Destino alcançado. Identifique a assinatura desconhecida.');
+              shell.setControlFeedback(mission.arrivalFeedback);
             } else if (missionAfterAdvance.phase === 'completed') {
+              const mission = getTutorialMissionContent(missionAfterAdvance.missionId);
               flightSession.restartEncounter();
               flightSession.pause('mission-complete');
               resetPresentationEffects();
-              persistCheckpoint(createGameSavePayload(FIRST_EXPLORATION_MISSION.id, 'completed'));
-              shell.setControlFeedback('Missão concluída. Reparo e reabastecimento finalizados.');
+              persistCheckpoint(createGameSavePayload(mission.id, 'completed'));
+              shell.setControlFeedback(mission.completionFeedback);
             }
           }
           const snapshot = flightSession.advance(deltaSeconds, input);
-          if (
-            snapshot.encounter.contact.awareness === 'identified' &&
-            missionSession.recordIdentifiedContact(snapshot.encounter.contact.contactId)
-          ) {
-            shell.setControlFeedback('Assinatura confirmada. O retorno à base está autorizado.');
+          const missionObjective = missionSession.getSnapshot();
+          let objectiveEvent: TutorialObjectiveEvent | undefined;
+          if (missionObjective.phase === 'objective') {
+            if (
+              missionObjective.objectiveType === 'identify-contact' &&
+              snapshot.encounter.contact.awareness === 'identified'
+            ) {
+              objectiveEvent = {
+                contactId: snapshot.encounter.contact.contactId,
+                type: 'contact-identified',
+              };
+            } else if (
+              missionObjective.objectiveType === 'tractor-lock' &&
+              snapshot.encounter.contact.awareness === 'identified' &&
+              snapshot.encounter.tractorActive
+            ) {
+              objectiveEvent = {
+                contactId: snapshot.encounter.contact.contactId,
+                type: 'tractor-activated',
+              };
+            } else if (
+              missionObjective.objectiveType === 'combat-victory' &&
+              snapshot.encounter.phase === 'victory'
+            ) {
+              objectiveEvent = {
+                contactId: snapshot.encounter.contact.contactId,
+                type: 'combat-won',
+              };
+            }
+          }
+          if (objectiveEvent !== undefined && missionSession.recordObjective(objectiveEvent)) {
+            const mission = getTutorialMissionContent(missionObjective.missionId);
+            shell.setControlFeedback(mission.objectiveCompleteText);
           }
           if (pendingPresentationEffect !== undefined && snapshot.simulationSteps > 0) {
             const { encounter } = snapshot;

@@ -529,10 +529,10 @@ test('persiste a primeira missão concluída e a retoma após reload', async ({ 
   await expect(root).toHaveAttribute('data-mission-phase', 'outbound');
   await expect(root).toHaveAttribute('data-simulation-state', 'paused');
 
-  await expect(root).toHaveAttribute('data-mission-phase', 'survey', { timeout: 4_000 });
+  await expect(root).toHaveAttribute('data-mission-phase', 'objective', { timeout: 4_000 });
   await expect(root).toHaveAttribute('data-simulation-state', 'running');
   await identifyEnemy(page);
-  await expect(root).toHaveAttribute('data-mission-target-identified', 'true');
+  await expect(root).toHaveAttribute('data-mission-objective-completed', 'true');
   await expect(missionAction).toHaveText('Retornar à base');
   await expect(missionAction).toBeEnabled();
 
@@ -542,8 +542,8 @@ test('persiste a primeira missão concluída e a retoma após reload', async ({ 
   await expect(root).toHaveAttribute('data-simulation-state', 'paused');
   await expect(root).toHaveAttribute('data-player-condition', 'íntegro');
   await expect(root).toHaveAttribute('data-torpedo-ammo', '6');
-  await expect(page.locator('[data-objective-text]')).toContainText('reparada e reabastecida');
-  await expect(missionAction).toHaveText('Repetir missão');
+  await expect(page.locator('[data-objective-text]')).toContainText('Sensores dominados');
+  await expect(missionAction).toHaveText('Iniciar missão 2');
   await expect(root).toHaveAttribute('data-save-state', 'saved');
   expect(await countStoredSaveSnapshots(page)).toBe(3);
 
@@ -552,12 +552,79 @@ test('persiste a primeira missão concluída e a retoma após reload', async ({ 
   await expect(root).toHaveAttribute('data-save-state', 'loaded');
   await expect(root).toHaveAttribute('data-mission-phase', 'completed');
   await expect(root).toHaveAttribute('data-simulation-state', 'paused');
-  await expect(missionAction).toHaveText('Repetir missão');
+  await expect(missionAction).toHaveText('Iniciar missão 2');
 
   await missionAction.click();
-  await expect(root).toHaveAttribute('data-mission-phase', 'survey', { timeout: 4_000 });
+  await expect(root).toHaveAttribute('data-mission-phase', 'objective', { timeout: 4_000 });
+  await expect(root).toHaveAttribute('data-mission-id', 'iris-assistance');
   await expect(root).toHaveAttribute('data-save-state', 'saved');
   expect(await countStoredSaveSnapshots(page)).toBe(3);
+});
+
+test('conclui as três missões iniciais do tutorial em sequência', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto('/');
+  const root = page.locator('[data-app-root]');
+  const missionAction = page.locator('[data-mission-action]');
+  const tractorButton = page.locator('[data-combat-action="tractor"]');
+  const torpedoButton = page.locator('[data-combat-action="torpedo"]');
+
+  await expect(root).toHaveAttribute('data-mission-count', '3');
+  await missionAction.click();
+  await expect(root).toHaveAttribute('data-mission-phase', 'objective', { timeout: 4_000 });
+  await expect(root).toHaveAttribute('data-encounter-disposition', 'passive');
+  await expect(root).toHaveAttribute('data-allowed-equipment', '');
+  await expect(page.locator('[data-combat-action="beam"]')).toBeDisabled();
+  await expect(torpedoButton).toBeDisabled();
+  await identifyEnemy(page);
+  await expect(root).toHaveAttribute('data-mission-objective-completed', 'true');
+  await missionAction.click();
+  await expect(root).toHaveAttribute('data-mission-phase', 'completed', { timeout: 4_000 });
+
+  await missionAction.click();
+  await expect(root).toHaveAttribute('data-mission-id', 'iris-assistance');
+  await expect(root).toHaveAttribute('data-mission-phase', 'objective', { timeout: 4_000 });
+  await expect(root).toHaveAttribute('data-allowed-equipment', 'tractor');
+  await expect(tractorButton).toBeEnabled();
+  await expect(torpedoButton).toBeDisabled();
+  await identifyEnemy(page);
+  await approachAndBrake(page, 68);
+  await tractorButton.click();
+  if ((await root.getAttribute('data-tractor-active')) !== 'true') {
+    await alignSelectedTarget(page);
+    await tractorButton.click();
+  }
+  await expect(root).toHaveAttribute('data-tractor-active', 'true');
+  await expect(root).toHaveAttribute('data-mission-objective-completed', 'true');
+  await missionAction.click();
+  await expect(root).toHaveAttribute('data-mission-phase', 'completed', { timeout: 4_000 });
+
+  await missionAction.click();
+  await expect(root).toHaveAttribute('data-mission-id', 'vespa-combat-training');
+  await expect(root).toHaveAttribute('data-mission-phase', 'objective', { timeout: 4_000 });
+  await expect(root).toHaveAttribute('data-encounter-disposition', 'hostile');
+  await expect(root).toHaveAttribute('data-allowed-equipment', 'beam,torpedo,tractor');
+  await identifyEnemy(page);
+  for (const expectedAmmo of ['5', '4', '3']) {
+    await approachAndBrake(page, 70);
+    await alignSelectedTarget(page);
+    await torpedoButton.click();
+    await expect(root).toHaveAttribute('data-torpedo-ammo', expectedAmmo);
+    await expect(root).toHaveAttribute('data-projectile-count', '0', { timeout: 5_000 });
+    if (expectedAmmo !== '3') await page.waitForTimeout(1_200);
+  }
+  await expect(root).toHaveAttribute('data-combat-phase', 'victory', { timeout: 5_000 });
+  await expect(root).toHaveAttribute('data-mission-objective-completed', 'true');
+  await missionAction.click();
+  await expect(root).toHaveAttribute('data-mission-phase', 'completed', { timeout: 4_000 });
+  await expect(root).toHaveAttribute('data-tutorial-completed', 'true');
+  await expect(missionAction).toHaveText('Reiniciar treinamento');
+  await expect(root).toHaveAttribute('data-save-state', 'saved');
+
+  await page.reload();
+  await expect(root).toHaveAttribute('data-save-state', 'loaded');
+  await expect(root).toHaveAttribute('data-mission-id', 'vespa-combat-training');
+  await expect(root).toHaveAttribute('data-tutorial-completed', 'true');
 });
 
 test('retoma o último checkpoint seguro ao recarregar durante a missão', async ({ page }) => {
@@ -567,7 +634,7 @@ test('retoma o último checkpoint seguro ao recarregar durante a missão', async
 
   await expect(root).toHaveAttribute('data-save-state', 'created');
   await missionAction.click();
-  await expect(root).toHaveAttribute('data-mission-phase', 'survey', { timeout: 4_000 });
+  await expect(root).toHaveAttribute('data-mission-phase', 'objective', { timeout: 4_000 });
   await expect(root).toHaveAttribute('data-save-state', 'saved');
 
   await page.reload();

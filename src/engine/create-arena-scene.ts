@@ -105,6 +105,7 @@ interface SceneMaterials {
   readonly hostileHull: StandardMaterial;
   readonly hull: StandardMaterial;
   readonly moon: StandardMaterial;
+  readonly neutralHull: StandardMaterial;
   readonly planet: StandardMaterial;
   readonly station: StandardMaterial;
   readonly star: StandardMaterial;
@@ -191,6 +192,11 @@ function createMaterials(): SceneMaterials {
     }),
     hull: createMaterial(new Color(0.18, 0.34, 0.5), { gloss: 0.76, metalness: 0.82 }),
     moon: createMaterial(new Color(0.27, 0.3, 0.36), { gloss: 0.12, metalness: 0.18 }),
+    neutralHull: createMaterial(new Color(0.11, 0.34, 0.3), {
+      emissive: new Color(0.018, 0.12, 0.1),
+      gloss: 0.72,
+      metalness: 0.76,
+    }),
     planet: createMaterial(new Color(0.025, 0.16, 0.29), { gloss: 0.5, metalness: 0.12 }),
     station: createMaterial(new Color(0.25, 0.3, 0.39), { gloss: 0.62, metalness: 0.84 }),
     star: createMaterial(new Color(1, 0.55, 0.12), {
@@ -420,13 +426,14 @@ function applyHullSectionVisualStates(
   materials: SceneMaterials,
   maximumDamageBursts: number,
   elapsedSeconds: number,
+  intactHullMaterial: StandardMaterial = ship.intactHullMaterial,
 ): void {
   const damagedSections: HullSectionId[] = [];
   for (const section of HULL_SECTIONS) {
     const state = sectionStates[section];
     const hullMaterial =
       state === 'intact'
-        ? ship.intactHullMaterial
+        ? intactHullMaterial
         : state === 'damaged'
           ? materials.damageScorched
           : materials.damageCritical;
@@ -1228,6 +1235,8 @@ export async function createArenaScene(
           combatVisuals.remoteHullState !== 'hidden' &&
           combatVisuals.remoteHullSections !== 'hidden'
         ) {
+          const remoteIntactHullMaterial =
+            encounter.disposition === 'passive' ? materials.neutralHull : materials.hostileHull;
           applyHullSectionVisualStates(
             remote.detailed,
             combatVisuals.remoteHullSections,
@@ -1235,10 +1244,11 @@ export async function createArenaScene(
             materials,
             preset.maxVisualDamageBursts,
             benchmarkElapsedSeconds,
+            remoteIntactHullMaterial,
           );
           remote.lowRender.material =
             combatVisuals.remoteHullState === 'intact'
-              ? materials.hostileHull
+              ? remoteIntactHullMaterial
               : combatVisuals.remoteHullState === 'damaged'
                 ? materials.damageScorched
                 : materials.damageCritical;
