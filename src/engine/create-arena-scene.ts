@@ -21,6 +21,7 @@ import {
 
 import type { FlightSessionSnapshot } from '../application/flight-session';
 import type { CombatEffectSnapshot } from '../application/encounter-session';
+import type { ParticleDensity } from '../application/game-settings';
 import {
   deriveCombatVisualPresentation,
   deriveRemoteVesselPresentation,
@@ -66,7 +67,14 @@ export interface ArenaSceneOptions {
     readonly durationSeconds: number;
     readonly warmupSeconds: number;
   };
+  readonly presentationPreferences?: ArenaPresentationPreferences;
   readonly preferredBackend?: 'webgpu';
+}
+
+export interface ArenaPresentationPreferences {
+  readonly particleDensity: ParticleDensity;
+  readonly reduceCameraShake: boolean;
+  readonly reduceFlashes: boolean;
 }
 
 export interface BenchmarkTelemetry {
@@ -88,6 +96,7 @@ export interface ArenaRenderSnapshot extends FlightSessionSnapshot {
 export interface ArenaScene {
   readonly backendLabel: 'WebGL 2' | 'WebGPU';
   dispose(): void;
+  setPresentationPreferences(preferences: ArenaPresentationPreferences): void;
 }
 
 interface SceneMaterials {
@@ -877,6 +886,7 @@ function updateCombatVfx(
   remote: RemoteShipVisual,
   remoteObserved: boolean,
   materials: SceneMaterials,
+  preferences: ArenaPresentationPreferences,
 ): number {
   vfx.pooledEntities.forEach((entity) => (entity.enabled = false));
   const encounter = snapshot.encounter;
@@ -885,12 +895,13 @@ function updateCombatVfx(
     vfx.projectileCore.setPosition(projectile.x, projectile.y, projectile.z);
     vfx.projectileHalo.setPosition(projectile.x, projectile.y, projectile.z);
     vfx.projectileCore.enabled = true;
-    vfx.projectileHalo.enabled = true;
+    vfx.projectileHalo.enabled = !preferences.reduceFlashes;
   }
 
   const effects =
     snapshot.presentationEffects ?? (encounter.effect === undefined ? [] : [encounter.effect]);
-  effects.slice(0, vfx.effectSlots.length).forEach((effect, index) => {
+  const maximumEffectCount = preferences.particleDensity === 'full' ? vfx.effectSlots.length : 1;
+  effects.slice(0, maximumEffectCount).forEach((effect, index) => {
     const slot = vfx.effectSlots[index]!;
     if (effect.remainingSeconds <= 0) return;
 
@@ -950,14 +961,16 @@ function updateCombatVfx(
         vfx.scratchDirection,
         vfx.scratchMidpoint,
       );
-      setLineBetween(
-        slot.beamCore,
-        vfx.scratchSource,
-        vfx.scratchTarget,
-        coreWidth,
-        vfx.scratchDirection,
-        vfx.scratchMidpoint,
-      );
+      if (!preferences.reduceFlashes) {
+        setLineBetween(
+          slot.beamCore,
+          vfx.scratchSource,
+          vfx.scratchTarget,
+          coreWidth,
+          vfx.scratchDirection,
+          vfx.scratchMidpoint,
+        );
+      }
     }
 
     const shieldImpact = visuals.shieldImpactTarget !== 'none';
@@ -984,14 +997,17 @@ function updateCombatVfx(
               ? 1.9
               : 1.35;
       const scale = baseScale + elapsedFraction * (effect.kind === 'torpedo' ? 1.8 : 0.9);
-      for (const entity of [slot.impactPrimary, slot.impactCore]) {
-        entity.setPosition(vfx.scratchTarget);
-        entity.enabled = true;
-      }
+      slot.impactPrimary.setPosition(vfx.scratchTarget);
+      slot.impactPrimary.enabled = true;
+      slot.impactCore.setPosition(vfx.scratchTarget);
+      slot.impactCore.enabled = !preferences.reduceFlashes;
       slot.impactPrimary.setEulerAngles(90, effect.serial * 31, 0);
       slot.impactPrimary.setLocalScale(scale, 0.12, scale);
       slot.impactCore.setLocalScale(scale * 0.32, scale * 0.32, scale * 0.32);
-    } else if (effect.kind === 'beam' || effect.kind === 'enemy-beam') {
+    } else if (
+      !preferences.reduceFlashes &&
+      (effect.kind === 'beam' || effect.kind === 'enemy-beam')
+    ) {
       const impactMaterial =
         effect.kind === 'enemy-beam' ? materials.combatEnemyBeam : materials.combatBeamCore;
       slot.impactCoreRender.material = impactMaterial;
@@ -1012,6 +1028,11 @@ export async function createArenaScene(
 ): Promise<ArenaScene> {
   const resources = createResourceTransaction();
   try {
+    let presentationPreferences: ArenaPresentationPreferences = options.presentationPreferences ?? {
+      particleDensity: 'full',
+      reduceCameraShake: false,
+      reduceFlashes: false,
+    };
     const graphicsDevice: GraphicsDevice = await createGraphicsDevice(canvas, {
       antialias: preset.antialias,
       depth: true,
@@ -1224,12 +1245,18 @@ export async function createArenaScene(
         remoteVisible,
         COMBAT_VISUAL_CAPACITIES,
       );
+      const maximumDamageBursts =
+        presentationPreferences.particleDensity === 'full'
+          ? preset.maxVisualDamageBursts
+          : presentationPreferences.particleDensity === 'reduced'
+            ? Math.min(1, preset.maxVisualDamageBursts)
+            : 0;
       applyHullSectionVisualStates(
         player,
         combatVisuals.playerHullSections,
         combatVisuals.playerDisabledSubsystems,
         materials,
-        preset.maxVisualDamageBursts,
+        maximumDamageBursts,
         benchmarkElapsedSeconds,
       );
       remote.root.enabled = remoteVisible;
@@ -1255,7 +1282,7 @@ export async function createArenaScene(
             combatVisuals.remoteHullSections,
             combatVisuals.remoteDisabledSubsystems,
             materials,
-            preset.maxVisualDamageBursts,
+            maximumDamageBursts,
             benchmarkElapsedSeconds,
             remoteIntactHullMaterial,
           );
@@ -1276,6 +1303,7 @@ export async function createArenaScene(
           remote,
           remoteVisible,
           materials,
+          presentationPreferences,
         );
       } else {
         combatVfx.pooledEntities.forEach((entity) => (entity.enabled = false));
@@ -1289,6 +1317,11 @@ export async function createArenaScene(
       const playerRotation = player.root.getRotation();
       playerRotation.transformVector(cameraOffset.set(0, 5.3, 14.8), cameraPosition);
       cameraPosition.add(player.root.getPosition());
+      if (!presentationPreferences.reduceCameraShake && combatVfxCount > 0) {
+        const shakeAmplitude = Math.min(0.12, combatVfxCount * 0.015);
+        cameraPosition.x += Math.sin(benchmarkElapsedSeconds * 29) * shakeAmplitude;
+        cameraPosition.y += Math.cos(benchmarkElapsedSeconds * 23) * shakeAmplitude * 0.65;
+      }
       camera.setPosition(cameraPosition);
       playerRotation.transformVector(cameraTarget.set(0, 0.5, -8.5), cameraOffset);
       cameraTarget.copy(player.root.getPosition()).add(cameraOffset);
@@ -1398,6 +1431,9 @@ export async function createArenaScene(
     return {
       backendLabel: app.graphicsDevice.deviceType === DEVICETYPE_WEBGPU ? 'WebGPU' : 'WebGL 2',
       dispose: disposeResources,
+      setPresentationPreferences(nextPreferences) {
+        presentationPreferences = nextPreferences;
+      },
     };
   } catch (cause: unknown) {
     try {

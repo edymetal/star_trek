@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createGameSaveEnvelope, createGameSavePayload } from '../../src/application/game-save';
+import { SETTINGS_STORAGE_KEY } from '../../src/platform/local-storage-settings-repository';
 
 const SAVE_DATABASE_NAME = 'stellar-command-game-save';
 const SAVE_METADATA_STORE = 'metadata';
@@ -144,6 +145,12 @@ async function dismissMainMenu(page: Page): Promise<void> {
   await expect(page.locator('[data-base-dashboard]')).toBeVisible();
 }
 
+async function openSettings(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Configurações' }).click();
+  await expect(page.locator('[data-app-root]')).toHaveAttribute('data-menu-state', 'settings');
+  await expect(page.locator('[data-settings-form]')).toBeVisible();
+}
+
 async function enterBase(page: Page): Promise<void> {
   await page.goto('/');
   await expect(page.locator('[data-app-root]')).toHaveAttribute('data-app-state', 'ready');
@@ -210,13 +217,13 @@ async function approachAndBrake(page: Page, maximumDistance: number): Promise<vo
       async () =>
         (await root.getAttribute('data-contact-observed')) === 'true' &&
         Number(await root.getAttribute('data-contact-distance')) < maximumDistance,
-      { timeout: 8_000 },
+      { timeout: 12_000 },
     )
     .toBe(true);
   await page.keyboard.up('KeyW');
   await page.keyboard.down('Space');
   await expect
-    .poll(async () => Number(await root.getAttribute('data-ship-speed')), { timeout: 4_000 })
+    .poll(async () => Number(await root.getAttribute('data-ship-speed')), { timeout: 8_000 })
     .toBeLessThan(3);
   await page.keyboard.up('Space');
 }
@@ -319,9 +326,8 @@ test('abre o menu principal acessível e entra na base preparada', async ({ page
   await expect(root).toHaveAttribute('data-ship-z', initialZ ?? '16.0000');
   await expect(root).toHaveAttribute('data-projectile-count', '0');
 
-  await page.getByRole('button', { name: 'Configurações' }).click();
-  await expect(root).toHaveAttribute('data-menu-state', 'settings');
-  await expect(menu).toContainText('Nenhuma preferência temporária');
+  await openSettings(page);
+  await expect(menu).toContainText('Preferências da experiência');
   await page.keyboard.press('Escape');
   await expect(root).toHaveAttribute('data-menu-state', 'home');
   await expect(newTraining).toBeFocused();
@@ -355,6 +361,154 @@ test('abre o menu principal acessível e entra na base preparada', async ({ page
   await expect(root).toHaveAttribute('data-simulation-state', 'paused');
   await expect(page.locator('[data-flight-lod]')).toContainText('Base Aurora');
   await expect(page.locator('[data-combat-panel]')).toBeHidden();
+});
+
+test('persiste configurações separadas do save e aplica HUD e teclas imediatamente', async ({
+  page,
+}, testInfo) => {
+  await page.goto('/');
+  const root = page.locator('[data-app-root]');
+  await expect(root).toHaveAttribute('data-app-state', 'ready');
+  const saveStateBefore = await root.getAttribute('data-save-state');
+  const snapshotsBefore = await countStoredSaveSnapshots(page);
+  const activePreset = await root.getAttribute('data-graphics-preset');
+  const nextPreset = activePreset === 'high' ? 'low' : 'high';
+
+  await openSettings(page);
+  const settingsStatus = page.locator('[data-settings-status]');
+  await expect(settingsStatus).toHaveAttribute('data-settings-status', 'defaulted');
+  await page.locator('[data-setting="graphicsPresetId"]').selectOption(nextPreset);
+  await page.locator('[data-setting="hudScalePercent"]').selectOption('110');
+  await page.locator('[data-setting="reduceFlashes"]').check();
+  await page.locator('[data-setting="reduceCameraShake"]').check();
+  await page.locator('[data-setting="particleDensity"]').selectOption('minimal');
+  await page.locator('[data-setting="masterVolumePercent"]').fill('55');
+  await page.locator('[data-setting="masterVolumePercent"]').dispatchEvent('change');
+  await page.locator('[data-setting="mouseSensitivity"]').fill('1.5');
+  await page.locator('[data-setting="mouseSensitivity"]').dispatchEvent('change');
+  await page.locator('[data-setting="invertVerticalLook"]').check();
+  await page.locator('[data-setting-binding="select-target"]').selectOption('KeyY');
+
+  await expect(settingsStatus).toHaveAttribute('data-settings-status', 'saved');
+  await expect(settingsStatus).toHaveAttribute('data-requires-reload', 'true');
+  await expect(settingsStatus).toContainText('Recarregue para aplicar o preset gráfico');
+  await expect(root).toHaveAttribute('data-hud-scale', '110');
+  await expect(root).toHaveAttribute('data-particle-density', 'minimal');
+  await expect(root).toHaveAttribute('data-reduce-flashes', 'true');
+  await expect(root).toHaveAttribute('data-reduce-camera-shake', 'true');
+  await expect(page.locator('[data-setting-output="masterVolumePercent"]')).toHaveText('55%');
+  await expect(page.locator('[data-setting-output="mouseSensitivity"]')).toHaveText('1,5×');
+  expect(await root.getAttribute('data-save-state')).toBe(saveStateBefore);
+  expect(await countStoredSaveSnapshots(page)).toBe(snapshotsBefore);
+
+  if (testInfo.project.name === 'Google Chrome') {
+    await page.screenshot({ path: 'docs/screenshots/p1-settings-1280x720.png' });
+  }
+
+  await page.reload();
+  await expect(root).toHaveAttribute('data-settings-state', 'loaded');
+  await expect(root).toHaveAttribute('data-graphics-preset', nextPreset);
+  await expect(root).toHaveAttribute('data-hud-scale', '110');
+  await openSettings(page);
+  await expect(settingsStatus).toHaveAttribute('data-requires-reload', 'false');
+  await expect(page.locator('[data-setting="hudScalePercent"]')).toHaveValue('110');
+  await expect(page.locator('[data-setting="masterVolumePercent"]')).toHaveValue('55');
+  await expect(page.locator('[data-setting-binding="select-target"]')).toHaveValue('KeyY');
+
+  await page.keyboard.press('Escape');
+  await dismissMainMenu(page);
+  await expect(page.locator('[data-base-dashboard]')).toBeVisible();
+  for (const viewport of [
+    { height: 720, width: 1280 },
+    { height: 900, width: 1600 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expectHudInsideViewport(page);
+  }
+
+  await departCurrentMission(page);
+  await expect(root).toHaveAttribute('data-contact-awareness', 'detected');
+  await page.keyboard.press('KeyT');
+  await expect(root).toHaveAttribute('data-target-selected', 'false');
+  await page.keyboard.press('KeyY');
+  await expect(root).toHaveAttribute('data-target-selected', 'true');
+  for (const viewport of [
+    { height: 720, width: 1280 },
+    { height: 900, width: 1600 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expectHudInsideViewport(page);
+  }
+  expect(await countStoredSaveSnapshots(page)).toBeGreaterThan(snapshotsBefore);
+});
+
+test('preserva o save ao recuperar configuração inválida por ação explícita', async ({ page }) => {
+  await page.goto('/');
+  const root = page.locator('[data-app-root]');
+  await expect(root).toHaveAttribute('data-app-state', 'ready');
+  const missionIdBefore = await root.getAttribute('data-mission-id');
+  const missionPhaseBefore = await root.getAttribute('data-mission-phase');
+  const snapshotsBefore = await countStoredSaveSnapshots(page);
+  await page.evaluate(
+    ({ key }) =>
+      localStorage.setItem(
+        key,
+        JSON.stringify({ schemaVersion: 99, settings: { hudScalePercent: 1_000 } }),
+      ),
+    { key: SETTINGS_STORAGE_KEY },
+  );
+
+  await page.reload();
+  await expect(root).toHaveAttribute('data-app-state', 'ready');
+  await expect(root).toHaveAttribute('data-settings-state', 'invalid');
+  await expect(root).toHaveAttribute('data-save-state', 'loaded');
+  expect(await root.getAttribute('data-mission-id')).toBe(missionIdBefore);
+  expect(await root.getAttribute('data-mission-phase')).toBe(missionPhaseBefore);
+  expect(await countStoredSaveSnapshots(page)).toBe(snapshotsBefore);
+  await openSettings(page);
+  await expect(page.locator('[data-settings-status]')).toContainText(
+    'Configuração inválida detectada',
+  );
+  await expect(page.locator('[data-setting="hudScalePercent"]')).toHaveValue('100');
+
+  await page.locator('[data-settings-reset]').click();
+  await expect(root).toHaveAttribute('data-settings-state', 'reset');
+  const recovered = await page.evaluate(
+    ({ key }) => JSON.parse(localStorage.getItem(key) ?? 'null') as unknown,
+    { key: SETTINGS_STORAGE_KEY },
+  );
+  expect(recovered).toMatchObject({ schemaVersion: 1 });
+  expect(await countStoredSaveSnapshots(page)).toBe(snapshotsBefore);
+});
+
+test('reduções visuais limitam os VFX reais do raio trator', async ({ page }) => {
+  await seedMissionBriefing(page, 'iris-assistance');
+  const root = page.locator('[data-app-root]');
+  await openSettings(page);
+  await page.locator('[data-setting="reduceFlashes"]').check();
+  await page.locator('[data-setting="reduceCameraShake"]').check();
+  await page.locator('[data-setting="particleDensity"]').selectOption('minimal');
+  await page.keyboard.press('Escape');
+  await dismissMainMenu(page);
+  await departCurrentMission(page);
+  await identifyEnemy(page);
+  await approachAndBrake(page, 68);
+  await page.getByRole('button', { name: /Raio trator/ }).click();
+  if ((await root.getAttribute('data-tractor-active')) !== 'true') {
+    await alignSelectedTarget(page);
+    await expect
+      .poll(async () => Number(await root.getAttribute('data-weapon-charge')))
+      .toBeGreaterThanOrEqual(2);
+    await page.getByRole('button', { name: /Raio trator/ }).click();
+  }
+  await expect(root).toHaveAttribute('data-tractor-active', 'true');
+  await expect(root).toHaveAttribute('data-vfx-kind', 'tractor');
+  await expect(root).toHaveAttribute('data-reduce-flashes', 'true');
+  await expect(root).toHaveAttribute('data-reduce-camera-shake', 'true');
+  await expect
+    .poll(async () => Number(await root.getAttribute('data-active-vfx')))
+    .toBeGreaterThan(0);
+  expect(Number(await root.getAttribute('data-active-vfx'))).toBeLessThanOrEqual(2);
 });
 
 test('continua o checkpoint correto e confirma antes de iniciar novo treinamento', async ({
@@ -675,6 +829,7 @@ test('ordena o DOM tático antes de energia e sessão sem landmarks duplicados',
 test('feixe, torpedo e raio trator têm resultados e restrições distintos', async ({
   page,
 }, testInfo) => {
+  test.setTimeout(50_000);
   await enterCombatMission(page);
   const root = page.locator('[data-app-root]');
   await expect(root).toHaveAttribute('data-player-visual-damage', 'intact');

@@ -1,7 +1,7 @@
 # Arquitetura do jogo
 
-Status: aceita para P0 e P1-B  
-Versão: 1.1 — 30 de agosto de 2026
+Status: aceita para P0 e P1-C  
+Versão: 1.2 — 31 de agosto de 2026
 
 Este documento define como o produto será construído. Requisitos pertencem a [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md), prioridade a [`docs/MVP.md`](docs/MVP.md), decisões justificadas a [`docs/DECISIONS.md`](docs/DECISIONS.md) e pesquisa/orçamentos detalhados a [`PLANEJAMENTO.md`](PLANEJAMENTO.md).
 
@@ -19,7 +19,8 @@ Entrada ──> Aplicação ──> Domínio/simulação ──> Estado e evento
                       áudio, VFX e telemetria
 
 Dados validados ──> definições de nave, arma, missão e setor
-IndexedDB <───────> snapshots versionados da aplicação (P1)
+IndexedDB <───────> snapshots versionados da campanha (P1)
+localStorage <────> preferências versionadas separadas (P1-C)
 ```
 
 ## 2. Princípios
@@ -146,6 +147,8 @@ Scripts do motor referenciam IDs/estado da aplicação; lógica de dano não fic
 - eventos sem HTML injetado a partir de dados.
 
 No P1-B, o estado efêmero do menu fica em `src/application/session-menu.ts`; o shell DOM apenas apresenta suas visões, gerencia foco e torna a sessão tática inerte enquanto o menu modal está aberto. O painel da base deriva campanha, nave e save autoritativos, sem persistir ou duplicar essas regras na interface.
+
+No P1-C, `src/application/game-settings.ts` valida o envelope v1 e `SettingsController` coordena defaults, carga, gravação e restauração por uma interface síncrona própria. O adaptador `localStorage` usa chave exclusiva e nunca acessa o repositório IndexedDB da campanha. A aplicação converte preferências válidas para entrada e apresentação; o shell apenas edita/exibe valores, e o engine recebe reduções de VFX sem se tornar autoridade da configuração.
 
 ### `platform`
 

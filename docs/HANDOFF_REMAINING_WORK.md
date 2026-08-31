@@ -1,9 +1,9 @@
 # Handoff para finalizar o projeto
 
-Atualizado em: 30 de agosto de 2026  
+Atualizado em: 31 de agosto de 2026  
 Branch esperada: `main`  
 Baseline anterior ao P1-A: commit `f9750ee` (`feat: adicionar campanha tutorial de tres missoes`)  
-Marco atual: P1-B concluída; consulte o último relatório em `docs/PROGRESS.md`
+Marco atual: P1-C concluída; consulte o último relatório em `docs/PROGRESS.md`
 
 ## 1. Finalidade deste documento
 
@@ -20,7 +20,7 @@ Ao receber uma solicitação genérica como “continue” ou “finalize o jogo
 
 Use este texto como prompt inicial:
 
-> Continue o projeto a partir de `docs/HANDOFF_REMAINING_WORK.md`. Leia integralmente `AGENTS.md` e todas as fontes canônicas na ordem indicada antes de alterar código. Trabalhe uma fatia vertical por vez, preserve as decisões aceitas, não refaça o P0 nem as fatias P1-A/P1-B concluídas e não adicione conteúdo de Star Trek. Implemente primeiro o P1-C e depois os itens P1 obrigatórios na ordem do handoff. Para cada fatia, crie testes sem GPU para regras, E2E em Chrome/Edge para fluxos visuais, execute `npm run verify` e os testes E2E relevantes, atualize a documentação e faça commit/push somente quando o gate estiver verde. Não publique nem faça deploy sem autorização explícita.
+> Continue o projeto a partir de `docs/HANDOFF_REMAINING_WORK.md`. Leia integralmente `AGENTS.md` e todas as fontes canônicas na ordem indicada antes de alterar código. Trabalhe uma fatia vertical por vez, preserve as decisões aceitas, não refaça o P0 nem as fatias P1-A/P1-B/P1-C concluídas e não adicione conteúdo de Star Trek. Implemente primeiro o P1-D e depois os itens P1 obrigatórios na ordem do handoff. Para cada fatia, crie testes sem GPU para regras, E2E em Chrome/Edge para fluxos visuais, execute `npm run verify` e os testes E2E relevantes, atualize a documentação e faça commit/push somente quando o gate estiver verde. Não publique nem faça deploy sem autorização explícita.
 
 ## 3. Fontes de verdade e ordem de leitura
 
@@ -68,13 +68,13 @@ O P0 está aprovado e não deve ser reimplementado:
 - base segura e raízes gráficas fixas, sem IA, projéteis ou VFX fora da bolha tática;
 - contatos e posições próprios por missão, com checkpoints transitórios ainda retornando ao briefing.
 
-Gate atual verificado após o P1-B:
+Gate atual verificado após o P1-C:
 
-- `npm run verify`: 162/162 testes em 27 arquivos;
-- Playwright: 56/56 casos em Chrome e Edge;
-- benchmark físico aprovado na UHD 620/médio, 1600×900, WebGL 2: 60,011 FPS médios e p99 de 18,1 ms;
+- testes: 173/173 em 30 arquivos;
+- Playwright: 62/62 casos em Chrome e Edge no gate P1-C;
+- benchmark físico aprovado na UHD 620/médio, 1600×900, WebGL 2: 60,012 FPS médios e p99 de 19,1 ms;
 - nenhum achado CRITICAL/HIGH conhecido;
-- chunk do engine em aproximadamente 510,52 kB gzip.
+- chunk do engine em aproximadamente 510,69 kB gzip.
 
 Os totais de testes podem crescer. Eles são uma referência, não um motivo para remover ou esconder novos testes.
 
@@ -84,7 +84,7 @@ Execute na ordem abaixo, salvo nova prioridade explícita do usuário:
 
 1. [x] coerência do estado de base, mapa do sistema e apresentação da viagem;
 2. [x] tela inicial e fluxo base/preparação/seleção de missão;
-3. configurações persistentes e controles essenciais;
+3. [x] configurações persistentes e controles essenciais;
 4. acessibilidade prioritária;
 5. diário de objetivos e descobertas;
 6. áudio e feedback final;
@@ -197,7 +197,7 @@ O aplicativo agora abre em menu modal próprio antes de liberar a sessão. Conti
 - inspeção 1280×720 e 1600×900 aprovada nas capturas `p1-main-menu-1280x720.png` e `p1-base-dashboard-1600x900.png`;
 - decisão arquitetural registrada em `DECISION-032`.
 
-## 8. Fatia P1-C — configurações persistentes
+## 8. Fatia P1-C — configurações persistentes — concluída
 
 ### Criar
 
@@ -232,6 +232,15 @@ O aplicativo agora abre em menu modal próprio antes de liberar a sessão. Conti
 - mudança de escala não cria scroll/overlap nos dois viewports obrigatórios;
 - redução de efeitos realmente afeta apresentação, não apenas o texto da opção;
 - testes cobrem defaults, round-trip, versão inválida e recuperação.
+
+### Gate realizado
+
+- envelope v1 e `localStorage` exclusivos, com defaults, round-trip, versão futura, faixas/opções inválidas e falhas cobertos sem GPU;
+- preset, HUD, volumes, reduções, mouse e teclas sobrevivem ao reload sem alterar o checkpoint IndexedDB;
+- configuração inválida permanece preservada até ação explícita, com padrões seguros e mensagem visível;
+- HUD 110% permanece contido e sem interseções em 1280×720/1600×900; remapeamento funciona no encontro real;
+- redução de flashes/tremor/partículas altera entidades e câmera da cena; Chrome/Edge validam VFX limitado;
+- benchmark UHD 620/médio permanece acima do gate e a decisão arquitetural está em `DECISION-033`.
 
 ## 9. Fatia P1-D — acessibilidade prioritária
 
@@ -522,11 +531,14 @@ Os nomes são sugestões; o conteúdo e os gates importam mais que a quantidade 
 - `src/application/encounter-session.ts`: sensores, equipamento, IA, dano e perfis passivo/hostil;
 - `src/application/game-save.ts`: envelope e migração do save;
 - `src/application/save-controller.ts`: inicialização, gravação e recuperação;
+- `src/application/game-settings.ts`: envelope v1 e validação estrita das preferências;
+- `src/application/settings-controller.ts`: defaults, carga, gravação e restauração de configuração;
 - `src/content/mission-content.ts`: as três missões e textos tutoriais;
 - `src/domain/missions/tutorial-campaign.ts`: ordem e fases da campanha;
 - `src/domain/flight/`, `energy/` e `combat/`: regras puras já testadas;
 - `src/engine/create-arena-scene.ts`: cena PlayCanvas, materiais, corpos, naves, dano, VFX, LOD e benchmark;
 - `src/platform/indexeddb-save-repository.ts`: persistência do progresso;
+- `src/platform/local-storage-settings-repository.ts`: persistência separada das preferências;
 - `src/platform/flight-input.ts`: teclado, mouse, foco e tela cheia;
 - `src/ui/app-shell.ts`: DOM/HUD e contratos de telemetria;
 - `src/styles/global.css`: layout e tema;
@@ -543,9 +555,9 @@ Os nomes são sugestões; o conteúdo e os gates importam mais que a quantidade 
 - [x] base, mapa, viagem e encontro têm estados coerentes e distintos;
 - [x] apresentação visual da viagem implementada e leve;
 - [x] menu inicial/continuar/acesso a configurações/créditos implementado;
-- [ ] configurações persistentes separadas do save;
-- [ ] escala do HUD e redução de flashes/tremor/partículas funcionais;
-- [ ] remapeamento essencial funcional;
+- [x] configurações persistentes separadas do save;
+- [x] escala do HUD e redução de flashes/tremor/partículas funcionais;
+- [x] remapeamento essencial funcional;
 - [ ] diário mínimo de objetivos/descobertas implementado;
 - [ ] áudio original/licenciado com volumes, mute e fallback;
 - [ ] falha de asset recuperável;

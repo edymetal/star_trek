@@ -22,10 +22,15 @@ import {
   type NavigationCommandResult,
   type SystemNavigationSnapshot,
 } from '../domain/navigation/system-navigation';
-import type { ArenaScene, EngineTelemetry } from '../engine/create-arena-scene';
-import { createFlightInputController } from '../platform/flight-input';
+import type {
+  ArenaPresentationPreferences,
+  ArenaScene,
+  EngineTelemetry,
+} from '../engine/create-arena-scene';
+import { createFlightInputController, type FlightInputPreferences } from '../platform/flight-input';
 import { inspectWebGl2Capability } from '../platform/graphics-diagnostics';
 import { createIndexedDbSaveRepository } from '../platform/indexeddb-save-repository';
+import { createLocalStorageSettingsRepository } from '../platform/local-storage-settings-repository';
 import type {
   AppShell,
   BaseHudTelemetry,
@@ -37,6 +42,7 @@ import type {
   MainMenuHudTelemetry,
   NavigationHudTelemetry,
   SaveHudTelemetry,
+  SettingsHudTelemetry,
 } from '../ui/app-shell';
 import { createFlightSession, type FlightSessionSnapshot } from './flight-session';
 import { createEncounterSession } from './encounter-session';
@@ -50,6 +56,8 @@ import {
 import { selectInitialPreset } from './select-initial-preset';
 import { createGameSavePayload, type GameSavePayload } from './game-save';
 import { createSaveController, type SaveControllerStatus } from './save-controller';
+import { createDefaultGameSettings, type GameSettings } from './game-settings';
+import { createSettingsController, type SettingsControllerResult } from './settings-controller';
 import { createSessionMenu, type SessionMenuSnapshot } from './session-menu';
 import { createThrottledPublisher } from './throttled-publisher';
 import { parseStartupOptions } from './startup-options';
@@ -89,6 +97,22 @@ const RENDERER_UNCONFIRMED_NOTICE: CompatibilityNotice = {
 
 function describeUnknownError(cause: unknown): string {
   return cause instanceof Error ? cause.message : 'Falha sem detalhe técnico disponível.';
+}
+
+function toFlightInputPreferences(settings: GameSettings): FlightInputPreferences {
+  return {
+    controlBindings: settings.controlBindings,
+    invertVerticalLook: settings.invertVerticalLook,
+    mouseSensitivity: settings.mouseSensitivity,
+  };
+}
+
+function toArenaPresentationPreferences(settings: GameSettings): ArenaPresentationPreferences {
+  return {
+    particleDensity: settings.particleDensity,
+    reduceCameraShake: settings.reduceCameraShake,
+    reduceFlashes: settings.reduceFlashes,
+  };
 }
 
 interface PublishedHudTelemetry {
@@ -312,6 +336,7 @@ function createMainMenuHudTelemetry(
 export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene | undefined> {
   let disposeFailedBootstrap: (() => void) | undefined;
   const startupOptions = parseStartupOptions(window.location.search);
+  const persistenceEnabled = startupOptions.benchmark === undefined;
   const capability = inspectWebGl2Capability();
   const readiness = evaluateGraphicsReadiness(capability);
   shell.setGraphicsCapability(capability);
@@ -323,10 +348,31 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
     return undefined;
   }
 
+  const automaticPresetId = selectInitialPreset(capability, startupOptions.requestedPresetId);
+  const defaultSettings = createDefaultGameSettings(automaticPresetId);
+  const settingsController = persistenceEnabled
+    ? createSettingsController(createLocalStorageSettingsRepository())
+    : undefined;
+  const settingsInitialization:
+    | SettingsControllerResult
+    | {
+        readonly settings: GameSettings;
+        readonly status: { readonly state: 'disabled' };
+      } = settingsController?.initialize(defaultSettings) ?? {
+    settings: defaultSettings,
+    status: { state: 'disabled' },
+  };
+  let currentSettings = settingsInitialization.settings;
+  let currentSettingsStatus: SettingsHudTelemetry['status'] = settingsInitialization.status;
   const preset = getGraphicsPreset(
-    selectInitialPreset(capability, startupOptions.requestedPresetId),
+    startupOptions.requestedPresetId ?? currentSettings.graphicsPresetId,
   );
   shell.setPreset(preset);
+  shell.setSettingsTelemetry({
+    activePresetId: preset.id,
+    settings: currentSettings,
+    status: currentSettingsStatus,
+  });
 
   if (readiness.reason === 'software-renderer') {
     shell.showWarning(SOFTWARE_RENDERER_NOTICE);
@@ -335,7 +381,6 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
   }
 
   try {
-    const persistenceEnabled = startupOptions.benchmark === undefined;
     const menuSession = createSessionMenu(persistenceEnabled);
     const defaultSavePayload = createGameSavePayload(FIRST_TUTORIAL_MISSION.id, 'briefing');
     const saveController = createSaveController({
@@ -570,6 +615,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
     const input = createFlightInputController({
       canvas: shell.canvas,
       fullscreenTarget: shell.fullscreenTarget,
+      preferences: toFlightInputPreferences(currentSettings),
       onControlFeedback: (message) => shell.setControlFeedback(message),
       onFocusLost() {
         if (menuSession.getSnapshot().isOpen) return;
@@ -616,6 +662,30 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
         shell.setControlFeedback(
           active ? 'Mouse capturado. Pressione Esc para liberar.' : 'Mouse liberado.',
         );
+      },
+    });
+    const sceneForSettings: { current?: ArenaScene } = {};
+    const publishSettingsResult = (result: SettingsControllerResult): void => {
+      currentSettings = result.settings;
+      currentSettingsStatus = result.status;
+      input.setPreferences(toFlightInputPreferences(currentSettings));
+      sceneForSettings.current?.setPresentationPreferences(
+        toArenaPresentationPreferences(currentSettings),
+      );
+      shell.setSettingsTelemetry({
+        activePresetId: preset.id,
+        settings: currentSettings,
+        status: currentSettingsStatus,
+      });
+    };
+    const unbindSettingsControls = shell.bindSettingsControls({
+      onChange(settings) {
+        if (settingsController === undefined) return;
+        publishSettingsResult(settingsController.save(settings));
+      },
+      onReset() {
+        if (settingsController === undefined) return;
+        publishSettingsResult(settingsController.reset(defaultSettings));
       },
     });
     const unbindControls = shell.bindFlightControls({
@@ -886,6 +956,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       },
     });
     disposeFailedBootstrap = () => {
+      unbindSettingsControls();
       unbindMainMenuControls();
       unbindBaseControls();
       unbindSaveControls();
@@ -1046,6 +1117,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       },
       {
         ...(startupOptions.benchmark === undefined ? {} : { benchmark: startupOptions.benchmark }),
+        presentationPreferences: toArenaPresentationPreferences(currentSettings),
         ...(startupOptions.requestedBackend === undefined
           ? {}
           : { preferredBackend: startupOptions.requestedBackend }),
@@ -1058,7 +1130,11 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
         disposeFailedBootstrap = undefined;
         engineScene.dispose();
       },
+      setPresentationPreferences(preferences) {
+        engineScene.setPresentationPreferences(preferences);
+      },
     };
+    sceneForSettings.current = scene;
     shell.setBackend(scene.backendLabel);
     shell.setPointerCaptured(input.isPointerCaptured());
     shell.setFullscreenActive(false);

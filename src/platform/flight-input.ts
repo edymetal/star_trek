@@ -14,17 +14,37 @@ export type TacticalInputAction =
   | 'tractor'
   | 'restart-encounter';
 
-export function tacticalActionForCode(code: string): TacticalInputAction | undefined {
-  const actions: Readonly<Record<string, TacticalInputAction>> = {
-    Digit1: 'beam',
-    Digit2: 'torpedo',
-    Digit3: 'tractor',
+export type RemappableTacticalInputAction = Extract<
+  TacticalInputAction,
+  'beam' | 'select-target' | 'toggle-scan' | 'torpedo' | 'tractor'
+>;
+
+export interface FlightInputPreferences {
+  readonly controlBindings: Readonly<Record<RemappableTacticalInputAction, string>>;
+  readonly invertVerticalLook: boolean;
+  readonly mouseSensitivity: number;
+}
+
+const DEFAULT_TACTICAL_BINDINGS: Readonly<Record<RemappableTacticalInputAction, string>> = {
+  beam: 'Digit1',
+  'select-target': 'KeyT',
+  'toggle-scan': 'KeyR',
+  torpedo: 'Digit2',
+  tractor: 'Digit3',
+};
+
+export function tacticalActionForCode(
+  code: string,
+  bindings: Readonly<Record<RemappableTacticalInputAction, string>> = DEFAULT_TACTICAL_BINDINGS,
+): TacticalInputAction | undefined {
+  const fixedActions: Readonly<Record<string, TacticalInputAction>> = {
     KeyN: 'restart-encounter',
-    KeyR: 'toggle-scan',
-    KeyT: 'select-target',
     KeyX: 'clear-target',
   };
-  return actions[code];
+  const remappableAction = Object.entries(bindings).find(
+    ([, boundCode]) => boundCode === code,
+  )?.[0];
+  return (remappableAction as RemappableTacticalInputAction | undefined) ?? fixedActions[code];
 }
 
 export function deriveContinuousFlightInput(
@@ -45,11 +65,16 @@ export function deriveContinuousFlightInput(
   };
 }
 
-export function pointerPixelsToLookDelta(pointerDelta: PointerFlightDelta): PointerLookDelta {
+export function pointerPixelsToLookDelta(
+  pointerDelta: PointerFlightDelta,
+  sensitivity = 1,
+  invertVerticalLook = false,
+): PointerLookDelta {
   const clamp = (value: number): number => Math.max(-12, Math.min(12, value));
+  const verticalDirection = invertVerticalLook ? 1 : -1;
   return {
-    pitchDegrees: clamp(-pointerDelta.y * 0.08),
-    yawDegrees: clamp(-pointerDelta.x * 0.08),
+    pitchDegrees: clamp(pointerDelta.y * verticalDirection * 0.08 * sensitivity),
+    yawDegrees: clamp(-pointerDelta.x * 0.08 * sensitivity),
   };
 }
 
@@ -73,6 +98,7 @@ export interface FlightInputController {
   readContinuousInput(): ContinuousFlightInput;
   releaseControls(): void;
   requestPointerCapture(): Promise<boolean>;
+  setPreferences(preferences: FlightInputPreferences): void;
   toggleFullscreen(): Promise<boolean>;
 }
 
@@ -85,6 +111,7 @@ export interface FlightInputControllerOptions {
   readonly onPauseToggle: () => void;
   readonly onPointerCaptureChange: (active: boolean) => void;
   readonly onTacticalAction: (action: TacticalInputAction) => void;
+  readonly preferences?: FlightInputPreferences;
 }
 
 const FLIGHT_CODES = new Set([
@@ -115,6 +142,11 @@ export function createFlightInputController(
 ): FlightInputController {
   const pressedCodes = new Set<string>();
   let pointerDelta: PointerFlightDelta = { x: 0, y: 0 };
+  let preferences: FlightInputPreferences = options.preferences ?? {
+    controlBindings: DEFAULT_TACTICAL_BINDINGS,
+    invertVerticalLook: false,
+    mouseSensitivity: 1,
+  };
 
   const releaseInput = (): void => {
     pressedCodes.clear();
@@ -146,7 +178,7 @@ export function createFlightInputController(
       void controller.toggleFullscreen();
       return;
     }
-    const tacticalAction = tacticalActionForCode(event.code);
+    const tacticalAction = tacticalActionForCode(event.code, preferences.controlBindings);
     if (tacticalAction !== undefined && !event.repeat) {
       event.preventDefault();
       options.onTacticalAction(tacticalAction);
@@ -199,7 +231,11 @@ export function createFlightInputController(
 
   const controller: FlightInputController = {
     consumePointerDelta() {
-      const delta = pointerPixelsToLookDelta(pointerDelta);
+      const delta = pointerPixelsToLookDelta(
+        pointerDelta,
+        preferences.mouseSensitivity,
+        preferences.invertVerticalLook,
+      );
       pointerDelta = { x: 0, y: 0 };
       return delta;
     },
@@ -232,6 +268,10 @@ export function createFlightInputController(
         () => options.canvas.requestPointerLock(),
         () => options.onControlFeedback('Não foi possível capturar o mouse. Use o teclado.'),
       );
+    },
+    setPreferences(nextPreferences) {
+      preferences = nextPreferences;
+      releaseInput();
     },
     async toggleFullscreen() {
       const entering = document.fullscreenElement !== options.fullscreenTarget;

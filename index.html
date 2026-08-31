@@ -67,22 +67,132 @@
           <div data-main-menu-view="settings" hidden>
             <p class="eyebrow">Configurações</p>
             <h2>Preferências da experiência</h2>
-            <dl class="main-menu__facts">
-              <div>
-                <dt>Preset gráfico atual</dt>
-                <dd data-main-menu-preset>Verificando…</dd>
-              </div>
-              <div>
-                <dt>Controles</dt>
-                <dd>Teclado e mouse · configuração padrão</dd>
-              </div>
-            </dl>
-            <p class="main-menu__note">
-              Escala do HUD, áudio, redução de efeitos e remapeamento persistente serão concluídos
-              na etapa P1-C. Nenhuma preferência temporária é apresentada como se já estivesse
-              salva.
+            <form class="settings-form" data-settings-form>
+              <fieldset>
+                <legend>Vídeo e interface</legend>
+                <label>
+                  Preset gráfico
+                  <select data-setting="graphicsPresetId">
+                    <option value="low">Baixo</option>
+                    <option value="medium">Médio</option>
+                    <option value="high">Alto</option>
+                  </select>
+                </label>
+                <label>
+                  Escala do HUD
+                  <select data-setting="hudScalePercent">
+                    <option value="90">Compacta · 90%</option>
+                    <option value="100">Padrão · 100%</option>
+                    <option value="110">Ampliada · 110%</option>
+                  </select>
+                </label>
+                <label class="settings-form__check">
+                  <input type="checkbox" data-setting="reduceFlashes" />
+                  Reduzir flashes e brilhos intensos
+                </label>
+                <label class="settings-form__check">
+                  <input type="checkbox" data-setting="reduceCameraShake" />
+                  Reduzir tremor da câmera
+                </label>
+                <label>
+                  Partículas e danos
+                  <select data-setting="particleDensity">
+                    <option value="full">Completas</option>
+                    <option value="reduced">Reduzidas</option>
+                    <option value="minimal">Mínimas</option>
+                  </select>
+                </label>
+              </fieldset>
+
+              <fieldset>
+                <legend>Áudio</legend>
+                <label>
+                  Volume geral · <output data-setting-output="masterVolumePercent">80%</output>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    data-setting="masterVolumePercent"
+                  />
+                </label>
+                <label>
+                  Efeitos · <output data-setting-output="effectsVolumePercent">85%</output>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    data-setting="effectsVolumePercent"
+                  />
+                </label>
+                <label>
+                  Música/ambiente ·
+                  <output data-setting-output="ambienceVolumePercent">65%</output>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    data-setting="ambienceVolumePercent"
+                  />
+                </label>
+                <p class="settings-form__hint">
+                  Os volumes já são persistidos e serão consumidos pelo áudio original na P1-F.
+                </p>
+              </fieldset>
+
+              <fieldset>
+                <legend>Mouse</legend>
+                <label>
+                  Sensibilidade · <output data-setting-output="mouseSensitivity">1,0×</output>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2"
+                    step="0.1"
+                    data-setting="mouseSensitivity"
+                  />
+                </label>
+                <label class="settings-form__check">
+                  <input type="checkbox" data-setting="invertVerticalLook" />
+                  Inverter olhar vertical
+                </label>
+              </fieldset>
+
+              <fieldset>
+                <legend>Teclas táticas essenciais</legend>
+                <div class="settings-form__bindings">
+                  <label
+                    >Selecionar alvo
+                    <select data-setting-binding="select-target"></select
+                  ></label>
+                  <label
+                    >Scan ativo
+                    <select data-setting-binding="toggle-scan"></select
+                  ></label>
+                  <label
+                    >Feixe
+                    <select data-setting-binding="beam"></select
+                  ></label>
+                  <label
+                    >Torpedo
+                    <select data-setting-binding="torpedo"></select
+                  ></label>
+                  <label
+                    >Raio trator
+                    <select data-setting-binding="tractor"></select
+                  ></label>
+                </div>
+              </fieldset>
+            </form>
+            <p class="settings-form__status" data-settings-status role="status" aria-live="polite">
+              Carregando preferências locais…
             </p>
-            <button type="button" data-main-menu-back>Voltar ao menu (Esc)</button>
+            <div class="settings-form__actions">
+              <button type="button" data-settings-reset>Restaurar padrões</button>
+              <button type="button" data-main-menu-back>Voltar ao menu (Esc)</button>
+            </div>
           </div>
 
           <div data-main-menu-view="diagnostics" hidden>

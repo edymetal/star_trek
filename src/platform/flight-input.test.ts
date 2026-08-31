@@ -32,6 +32,16 @@ describe('deriveContinuousFlightInput', () => {
     expect(pointer).toEqual({ pitchDegrees: 8, yawDegrees: -8 });
   });
 
+  it('aplica sensibilidade e inversão vertical ao mouse com limite seguro', () => {
+    const adjusted = pointerPixelsToLookDelta({ x: 20, y: -20 }, 1.5, true);
+    expect(adjusted.pitchDegrees).toBeCloseTo(-2.4);
+    expect(adjusted.yawDegrees).toBeCloseTo(-2.4);
+    expect(pointerPixelsToLookDelta({ x: 1_000, y: 1_000 }, 2, false)).toEqual({
+      pitchDegrees: -12,
+      yawDegrees: -12,
+    });
+  });
+
   it('retorna entrada neutra depois de liberar todas as teclas', () => {
     expect(deriveContinuousFlightInput(new Set())).toEqual({
       boost: false,
@@ -53,6 +63,20 @@ describe('tacticalActionForCode', () => {
     expect(tacticalActionForCode('Digit3')).toBe('tractor');
     expect(tacticalActionForCode('KeyN')).toBe('restart-encounter');
     expect(tacticalActionForCode('KeyW')).toBeUndefined();
+  });
+
+  it('usa bindings táticos remapeados sem alterar os comandos fixos', () => {
+    const bindings = {
+      beam: 'KeyG',
+      'select-target': 'KeyY',
+      'toggle-scan': 'KeyH',
+      torpedo: 'Digit5',
+      tractor: 'Digit6',
+    } as const;
+
+    expect(tacticalActionForCode('KeyY', bindings)).toBe('select-target');
+    expect(tacticalActionForCode('KeyT', bindings)).toBeUndefined();
+    expect(tacticalActionForCode('KeyN', bindings)).toBe('restart-encounter');
   });
 });
 

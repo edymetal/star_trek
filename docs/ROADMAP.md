@@ -1,6 +1,6 @@
 # Roadmap de desenvolvimento
 
-Atualizado em: 30 de agosto de 2026
+Atualizado em: 31 de agosto de 2026
 
 O roadmap usa gates objetivos, não datas rígidas. Uma etapa só fecha com evidência de teste e revisão. Cada etapa funcional admite no máximo cinco ciclos `review → implement → test`; problemas remanescentes vão para `docs/KNOWN_ISSUES.md`, mas CRITICAL/HIGH impedem avanço.
 
@@ -177,7 +177,7 @@ Critério de conclusão:
 
 ## Etapa 6 — Primeira fatia vertical P1
 
-**Status:** em desenvolvimento; campanha, persistência, base/mapa/viagem e menu inicial concluídos; configurações e recuperação de asset ainda pendentes
+**Status:** em desenvolvimento; campanha, persistência, base/mapa/viagem, menu inicial e configurações concluídos; recuperação de asset ainda pendente
 
 **Objetivo:** implementar uma missão ponta a ponta antes de multiplicar conteúdo.
 
@@ -231,6 +231,14 @@ Quinta subfatia concluída:
 - menu modal bloqueia entrada tática e mantém foco/retorno por teclado previsíveis;
 - estados de carregamento, save indisponível e recuperação continuam visíveis, sem tela vazia.
 
+Sexta subfatia concluída:
+
+- configurações usam repositório e schema v1 separados do save da campanha;
+- preset gráfico, HUD, volumes, reduções visuais, mouse e teclas essenciais sobrevivem ao reload;
+- HUD, entrada e VFX seguros mudam imediatamente; preset informa e respeita o próximo carregamento;
+- configuração inválida preserva o registro, ativa padrões seguros e exige restauração/alteração explícita;
+- escala de 110% e reduções reais foram verificadas nos dois viewports e navegadores obrigatórios.
+
 Critério de conclusão:
 
 - ciclo completo funciona após reload;
@@ -240,7 +248,7 @@ Critério de conclusão:
 
 ## Etapa 7 — Vertical slice/MVP P1
 
-**Status:** em desenvolvimento; ciclo base–mapa–viagem–missões, variedade de contatos, tutorial e menu inicial concluídos
+**Status:** em desenvolvimento; ciclo base–mapa–viagem–missões, variedade de contatos, tutorial, menu inicial e configurações concluídos
 
 **Objetivo:** completar variedade mínima e qualidade de demonstração.
 
@@ -250,7 +258,8 @@ Entregas:
 - [x] duas variações de contato/IA;
 - [~] tutorial contextual concluído; diário de objetivo/descoberta ainda parcial;
 - áudio e feedback refinados;
-- configurações e acessibilidade prioritária;
+- [x] configurações persistentes e controles essenciais;
+- acessibilidade prioritária restante;
 - inventário final de licenças do build;
 - testes E2E do ciclo e benchmark de regressão.
 

@@ -23,7 +23,7 @@ Em conflito, requisito mais recente e explícito do usuário vence. Atualize os 
 
 ## Estado atual
 
-P0.1 a P0.5 foram aprovados. A revisão P0.4 de 27/08/2026 foi exercida pelo coordenador sem convocar subagente Architect, conforme decisão explícita do usuário. O cenário determinístico e os presets estão em `DECISION-025`; dano visual por seção, impacto direcional e VFX limitados estão em `DECISION-026`. Em 29/08/2026, o usuário substituiu a medição obrigatória da MX130 por fluidez escalável sem personalização de GPU; `DECISION-027` aprovou o P0.5 com a medição física UHD 620/baixo de 60,010 FPS e p99 de 18,9 ms. O P1 está em desenvolvimento: `DECISION-028` implementou o primeiro ciclo de missão, `DECISION-029` adicionou save local versionado, `DECISION-030` expandiu o treinamento para três missões sequenciais, `DECISION-031` entregou mapa/viagem e `DECISION-032` separou menu inicial, base e sessão tática. O gate atual passa com 162/162 testes e 56/56 casos E2E Chrome/Edge; menu inicial e comando da base estão concluídos e configurações persistentes são a próxima subfatia.
+P0.1 a P0.5 foram aprovados. A revisão P0.4 de 27/08/2026 foi exercida pelo coordenador sem convocar subagente Architect, conforme decisão explícita do usuário. O cenário determinístico e os presets estão em `DECISION-025`; dano visual por seção, impacto direcional e VFX limitados estão em `DECISION-026`. Em 29/08/2026, o usuário substituiu a medição obrigatória da MX130 por fluidez escalável sem personalização de GPU; `DECISION-027` aprovou o P0.5 com a medição física UHD 620/baixo de 60,010 FPS e p99 de 18,9 ms. O P1 está em desenvolvimento: `DECISION-028` implementou o primeiro ciclo de missão, `DECISION-029` adicionou save local versionado, `DECISION-030` expandiu o treinamento para três missões sequenciais, `DECISION-031` entregou mapa/viagem, `DECISION-032` separou menu inicial/base/sessão tática e `DECISION-033` entregou configurações persistentes separadas do save. O gate P1-C passa com 173/173 testes e 62/62 casos E2E Chrome/Edge; configurações estão concluídas e acessibilidade prioritária P1-D é a próxima subfatia.
 
 Versões fixadas no scaffold: Node.js 22.12 ou superior, TypeScript 6.0.3, Vite 8.2.2, PlayCanvas 2.21.4, Vitest 4.1.11, Playwright 1.62.1, ESLint 10.8.1 e Prettier 3.9.6. O motivo para manter TypeScript 6 no scaffold está em `DECISION-017`; não atualize isoladamente sem conferir a matriz do typescript-eslint.
 
@@ -36,7 +36,7 @@ Versões fixadas no scaffold: Node.js 22.12 ou superior, TypeScript 6.0.3, Vite 
 - PlayCanvas, HUD, entrada e persistência são adaptadores;
 - simulação usa passo fixo; IA/sensores podem usar frequências menores;
 - conteúdo é orientado a dados validados;
-- P1 usa IndexedDB atrás de repositório e schema versionado;
+- P1 usa IndexedDB para progresso e `localStorage` para preferências, atrás de repositórios e schemas separados;
 - voo é cinemático e usa volumes simples; não adicione física antes de necessidade medida.
 
 ## Estrutura planejada

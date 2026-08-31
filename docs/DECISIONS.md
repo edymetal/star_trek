@@ -292,6 +292,15 @@ Decisões aceitas só devem ser alteradas por nova entrada que referencie a ante
 **Motivo:** entrega navegação por teclado, foco previsível, proteção de progresso e base semanticamente distinta com DOM existente, sem framework, novo schema, asset ou carga da cena.  
 **Consequências:** configurações ainda são apenas uma entrada informativa e serão implementadas em P1-C em repositório separado. Créditos identificam a autoria procedural atual, mas o inventário formal continua em P1-G. O menu pode ser reaberto somente da base; mapa, viagem e encontro permanecem estados próprios e não aceitam comandos enquanto a fronteira modal estiver aberta.
 
+## DECISION-033 — Preferências v1 em localStorage permanecem separadas do progresso
+
+**Status:** aceita para a sexta subfatia P1 (P1-C)  
+**Problema:** preset, HUD, áudio futuro, redução de efeitos e entrada precisavam sobreviver ao reload e estar disponíveis antes da criação da cena, sem migrar o save da campanha, ocultar configuração inválida ou tornar DOM/PlayCanvas autoridades.  
+**Opções consideradas:** incluir preferências no envelope IndexedDB v2; criar outro banco IndexedDB assíncrono; usar envelope versionado pequeno em `localStorage` atrás de repositório próprio.  
+**Decisão:** `GameSettings` possui schema v1 estrito e chave `stellar-command-game-settings` exclusiva. A aplicação ativa defaults conservadores quando não há registro; versão, JSON ou valor inválido preserva o original, mostra recuperação e só o substitui após restauração/alteração explícita. Preset persistido vale no próximo boot, salvo override diagnóstico por query; HUD, mouse, teclas e reduções de VFX são aplicados imediatamente. Volumes são persistidos agora e alimentam o adaptador de áudio na P1-F. As cinco ações táticas usam allowlist sem duplicidade; voo, pausa, tela cheia, limpar alvo e reiniciar permanecem fixos. Benchmark desativa acesso às duas persistências.  
+**Motivo:** leitura síncrona antecede a cena, o payload é pequeno e local, e a separação impede configuração de alterar checkpoint ou exigir migração artificial do save. Validação e controlador continuam testáveis sem DOM/GPU, enquanto adaptadores recebem somente preferências válidas.  
+**Consequências:** `localStorage` não é adotado para progresso; futura mudança estrutural das preferências exige nova versão/migração. Preset precisa de reload porque a criação do dispositivo gráfico não é refeita em runtime. P1-D ainda revisará teclado, contraste, anúncios e movimento; P1-F consumirá os três volumes já persistidos.
+
 ## Decisões futuras não bloqueantes
 
 | Tema | Padrão até decidir | Gate |

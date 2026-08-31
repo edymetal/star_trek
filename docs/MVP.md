@@ -1,7 +1,7 @@
 # Escopo priorizado do MVP
 
 Status: P0 concluído; P1 em implementação  
-Atualizado em: 30 de agosto de 2026
+Atualizado em: 31 de agosto de 2026
 
 O P0 é um protótipo técnico jogável, não o jogo completo. O MVP demonstrável é formado por todo o P0 e pelo subconjunto P1 descrito aqui. P2 e P3 não podem consumir esforço enquanto houver falha crítica/alta, meta de desempenho não atendida ou fluxo incompleto em P0/P1.
 
@@ -78,7 +78,7 @@ Concluído quando o dano lógico e visual não divergirem; não houver crescimen
 - inventário de autoria/licença de todos os assets do build;
 - cache offline/PWA somente se a medição mostrar que não complica atualizações e saves.
 
-Estado atual do P1: o Sistema Hélios já oferece base segura, mapa acessível, três destinos de missão, dois pontos de interesse e transição visual de viagem. As três missões, o retorno com reparo/reabastecimento, o save IndexedDB v2, o menu inicial e o comando da base também estão concluídos. Configurações e acessibilidade persistentes, diário, áudio, licenças e gate final continuam obrigatórios antes de declarar o MVP concluído.
+Estado atual do P1: o Sistema Hélios já oferece base segura, mapa acessível, três destinos de missão, dois pontos de interesse e transição visual de viagem. As três missões, o retorno com reparo/reabastecimento, o save IndexedDB v2, o menu inicial, o comando da base e as configurações persistentes separadas do save também estão concluídos. A revisão de acessibilidade, diário, áudio, licenças e gate final continuam obrigatórios antes de declarar o MVP concluído.
 
 ### Gate de saída do MVP (P0 + P1)
 

@@ -1,5 +1,12 @@
 import type { GraphicsPreset } from '../content/graphics-presets';
 import type { ArenaPresentationDto } from '../application/arena-presentation';
+import {
+  REMAPPABLE_CONTROL_IDS,
+  REMAPPABLE_KEY_OPTIONS,
+  type GameSettings,
+  type RemappableControlId,
+} from '../application/game-settings';
+import type { SettingsControllerStatus } from '../application/settings-controller';
 import type { SessionMenuView } from '../application/session-menu';
 import type { ShieldSectorState, SubsystemIntegrity } from '../domain/combat/damage';
 import type { EnemyAiMode } from '../domain/combat/enemy-ai';
@@ -34,6 +41,7 @@ export interface AppShell {
   bindNavigationControls(handlers: NavigationControlHandlers): () => void;
   bindBaseControls(handlers: BaseControlHandlers): () => void;
   bindMainMenuControls(handlers: MainMenuControlHandlers): () => void;
+  bindSettingsControls(handlers: SettingsControlHandlers): () => void;
   bindSaveControls(handlers: SaveControlHandlers): () => void;
   setBackend(label: string): void;
   setBenchmarkTelemetry(telemetry: BenchmarkHudTelemetry): void;
@@ -50,6 +58,7 @@ export interface AppShell {
   setMainMenuTelemetry(telemetry: MainMenuHudTelemetry): void;
   setNewTrainingConfirmation(open: boolean): void;
   setSaveStatus(telemetry: SaveHudTelemetry): void;
+  setSettingsTelemetry(telemetry: SettingsHudTelemetry): void;
   setFullscreenActive(active: boolean): void;
   setPointerCaptured(active: boolean): void;
   setPreset(preset: GraphicsPreset): void;
@@ -116,6 +125,11 @@ export interface MainMenuControlHandlers {
   readonly onContinue: () => void;
   readonly onNewTraining: () => void;
   readonly onOpenView: (view: Exclude<SessionMenuView, 'home'>) => void;
+}
+
+export interface SettingsControlHandlers {
+  readonly onChange: (settings: GameSettings) => void;
+  readonly onReset: () => void;
 }
 
 export interface SaveControlHandlers {
@@ -198,6 +212,12 @@ export interface MainMenuHudTelemetry {
   readonly saveDetail: string;
   readonly statusLabel: string;
   readonly view: 'closed' | 'loading' | SessionMenuView;
+}
+
+export interface SettingsHudTelemetry {
+  readonly activePresetId: GraphicsPreset['id'];
+  readonly settings: GameSettings;
+  readonly status: SettingsControllerStatus | { readonly state: 'disabled' };
 }
 
 export interface CombatHudTelemetry {
@@ -348,7 +368,6 @@ export function createAppShell(root: HTMLElement): AppShell {
   const mainMenuBackButtons = Array.from(
     mainMenu.querySelectorAll<HTMLButtonElement>('[data-main-menu-back]'),
   );
-  const mainMenuPreset = requireElement<HTMLElement>(mainMenu, '[data-main-menu-preset]');
   const mainMenuBackend = requireElement<HTMLElement>(mainMenu, '[data-main-menu-backend]');
   const mainMenuRenderer = requireElement<HTMLElement>(mainMenu, '[data-main-menu-renderer]');
   const mainMenuDiagnosticPreset = requireElement<HTMLElement>(
@@ -356,6 +375,81 @@ export function createAppShell(root: HTMLElement): AppShell {
     '[data-main-menu-diagnostic-preset]',
   );
   const mainMenuFps = requireElement<HTMLElement>(mainMenu, '[data-main-menu-fps]');
+  const settingsForm = requireElement<HTMLFormElement>(mainMenu, '[data-settings-form]');
+  const settingsStatus = requireElement<HTMLElement>(mainMenu, '[data-settings-status]');
+  const settingsReset = requireElement<HTMLButtonElement>(mainMenu, '[data-settings-reset]');
+  const graphicsPresetSetting = requireElement<HTMLSelectElement>(
+    settingsForm,
+    '[data-setting="graphicsPresetId"]',
+  );
+  const hudScaleSetting = requireElement<HTMLSelectElement>(
+    settingsForm,
+    '[data-setting="hudScalePercent"]',
+  );
+  const masterVolumeSetting = requireElement<HTMLInputElement>(
+    settingsForm,
+    '[data-setting="masterVolumePercent"]',
+  );
+  const effectsVolumeSetting = requireElement<HTMLInputElement>(
+    settingsForm,
+    '[data-setting="effectsVolumePercent"]',
+  );
+  const ambienceVolumeSetting = requireElement<HTMLInputElement>(
+    settingsForm,
+    '[data-setting="ambienceVolumePercent"]',
+  );
+  const reduceFlashesSetting = requireElement<HTMLInputElement>(
+    settingsForm,
+    '[data-setting="reduceFlashes"]',
+  );
+  const reduceCameraShakeSetting = requireElement<HTMLInputElement>(
+    settingsForm,
+    '[data-setting="reduceCameraShake"]',
+  );
+  const particleDensitySetting = requireElement<HTMLSelectElement>(
+    settingsForm,
+    '[data-setting="particleDensity"]',
+  );
+  const mouseSensitivitySetting = requireElement<HTMLInputElement>(
+    settingsForm,
+    '[data-setting="mouseSensitivity"]',
+  );
+  const invertVerticalLookSetting = requireElement<HTMLInputElement>(
+    settingsForm,
+    '[data-setting="invertVerticalLook"]',
+  );
+  const masterVolumeOutput = requireElement<HTMLOutputElement>(
+    settingsForm,
+    '[data-setting-output="masterVolumePercent"]',
+  );
+  const effectsVolumeOutput = requireElement<HTMLOutputElement>(
+    settingsForm,
+    '[data-setting-output="effectsVolumePercent"]',
+  );
+  const ambienceVolumeOutput = requireElement<HTMLOutputElement>(
+    settingsForm,
+    '[data-setting-output="ambienceVolumePercent"]',
+  );
+  const mouseSensitivityOutput = requireElement<HTMLOutputElement>(
+    settingsForm,
+    '[data-setting-output="mouseSensitivity"]',
+  );
+  const bindingSettings = Object.fromEntries(
+    REMAPPABLE_CONTROL_IDS.map((id) => [
+      id,
+      requireElement<HTMLSelectElement>(settingsForm, `[data-setting-binding="${id}"]`),
+    ]),
+  ) as Readonly<Record<RemappableControlId, HTMLSelectElement>>;
+  for (const select of Object.values(bindingSettings)) {
+    select.replaceChildren(
+      ...REMAPPABLE_KEY_OPTIONS.map(({ code, label }) => {
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = label;
+        return option;
+      }),
+    );
+  }
   const newTrainingDialog = requireElement<HTMLDialogElement>(root, '[data-new-training-dialog]');
   const newTrainingCancel = requireElement<HTMLButtonElement>(
     newTrainingDialog,
@@ -534,6 +628,37 @@ export function createAppShell(root: HTMLElement): AppShell {
     diagnosticsDrawer.open = true;
   }
 
+  function syncSettingsOutputs(): void {
+    masterVolumeOutput.value = `${masterVolumeSetting.value}%`;
+    effectsVolumeOutput.value = `${effectsVolumeSetting.value}%`;
+    ambienceVolumeOutput.value = `${ambienceVolumeSetting.value}%`;
+    mouseSensitivityOutput.value = `${Number(mouseSensitivitySetting.value).toLocaleString(
+      'pt-BR',
+      {
+        maximumFractionDigits: 1,
+        minimumFractionDigits: 1,
+      },
+    )}×`;
+  }
+
+  function readSettingsForm(): GameSettings {
+    return {
+      ambienceVolumePercent: Number(ambienceVolumeSetting.value),
+      controlBindings: Object.fromEntries(
+        REMAPPABLE_CONTROL_IDS.map((id) => [id, bindingSettings[id].value]),
+      ) as Readonly<Record<RemappableControlId, string>>,
+      effectsVolumePercent: Number(effectsVolumeSetting.value),
+      graphicsPresetId: graphicsPresetSetting.value as GameSettings['graphicsPresetId'],
+      hudScalePercent: Number(hudScaleSetting.value),
+      invertVerticalLook: invertVerticalLookSetting.checked,
+      masterVolumePercent: Number(masterVolumeSetting.value),
+      mouseSensitivity: Number(mouseSensitivitySetting.value),
+      particleDensity: particleDensitySetting.value as GameSettings['particleDensity'],
+      reduceCameraShake: reduceCameraShakeSetting.checked,
+      reduceFlashes: reduceFlashesSetting.checked,
+    };
+  }
+
   return {
     canvas,
     fullscreenTarget: root,
@@ -597,6 +722,19 @@ export function createAppShell(root: HTMLElement): AppShell {
           button.removeEventListener('click', listener);
         }
         window.removeEventListener('keydown', escapeListener);
+      };
+    },
+    bindSettingsControls(handlers) {
+      const changeListener = (): void => handlers.onChange(readSettingsForm());
+      const inputListener = (): void => syncSettingsOutputs();
+      const resetListener = (): void => handlers.onReset();
+      settingsForm.addEventListener('change', changeListener);
+      settingsForm.addEventListener('input', inputListener);
+      settingsReset.addEventListener('click', resetListener);
+      return () => {
+        settingsForm.removeEventListener('change', changeListener);
+        settingsForm.removeEventListener('input', inputListener);
+        settingsReset.removeEventListener('click', resetListener);
       };
     },
     bindEnergyControls(handlers) {
@@ -1180,7 +1318,11 @@ export function createAppShell(root: HTMLElement): AppShell {
           (telemetry.canContinue ? mainMenuContinue : mainMenuNew).focus();
         } else if (telemetry.view !== 'loading') {
           const view = mainMenuViews.get(telemetry.view);
-          view?.querySelector<HTMLButtonElement>('[data-main-menu-back]')?.focus();
+          view
+            ?.querySelector<HTMLElement>(
+              telemetry.view === 'settings' ? '[data-setting]' : '[data-main-menu-back]',
+            )
+            ?.focus();
         }
       } else if (!menuOpen && mainMenuWasOpen) {
         basePrepare.focus();
@@ -1301,6 +1443,50 @@ export function createAppShell(root: HTMLElement): AppShell {
       );
       setAttributeIfChanged(root, 'data-save-state', telemetry.state);
     },
+    setSettingsTelemetry(telemetry) {
+      const { settings } = telemetry;
+      graphicsPresetSetting.value = settings.graphicsPresetId;
+      hudScaleSetting.value = String(settings.hudScalePercent);
+      masterVolumeSetting.value = String(settings.masterVolumePercent);
+      effectsVolumeSetting.value = String(settings.effectsVolumePercent);
+      ambienceVolumeSetting.value = String(settings.ambienceVolumePercent);
+      reduceFlashesSetting.checked = settings.reduceFlashes;
+      reduceCameraShakeSetting.checked = settings.reduceCameraShake;
+      particleDensitySetting.value = settings.particleDensity;
+      mouseSensitivitySetting.value = String(settings.mouseSensitivity);
+      invertVerticalLookSetting.checked = settings.invertVerticalLook;
+      for (const id of REMAPPABLE_CONTROL_IDS) {
+        bindingSettings[id].value = settings.controlBindings[id];
+      }
+      syncSettingsOutputs();
+
+      const requiresReload = settings.graphicsPresetId !== telemetry.activePresetId;
+      const statusLabels: Readonly<Record<SettingsHudTelemetry['status']['state'], string>> = {
+        defaulted: 'Padrões seguros ativos. A primeira alteração será salva neste dispositivo.',
+        disabled: 'Preferências locais desativadas durante o benchmark.',
+        error:
+          'Não foi possível gravar as preferências. Os últimos valores válidos continuam ativos.',
+        invalid:
+          'Configuração inválida detectada. Padrões seguros foram aplicados; restaure ou altere uma opção para substituir o registro.',
+        loaded: 'Preferências locais carregadas.',
+        reset: 'Padrões restaurados e salvos.',
+        saved: 'Preferências salvas e aplicadas.',
+      };
+      setTextIfChanged(
+        settingsStatus,
+        requiresReload
+          ? `${statusLabels[telemetry.status.state]} Recarregue para aplicar o preset gráfico.`
+          : statusLabels[telemetry.status.state],
+      );
+      settingsStatus.dataset.settingsStatus = telemetry.status.state;
+      settingsStatus.dataset.requiresReload = String(requiresReload);
+      root.style.setProperty('--hud-scale', String(settings.hudScalePercent / 100));
+      setAttributeIfChanged(root, 'data-hud-scale', String(settings.hudScalePercent));
+      setAttributeIfChanged(root, 'data-particle-density', settings.particleDensity);
+      setAttributeIfChanged(root, 'data-reduce-camera-shake', String(settings.reduceCameraShake));
+      setAttributeIfChanged(root, 'data-reduce-flashes', String(settings.reduceFlashes));
+      setAttributeIfChanged(root, 'data-settings-state', telemetry.status.state);
+    },
     setFullscreenActive(active) {
       setAttributeIfChanged(root, 'data-fullscreen-state', active ? 'active' : 'inactive');
       setTextIfChanged(fullscreenButton, active ? 'Sair da tela cheia (F)' : 'Tela cheia (F)');
@@ -1314,8 +1500,8 @@ export function createAppShell(root: HTMLElement): AppShell {
     },
     setPreset(preset) {
       setTextIfChanged(presetValue, preset.label);
-      setTextIfChanged(mainMenuPreset, preset.label);
       setTextIfChanged(mainMenuDiagnosticPreset, preset.label);
+      setAttributeIfChanged(root, 'data-graphics-preset', preset.id);
     },
     showBlocked(value) {
       renderNotice(value, true);

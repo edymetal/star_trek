@@ -51,7 +51,9 @@ body {
 }
 
 button,
-summary {
+summary,
+input,
+select {
   font: inherit;
 }
 
@@ -61,7 +63,9 @@ summary {
 }
 
 button:focus-visible,
-summary:focus-visible {
+summary:focus-visible,
+input:focus-visible,
+select:focus-visible {
   outline: 3px solid #d9f3ff;
   outline-offset: 2px;
 }
@@ -89,10 +93,18 @@ button:disabled {
 }
 
 .app-shell {
+  --hud-scale: 1;
+
   position: relative;
   isolation: isolate;
   overflow: hidden;
   background: radial-gradient(circle at 62% 38%, rgb(22 57 88 / 28%), transparent 40%), #020711;
+}
+
+.app-shell > .hud-card:not(.main-menu__panel):not(.new-training-dialog),
+.flight-layer > .hud-card,
+.combat-layer > .hud-card {
+  zoom: var(--hud-scale);
 }
 
 .scene-canvas {
@@ -306,6 +318,124 @@ h2 {
   line-height: 1.4;
 }
 
+.main-menu__panel:has([data-main-menu-view='settings']:not([hidden])) {
+  width: min(900px, calc(100vw - 48px));
+}
+
+.settings-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.settings-form fieldset {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--hud-border-soft);
+  border-radius: 5px;
+}
+
+.settings-form legend {
+  padding: 0 var(--space-1);
+  color: var(--hud-data);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.settings-form label {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  color: var(--hud-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.settings-form select,
+.settings-form input[type='range'] {
+  width: 100%;
+}
+
+.settings-form select {
+  min-height: 32px;
+  padding: 4px 7px;
+  color: var(--hud-text);
+  color-scheme: dark;
+  background: #102b44;
+  border: 1px solid rgb(116 213 255 / 38%);
+  border-radius: 4px;
+}
+
+.settings-form input[type='range'] {
+  accent-color: var(--hud-data);
+}
+
+.settings-form__check {
+  display: flex !important;
+  grid-column: 1 / -1;
+  gap: var(--space-2) !important;
+  align-items: center;
+}
+
+.settings-form__check input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--hud-data);
+}
+
+.settings-form__hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--hud-secondary);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.settings-form__bindings {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.settings-form__status {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3);
+  color: var(--hud-success);
+  font-size: 11px;
+  line-height: 1.35;
+  background: rgb(112 224 162 / 8%);
+  border-left: 3px solid var(--hud-success);
+}
+
+.settings-form__status[data-settings-status='invalid'],
+.settings-form__status[data-settings-status='error'],
+.settings-form__status[data-requires-reload='true'] {
+  color: var(--hud-warning);
+  background: rgb(255 209 102 / 8%);
+  border-left-color: var(--hud-warning);
+}
+
+.settings-form__actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: space-between;
+  margin-top: var(--space-3);
+}
+
+[data-reduce-flashes='true'] .travel-presentation__streaks {
+  opacity: 0.32;
+  animation: none;
+  transform: scale(0.9);
+}
+
 .new-training-dialog {
   z-index: 60;
   width: min(500px, calc(100vw - 48px));
@@ -353,6 +483,11 @@ h2 {
   border-color: rgb(112 224 162 / 48%);
   box-shadow: 0 20px 60px rgb(0 0 0 / 52%);
   transform: translate(-50%, -50%);
+}
+
+.app-shell[data-hud-scale='110'] .base-dashboard {
+  width: min(520px, calc(100vw - 720px));
+  min-width: 480px;
 }
 
 .base-dashboard__header,
@@ -878,6 +1013,12 @@ h2 {
   transform: translateX(-50%);
 }
 
+.app-shell[data-hud-scale='110'] .combat-feedback,
+.app-shell[data-hud-scale='110'] .tactical-action-bar {
+  width: min(520px, calc(100vw - 720px));
+  min-width: 480px;
+}
+
 .combat-actions {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -915,6 +1056,10 @@ h2 {
   z-index: 5;
   width: 288px;
   overflow: hidden;
+}
+
+.app-shell[data-hud-scale='110'] .energy-panel {
+  bottom: 306px;
 }
 
 .app-shell:has(.energy-panel[open]) .objective-card {

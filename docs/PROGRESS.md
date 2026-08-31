@@ -1,9 +1,9 @@
 # Progresso do projeto
 
-Atualizado em: 30 de agosto de 2026  
+Atualizado em: 31 de agosto de 2026  
 Etapa atual: P1 — Vertical slice/MVP  
-Estado do código: P0.5 aprovado; P1-B concluída com menu inicial e comando da base  
-Próximo responsável: Senior Developer / P1-C — configurações persistentes
+Estado do código: P0.5 aprovado; P1-C concluída com configurações persistentes separadas do save  
+Próximo responsável: Senior Developer / P1-D — acessibilidade prioritária
 
 Handoff detalhado para continuação: `docs/HANDOFF_REMAINING_WORK.md`
 
@@ -100,6 +100,7 @@ Legenda:
 - [x] Save IndexedDB versionado
 - [x] Tutorial contextual e progressão segura entre missões
 - [x] Menu inicial, continuar, diagnóstico, créditos e comando da base
+- [x] Configurações persistentes, escala do HUD, redução de efeitos e remapeamento essencial
 - [ ] Áudio e acessibilidade prioritária
 - [ ] Inventário de licenças
 - [ ] E2E, benchmark e revisão final do MVP
@@ -464,7 +465,7 @@ O mapa e a viagem preservam a autoridade do domínio e não introduzem coordenad
 - P1-E a P1-G: diário, áudio, fallback de asset, inventário de licenças e créditos;
 - P1-H: decisão offline/PWA, balanceamento, instalação limpa, benchmark e revisão formal final do MVP.
 
-## Último relatório — menu inicial e comando da base P1-B
+## Relatório anterior — menu inicial e comando da base P1-B
 
 **ETAPA:** P1 — quinta subfatia da Etapa 6  
 **STATUS:** menu inicial, proteção de progresso e preparação na base concluídos
@@ -499,3 +500,35 @@ O estado efêmero do menu foi extraído para a aplicação, sem mover campanha, 
 - P1-D: acessibilidade prioritária e validação completa por teclado;
 - P1-E a P1-G: diário, áudio, fallback de asset e inventário formal de licenças/créditos;
 - P1-H: decisão offline/PWA, playtest, balanceamento, instalação limpa, benchmark e revisão formal final do MVP.
+
+## Último relatório — configurações persistentes P1-C
+
+**ETAPA:** P1 — sexta subfatia da Etapa 6  
+**STATUS:** configurações persistentes, recuperação segura e aplicação real concluídas
+
+### Implementado
+
+- schema v1 validado e repositório `localStorage` exclusivo para preferências, sem incluir configuração no save IndexedDB da campanha;
+- preset gráfico, escala do HUD, volumes geral/efeitos/ambiente, redução de flashes, tremor e partículas, sensibilidade, inversão vertical e cinco teclas táticas essenciais persistentes;
+- preset escolhido aplicado no próximo carregamento com aviso explícito; HUD, entrada e reduções visuais aplicados imediatamente;
+- restauração de padrões e recuperação visível de JSON, versão ou valores inválidos, preservando o registro até uma ação explícita;
+- teclas remapeáveis limitadas a uma lista segura, sem colisões entre comandos e sem conflito com voo, pausa, tela cheia ou reinício;
+- benchmark continua sem abrir ou alterar configurações e save do jogador.
+
+### Revisão e correções
+
+A configuração permanece na aplicação/plataforma: o domínio não lê DOM, armazenamento ou relógio. O adaptador PlayCanvas reduz entidades de brilho, efeitos simultâneos, partículas de dano e tremor de câmera; a opção não é apenas textual. A escala ampliada revelou colisões entre o painel central e os trilhos laterais em 1280×720; larguras condicionais mantêm base e barras táticas dentro da faixa central em 110%. Uma referência obsoleta do menu também foi removida após o primeiro boot E2E bloqueado. Nenhum asset, dependência, serviço, analytics ou conteúdo externo foi adicionado, e nenhum achado CRITICAL/HIGH permaneceu.
+
+### Verificação
+
+- `npm run test:run`: 173/173 testes em 30 arquivos;
+- testes sem GPU cobrem defaults, round-trip v1, versão futura, opções/faixas desconhecidas, teclas conflitantes, JSON malformado, falha de armazenamento, restauração e sensibilidade/inversão;
+- Playwright completo: 62/62 casos em Chrome/Edge; a cobertura nova valida persistência após reload, independência do checkpoint, recuperação inválida, remapeamento real, VFX reduzido e HUD 110% em 1280×720/1600×900;
+- benchmark físico Chrome 151, WebGL 2, UHD 620, 1600×900/médio: 60,012 FPS médios, p50 de 16,6 ms, p95 de 17,8 ms e p99 de 19,1 ms, com 88 draw calls e 21 VFX;
+- aplicação principal: 33,13 kB gzip; engine: 510,69 kB gzip; captura `p1-settings-1280x720.png` inspecionada com foco, valores e aviso de reload visíveis.
+
+### Pendências do P1
+
+- P1-D: revisão de acessibilidade prioritária, teclado completo, semântica, anúncios, contraste e movimento;
+- P1-E a P1-G: diário, áudio, fallback de asset e inventário formal de licenças/créditos;
+- P1-H: decisão offline/PWA, playtest, balanceamento, instalação limpa, matriz/benchmark final e revisão formal do MVP.
