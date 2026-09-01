@@ -301,6 +301,15 @@ Decisões aceitas só devem ser alteradas por nova entrada que referencie a ante
 **Motivo:** leitura síncrona antecede a cena, o payload é pequeno e local, e a separação impede configuração de alterar checkpoint ou exigir migração artificial do save. Validação e controlador continuam testáveis sem DOM/GPU, enquanto adaptadores recebem somente preferências válidas.  
 **Consequências:** `localStorage` não é adotado para progresso; futura mudança estrutural das preferências exige nova versão/migração. Preset precisa de reload porque a criação do dispositivo gráfico não é refeita em runtime. P1-D ainda revisará teclado, contraste, anúncios e movimento; P1-F consumirá os três volumes já persistidos.
 
+## DECISION-034 — Acessibilidade do MVP usa foco modal e anúncios deduplicados no shell
+
+**Status:** aceita para a sétima subfatia P1 (P1-D)  
+**Problema:** a base já oferecia controles nativos e redução de efeitos, mas o mapa não era uma fronteira modal completa, o foco podia permanecer em um botão oculto durante viagem/encontro, textos tutoriais continuavam citando teclas padrão após remapeamento e várias regiões vivas podiam repetir telemetria. A correção não deveria duplicar estado autoritativo, mover regras para o DOM ou adicionar uma biblioteca de UI/acessibilidade.  
+**Opções consideradas:** adicionar framework/componente modal e biblioteca de auditoria em runtime; anunciar todo o HUD publicado a 8 Hz; manter controles nativos e criar uma coordenação pequena de foco, atalhos e anúncios no adaptador DOM.  
+**Decisão:** menu e mapa contêm o foco por ordem DOM natural, deixam o restante inerte e restauram/transmitem foco para base, viagem ou canvas conforme a navegação. Objetivos, feedback alterado e resultado terminal alimentam regiões `aria-live` polite/assertive separadas por chaves estáveis; telemetria contínua não é republicada. O conteúdo tutorial usa tokens simbólicos formatados na aplicação a partir de bindings validados, e o shell sincroniza texto e `aria-keyshortcuts` dos botões. Escudos, subsistemas e energia recebem nomes completos e valores textuais; cores preservam contraste AA e `forced-colors` recebe geometria/foco explícitos.  
+**Motivo:** fecha teclado, semântica, remapeamento e leitor de tela com a arquitetura existente, sem dependência, novo estado persistente ou import de DOM no domínio. Deduplicação por transição evita inundar tecnologia assistiva e mantém a publicação visual idempotente.  
+**Consequências:** a escala máxima continua 110%; em 1280×720 a barra tática ampliada usa duas linhas para manter rótulos/teclas visíveis sem ocupar o centro de mira. Remapeamento ampliado, perfis de daltonismo e auditoria com usuários de tecnologias assistivas permanecem melhorias P2; P1-E pode reutilizar os mesmos landmarks e anúncios para o diário, mas não deve transformar atualizações de lista em telemetria falada contínua.
+
 ## Decisões futuras não bloqueantes
 
 | Tema | Padrão até decidir | Gate |

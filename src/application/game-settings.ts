@@ -60,7 +60,25 @@ export const REMAPPABLE_KEY_OPTIONS = [
 ] as const;
 
 const REMAPPABLE_CODES = new Set<string>(REMAPPABLE_KEY_OPTIONS.map(({ code }) => code));
+const REMAPPABLE_KEY_LABELS = new Map<string, string>(
+  REMAPPABLE_KEY_OPTIONS.map(({ code, label }) => [code, label]),
+);
 const HUD_SCALES = new Set([90, 100, 110]);
+
+export function controlBindingLabel(code: string): string {
+  return REMAPPABLE_KEY_LABELS.get(code) ?? code;
+}
+
+export function formatControlHints(
+  value: string,
+  bindings: Readonly<Record<RemappableControlId, string>>,
+): string {
+  return REMAPPABLE_CONTROL_IDS.reduce(
+    (formatted, controlId) =>
+      formatted.replaceAll(`{${controlId}}`, controlBindingLabel(bindings[controlId])),
+    value,
+  );
+}
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

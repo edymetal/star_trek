@@ -1,6 +1,6 @@
 # Roadmap de desenvolvimento
 
-Atualizado em: 31 de agosto de 2026
+Atualizado em: 1 de setembro de 2026
 
 O roadmap usa gates objetivos, não datas rígidas. Uma etapa só fecha com evidência de teste e revisão. Cada etapa funcional admite no máximo cinco ciclos `review → implement → test`; problemas remanescentes vão para `docs/KNOWN_ISSUES.md`, mas CRITICAL/HIGH impedem avanço.
 
@@ -177,7 +177,7 @@ Critério de conclusão:
 
 ## Etapa 6 — Primeira fatia vertical P1
 
-**Status:** em desenvolvimento; campanha, persistência, base/mapa/viagem, menu inicial e configurações concluídos; recuperação de asset ainda pendente
+**Status:** em desenvolvimento; campanha, persistência, base/mapa/viagem, menu inicial, configurações e acessibilidade prioritária concluídos; recuperação de asset ainda pendente
 
 **Objetivo:** implementar uma missão ponta a ponta antes de multiplicar conteúdo.
 
@@ -239,6 +239,15 @@ Sexta subfatia concluída:
 - configuração inválida preserva o registro, ativa padrões seguros e exige restauração/alteração explícita;
 - escala de 110% e reduções reais foram verificadas nos dois viewports e navegadores obrigatórios.
 
+Sétima subfatia concluída:
+
+- menu e mapa funcionam como fronteiras modais com foco contido e superfícies de fundo inertes;
+- base, mapa, viagem, canvas, ações táticas, energia e pausa são percorridos somente por teclado;
+- objetivos, contatos, escudos, subsistemas, energia e ações possuem nomes e estados textuais, sem depender apenas de cor;
+- regiões `aria-live` anunciam mudanças de objetivo, feedback e conclusão por chaves deduplicadas, sem republicar telemetria estável;
+- atalhos remapeados atualizam botões, `aria-keyshortcuts` e instruções tutoriais imediatamente;
+- contraste textual AA foi automatizado nos presets baixo/médio/alto e HUD 110% foi reinspecionado em 1280×720.
+
 Critério de conclusão:
 
 - ciclo completo funciona após reload;
@@ -248,7 +257,7 @@ Critério de conclusão:
 
 ## Etapa 7 — Vertical slice/MVP P1
 
-**Status:** em desenvolvimento; ciclo base–mapa–viagem–missões, variedade de contatos, tutorial, menu inicial e configurações concluídos
+**Status:** em desenvolvimento; ciclo base–mapa–viagem–missões, variedade de contatos, tutorial, menu inicial, configurações e acessibilidade prioritária concluídos
 
 **Objetivo:** completar variedade mínima e qualidade de demonstração.
 
@@ -259,7 +268,7 @@ Entregas:
 - [~] tutorial contextual concluído; diário de objetivo/descoberta ainda parcial;
 - áudio e feedback refinados;
 - [x] configurações persistentes e controles essenciais;
-- acessibilidade prioritária restante;
+- [x] acessibilidade prioritária;
 - inventário final de licenças do build;
 - testes E2E do ciclo e benchmark de regressão.
 

@@ -1,6 +1,7 @@
 import type { GraphicsPreset } from '../content/graphics-presets';
 import type { ArenaPresentationDto } from '../application/arena-presentation';
 import {
+  controlBindingLabel,
   REMAPPABLE_CONTROL_IDS,
   REMAPPABLE_KEY_OPTIONS,
   type GameSettings,
@@ -328,6 +329,37 @@ function setStylePropertyIfChanged(element: HTMLElement, name: string, value: st
   }
 }
 
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not(:disabled)',
+  'input:not(:disabled)',
+  'select:not(:disabled)',
+  'summary',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+function focusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (element) =>
+      element.closest('[hidden], [inert]') === null && element.getClientRects().length > 0,
+  );
+}
+
+function trapFocus(event: KeyboardEvent, container: HTMLElement): void {
+  if (event.code !== 'Tab') return;
+  const elements = focusableElements(container);
+  const first = elements[0];
+  const last = elements.at(-1);
+  if (first === undefined || last === undefined) return;
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 function roundAllocationForDisplay(
   allocation: EnergyAllocation,
   capacityUnits: number,
@@ -349,6 +381,8 @@ function roundAllocationForDisplay(
 
 export function createAppShell(root: HTMLElement): AppShell {
   const canvas = requireElement<HTMLCanvasElement>(root, '#game-canvas');
+  const politeAnnouncement = requireElement<HTMLElement>(root, '[data-live-polite]');
+  const urgentAnnouncement = requireElement<HTMLElement>(root, '[data-live-urgent]');
   const mainMenu = requireElement<HTMLElement>(root, '[data-main-menu]');
   const mainMenuViews = new Map<string, HTMLElement>(
     Array.from(mainMenu.querySelectorAll<HTMLElement>('[data-main-menu-view]')).map((element) => [
@@ -577,8 +611,23 @@ export function createAppShell(root: HTMLElement): AppShell {
   let lastBaseMissionsKey = '';
   let lastNavigationNodesKey = '';
   let lastMainMenuView = 'loading';
+  let lastNavigationMode: NavigationMode | undefined;
+  let lastMissionTelemetry: MissionHudTelemetry | undefined;
+  let lastMissionAnnouncementKey = '';
+  let lastPoliteAnnouncementKey = '';
+  let lastUrgentAnnouncementKey = '';
+  let lastCombatFeedback = '';
+  let lastCombatPhase: CombatHudTelemetry['phase'] | undefined;
   let mainMenuWasOpen = true;
   let mapWasOpen = false;
+  let activeControlBindings: GameSettings['controlBindings'] = {
+    beam: 'Digit1',
+    'select-target': 'KeyT',
+    'toggle-scan': 'KeyR',
+    torpedo: 'Digit2',
+    tractor: 'Digit3',
+  };
+  let latestCombatTelemetry: CombatHudTelemetry | undefined;
   const combatActionButtons = Array.from(
     combatPanel.querySelectorAll<HTMLButtonElement>('[data-combat-action]'),
   );
@@ -607,6 +656,71 @@ export function createAppShell(root: HTMLElement): AppShell {
       requireElement<HTMLElement>(energyPanel, `[data-energy-allocation="${channel}"]`),
     ]),
   );
+
+  const announce = (priority: 'polite' | 'urgent', key: string, message: string): void => {
+    if (message.length === 0) return;
+    if (priority === 'polite') {
+      if (key === lastPoliteAnnouncementKey) return;
+      lastPoliteAnnouncementKey = key;
+      setTextIfChanged(politeAnnouncement, message);
+    } else {
+      if (key === lastUrgentAnnouncementKey) return;
+      lastUrgentAnnouncementKey = key;
+      setTextIfChanged(urgentAnnouncement, message);
+    }
+    setAttributeIfChanged(root, 'data-last-announcement', priority);
+    setAttributeIfChanged(root, 'data-last-announcement-key', key);
+  };
+
+  const announceMissionIfVisible = (): void => {
+    const telemetry = lastMissionTelemetry;
+    if (telemetry === undefined || !mainMenu.hidden) return;
+    const key = `${telemetry.missionId}|${telemetry.phase}|${telemetry.objectiveCompleted}`;
+    if (key === lastMissionAnnouncementKey) return;
+    lastMissionAnnouncementKey = key;
+    announce(
+      'polite',
+      `mission|${key}`,
+      `${telemetry.title}. ${telemetry.phaseLabel}. Objetivo: ${telemetry.objective}`,
+    );
+  };
+
+  const tacticalKey = (controlId: RemappableControlId): string =>
+    controlBindingLabel(activeControlBindings[controlId]);
+  const setTacticalShortcut = (button: HTMLButtonElement, controlId: RemappableControlId): void =>
+    setAttributeIfChanged(button, 'aria-keyshortcuts', tacticalKey(controlId));
+  const renderTacticalButtonLabels = (): void => {
+    const telemetry = latestCombatTelemetry;
+    setTextIfChanged(selectTargetButton, `Selecionar (${tacticalKey('select-target')})`);
+    setTextIfChanged(scanButton, `Scan (${tacticalKey('toggle-scan')})`);
+    setTextIfChanged(
+      beamButton,
+      telemetry !== undefined && telemetry.weaponCooldownSeconds.beam > 0
+        ? `Feixe ${telemetry.weaponCooldownSeconds.beam.toFixed(1)}s`
+        : `Feixe (${tacticalKey('beam')})`,
+    );
+    setTextIfChanged(
+      torpedoButton,
+      telemetry !== undefined && telemetry.weaponCooldownSeconds.torpedo > 0
+        ? `Torpedo ${telemetry.weaponCooldownSeconds.torpedo.toFixed(1)}s · ${telemetry.torpedoAmmo}`
+        : `Torpedo (${tacticalKey('torpedo')})${telemetry === undefined ? '' : ` · ${telemetry.torpedoAmmo}`}`,
+    );
+    setTextIfChanged(
+      tractorButton,
+      telemetry !== undefined && telemetry.weaponCooldownSeconds.tractor > 0
+        ? `Trator ${telemetry.weaponCooldownSeconds.tractor.toFixed(1)}s`
+        : `Raio trator (${tacticalKey('tractor')})`,
+    );
+    for (const [button, controlId] of [
+      [selectTargetButton, 'select-target'],
+      [scanButton, 'toggle-scan'],
+      [beamButton, 'beam'],
+      [torpedoButton, 'torpedo'],
+      [tractorButton, 'tractor'],
+    ] as const) {
+      setTacticalShortcut(button, controlId);
+    }
+  };
 
   retryButton.addEventListener('click', () => window.location.reload());
 
@@ -701,17 +815,21 @@ export function createAppShell(root: HTMLElement): AppShell {
         button.addEventListener('click', listener);
         return { button, listener };
       });
-      const escapeListener = (event: KeyboardEvent): void => {
-        if (event.code !== 'Escape' || mainMenu.hidden || newTrainingDialog.open) return;
-        event.preventDefault();
-        handlers.onBack();
+      const keyboardListener = (event: KeyboardEvent): void => {
+        if (mainMenu.hidden || newTrainingDialog.open) return;
+        if (event.code === 'Escape') {
+          event.preventDefault();
+          handlers.onBack();
+          return;
+        }
+        trapFocus(event, mainMenu);
       };
       mainMenuContinue.addEventListener('click', continueListener);
       mainMenuNew.addEventListener('click', newListener);
       mainMenuClose.addEventListener('click', closeListener);
       newTrainingConfirm.addEventListener('click', confirmListener);
       for (const button of mainMenuBackButtons) button.addEventListener('click', backListener);
-      window.addEventListener('keydown', escapeListener);
+      window.addEventListener('keydown', keyboardListener);
       return () => {
         mainMenuContinue.removeEventListener('click', continueListener);
         mainMenuNew.removeEventListener('click', newListener);
@@ -721,7 +839,7 @@ export function createAppShell(root: HTMLElement): AppShell {
         for (const { button, listener } of viewListeners) {
           button.removeEventListener('click', listener);
         }
-        window.removeEventListener('keydown', escapeListener);
+        window.removeEventListener('keydown', keyboardListener);
       };
     },
     bindSettingsControls(handlers) {
@@ -782,22 +900,26 @@ export function createAppShell(root: HTMLElement): AppShell {
         const nodeId = button?.dataset.navigationDestination;
         if (nodeId !== undefined) handlers.onSelectDestination(nodeId);
       };
-      const escapeListener = (event: KeyboardEvent): void => {
-        if (event.code !== 'Escape' || systemMap.hidden) return;
-        event.preventDefault();
-        handlers.onCloseMap();
+      const keyboardListener = (event: KeyboardEvent): void => {
+        if (systemMap.hidden) return;
+        if (event.code === 'Escape') {
+          event.preventDefault();
+          handlers.onCloseMap();
+          return;
+        }
+        trapFocus(event, systemMap);
       };
       navigationOpen.addEventListener('click', openListener);
       navigationClose.addEventListener('click', closeListener);
       navigationConfirm.addEventListener('click', confirmListener);
       navigationDestinations.addEventListener('click', destinationListener);
-      window.addEventListener('keydown', escapeListener);
+      window.addEventListener('keydown', keyboardListener);
       return () => {
         navigationOpen.removeEventListener('click', openListener);
         navigationClose.removeEventListener('click', closeListener);
         navigationConfirm.removeEventListener('click', confirmListener);
         navigationDestinations.removeEventListener('click', destinationListener);
-        window.removeEventListener('keydown', escapeListener);
+        window.removeEventListener('keydown', keyboardListener);
       };
     },
     bindSaveControls(handlers) {
@@ -972,8 +1094,10 @@ export function createAppShell(root: HTMLElement): AppShell {
     setControlFeedback(message) {
       setTextIfChanged(controlFeedback, message);
       setHiddenIfChanged(controlFeedback, message.length === 0);
+      announce('polite', `feedback|${message}`, message);
     },
     setCombatTelemetry(telemetry) {
+      latestCombatTelemetry = telemetry;
       const phaseLabel =
         telemetry.phase === 'active'
           ? 'Encontro ativo'
@@ -1015,31 +1139,36 @@ export function createAppShell(root: HTMLElement): AppShell {
       const shields = telemetry.playerShieldSectorsPercent;
       for (const [sector, value] of shieldSectorValues) {
         setTextIfChanged(value, shields[sector].toFixed(0));
+        const sectorLabel = {
+          front: 'frontal',
+          port: 'de bombordo',
+          rear: 'traseiro',
+          starboard: 'de estibordo',
+        }[sector];
+        setAttributeIfChanged(
+          value,
+          'aria-label',
+          `Escudo ${sectorLabel}: ${shields[sector].toFixed(0)} por cento`,
+        );
       }
       const systems = telemetry.playerSubsystems;
       setTextIfChanged(
         combatSubsystems,
         `MOT ${(systems.engines * 100).toFixed(0)} · ARM ${(systems.weapons * 100).toFixed(0)} · ESC ${(systems.shields * 100).toFixed(0)} · SEN ${(systems.sensors * 100).toFixed(0)}`,
       );
+      setAttributeIfChanged(
+        combatSubsystems,
+        'aria-label',
+        `Motores ${(systems.engines * 100).toFixed(0)} por cento; armas ${(systems.weapons * 100).toFixed(0)} por cento; escudos ${(systems.shields * 100).toFixed(0)} por cento; sensores ${(systems.sensors * 100).toFixed(0)} por cento`,
+      );
       setTextIfChanged(combatFeedback, telemetry.feedback);
-      setTextIfChanged(
-        beamButton,
-        telemetry.weaponCooldownSeconds.beam > 0
-          ? `Feixe ${telemetry.weaponCooldownSeconds.beam.toFixed(1)}s`
-          : 'Feixe (1)',
-      );
-      setTextIfChanged(
-        torpedoButton,
-        telemetry.weaponCooldownSeconds.torpedo > 0
-          ? `Torpedo ${telemetry.weaponCooldownSeconds.torpedo.toFixed(1)}s · ${telemetry.torpedoAmmo}`
-          : `Torpedo (2) · ${telemetry.torpedoAmmo}`,
-      );
-      setTextIfChanged(
-        tractorButton,
-        telemetry.weaponCooldownSeconds.tractor > 0
-          ? `Trator ${telemetry.weaponCooldownSeconds.tractor.toFixed(1)}s`
-          : 'Raio trator (3)',
-      );
+      renderTacticalButtonLabels();
+      if (telemetry.feedback !== lastCombatFeedback) {
+        lastCombatFeedback = telemetry.feedback;
+        if (!combatPanel.hidden && mainMenu.hidden) {
+          announce('polite', `combat-feedback|${telemetry.feedback}`, telemetry.feedback);
+        }
+      }
       setAttributeIfChanged(scanButton, 'aria-pressed', telemetry.activeScan ? 'true' : 'false');
       const encounterEnded = telemetry.phase !== 'active';
       for (const button of combatActionButtons) {
@@ -1107,6 +1236,20 @@ export function createAppShell(root: HTMLElement): AppShell {
         setTextIfChanged(terminalTitle, telemetry.phase === 'victory' ? 'Vitória' : 'Derrota');
         setTextIfChanged(terminalMessage, telemetry.feedback);
       }
+      if (
+        lastCombatPhase !== undefined &&
+        telemetry.phase !== lastCombatPhase &&
+        terminal &&
+        !combatPanel.hidden &&
+        mainMenu.hidden
+      ) {
+        announce(
+          telemetry.phase === 'defeat' ? 'urgent' : 'polite',
+          `combat-phase|${telemetry.phase}`,
+          `${phaseLabel}. ${telemetry.feedback}`,
+        );
+      }
+      lastCombatPhase = telemetry.phase;
     },
     setEnergyTelemetry(telemetry) {
       const total = ENERGY_CHANNELS.reduce(
@@ -1121,10 +1264,21 @@ export function createAppShell(root: HTMLElement): AppShell {
         const value = allocationValues.get(channel);
         if (value !== undefined) {
           setTextIfChanged(value, `${displayedAllocation[channel].toFixed(1)}%`);
+          const channelLabel = {
+            auxiliary: 'auxiliares e sensores',
+            engines: 'motores',
+            shields: 'escudos',
+            weapons: 'armas',
+          }[channel];
           setAttributeIfChanged(
             value,
             'title',
             `Potência efetiva: ${telemetry.channelEffectivePower[channel].toFixed(1)} unidades por segundo`,
+          );
+          setAttributeIfChanged(
+            value,
+            'aria-label',
+            `Energia de ${channelLabel}: ${displayedAllocation[channel].toFixed(1)} por cento; potência efetiva ${telemetry.channelEffectivePower[channel].toFixed(1)} unidades por segundo`,
           );
         }
         setAttributeIfChanged(
@@ -1257,6 +1411,7 @@ export function createAppShell(root: HTMLElement): AppShell {
       setAttributeIfChanged(root, 'data-draw-calls', String(telemetry.drawCalls));
     },
     setMissionTelemetry(telemetry) {
+      lastMissionTelemetry = telemetry;
       setTextIfChanged(missionTitle, telemetry.title);
       setTextIfChanged(missionPhase, telemetry.phaseLabel);
       setTextIfChanged(objectiveText, telemetry.objective);
@@ -1279,6 +1434,7 @@ export function createAppShell(root: HTMLElement): AppShell {
         telemetry.campaignCompleted ? 'true' : 'false',
       );
       setAttributeIfChanged(root, 'data-mission-progress', telemetry.transitionProgress.toFixed(3));
+      announceMissionIfVisible();
     },
     setMainMenuTelemetry(telemetry) {
       const menuOpen = telemetry.view !== 'closed';
@@ -1329,6 +1485,7 @@ export function createAppShell(root: HTMLElement): AppShell {
       }
       lastMainMenuView = telemetry.view;
       mainMenuWasOpen = menuOpen;
+      if (!menuOpen) announceMissionIfVisible();
     },
     setNavigationTelemetry(telemetry) {
       const mapOpen = telemetry.mode === 'map';
@@ -1394,7 +1551,16 @@ export function createAppShell(root: HTMLElement): AppShell {
 
       setHiddenIfChanged(navigationOpen, telemetry.mode !== 'base');
       captureButton.disabled = !encounterActive;
-      const backgroundPanels = [objectiveCard, flightHud, energyPanel, diagnosticsDrawer];
+      const backgroundPanels = [
+        canvas,
+        objectiveCard,
+        baseDashboard,
+        flightHud,
+        combatPanel,
+        energyPanel,
+        diagnosticsDrawer,
+        terminalBanner,
+      ];
       const menuOpen = root.dataset.menuState !== undefined && root.dataset.menuState !== 'closed';
       for (const panel of backgroundPanels) panel.inert = mapOpen || menuOpen;
 
@@ -1409,8 +1575,13 @@ export function createAppShell(root: HTMLElement): AppShell {
         (preferred ?? navigationClose).focus();
       } else if (!mapOpen && mapWasOpen && telemetry.mode === 'base') {
         navigationOpen.focus();
+      } else if (!menuOpen && telemetry.mode !== lastNavigationMode) {
+        if (travelling) travelPresentation.focus();
+        else if (encounterActive) canvas.focus();
+        else if (telemetry.mode === 'base') basePrepare.focus();
       }
       mapWasOpen = mapOpen;
+      lastNavigationMode = telemetry.mode;
     },
     setNewTrainingConfirmation(open) {
       if (open && !newTrainingDialog.open) {
@@ -1458,6 +1629,8 @@ export function createAppShell(root: HTMLElement): AppShell {
       for (const id of REMAPPABLE_CONTROL_IDS) {
         bindingSettings[id].value = settings.controlBindings[id];
       }
+      activeControlBindings = settings.controlBindings;
+      renderTacticalButtonLabels();
       syncSettingsOutputs();
 
       const requiresReload = settings.graphicsPresetId !== telemetry.activePresetId;
@@ -1514,6 +1687,7 @@ export function createAppShell(root: HTMLElement): AppShell {
       root.setAttribute('aria-busy', 'false');
       statusText.textContent = 'A cena 3D não pôde ser iniciada.';
       canvas.hidden = true;
+      retryButton.focus();
     },
     showReady(readiness) {
       root.dataset.appState = 'ready';

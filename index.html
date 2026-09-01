@@ -17,7 +17,24 @@
         id="game-canvas"
         class="scene-canvas"
         aria-label="Arena tridimensional de voo espacial"
+        aria-describedby="flight-keyboard-help"
+        tabindex="0"
       ></canvas>
+      <p class="visually-hidden" id="flight-keyboard-help">
+        Use W e S para acelerar ou recuar, A e D para guinar, setas para inclinar, Q e E para rolar,
+        Shift para impulso, Espaço para frear e P para pausar. Os comandos táticos ativos aparecem
+        nos botões e podem ser remapeados nas configurações.
+      </p>
+      <div class="visually-hidden" data-live-announcements>
+        <p
+          data-live-polite
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          aria-relevant="text"
+        ></p>
+        <p data-live-urgent aria-live="assertive" aria-atomic="true" aria-relevant="text"></p>
+      </div>
 
       <section
         class="main-menu"
@@ -283,9 +300,15 @@
         <span class="target-tracker__caption" data-target-marker-caption>ALVO</span>
       </div>
 
-      <div class="travel-presentation" data-travel-presentation hidden>
+      <div
+        class="travel-presentation"
+        data-travel-presentation
+        tabindex="-1"
+        aria-label="Trânsito entre setores"
+        hidden
+      >
         <div class="travel-presentation__streaks" aria-hidden="true"></div>
-        <section class="travel-presentation__status hud-card" role="status" aria-live="polite">
+        <section class="travel-presentation__status hud-card" aria-label="Viagem em andamento">
           <span class="eyebrow">Trânsito entre setores</span>
           <strong data-travel-title>Preparando corredor de viagem</strong>
           <p data-travel-route>Calculando rota segura…</p>
@@ -301,6 +324,8 @@
       <section
         class="system-map hud-card"
         data-system-map
+        role="dialog"
+        aria-modal="true"
         aria-labelledby="system-map-title"
         hidden
       >
@@ -377,8 +402,8 @@
         </footer>
       </section>
 
-      <section class="objective-card hud-card status-panel" aria-labelledby="app-title">
-        <p class="eyebrow">Comando de missão</p>
+      <section class="objective-card hud-card status-panel" aria-labelledby="mission-panel-title">
+        <p class="eyebrow" id="mission-panel-title">Comando de missão</p>
         <div class="objective-card__title">
           <h1 id="app-title">Comando Estelar</h1>
           <span class="status-dot" aria-hidden="true"></span>
@@ -409,18 +434,14 @@
             >Iniciando…</span
           >
           <div class="flight-actions">
-            <button type="button" data-flight-pause>Pausar (P)</button>
+            <button type="button" data-flight-pause aria-keyshortcuts="P">Pausar (P)</button>
             <button type="button" data-flight-capture>Capturar mouse</button>
-            <button type="button" data-flight-fullscreen>Tela cheia (F)</button>
+            <button type="button" data-flight-fullscreen aria-keyshortcuts="F">
+              Tela cheia (F)
+            </button>
             <button type="button" data-navigation-open hidden>Abrir mapa</button>
           </div>
-          <p
-            class="control-feedback"
-            data-control-feedback
-            role="status"
-            aria-live="polite"
-            hidden
-          ></p>
+          <p class="control-feedback" data-control-feedback hidden></p>
         </nav>
 
         <section class="player-status hud-card" aria-labelledby="flight-title">
@@ -558,7 +579,7 @@
           </dl>
         </section>
 
-        <div class="combat-feedback hud-card" role="status" aria-live="polite">
+        <div class="combat-feedback hud-card">
           <span class="metric-label">Canal tático</span>
           <p data-combat-feedback>Aguardando dados dos sensores.</p>
         </div>
@@ -566,19 +587,27 @@
         <nav class="tactical-action-bar hud-card" aria-label="Controles táticos">
           <div class="combat-actions">
             <button type="button" data-combat-action="select">Selecionar (T)</button>
-            <button type="button" data-combat-action="clear">Limpar (X)</button>
+            <button type="button" data-combat-action="clear" aria-keyshortcuts="X">
+              Limpar (X)
+            </button>
             <button type="button" data-combat-action="scan" aria-pressed="false">Scan (R)</button>
             <button type="button" data-combat-action="beam">Feixe (1)</button>
             <button type="button" data-combat-action="torpedo">Torpedo (2)</button>
             <button type="button" data-combat-action="tractor">Trator (3)</button>
-            <button type="button" data-combat-action="restart" hidden>
+            <button type="button" data-combat-action="restart" aria-keyshortcuts="N" hidden>
               Reiniciar encontro (N)
             </button>
           </div>
         </nav>
       </div>
 
-      <details class="energy-panel hud-card" data-energy-panel hidden>
+      <details
+        class="energy-panel hud-card"
+        data-energy-panel
+        role="region"
+        aria-labelledby="energy-title"
+        hidden
+      >
         <summary class="energy-panel__heading">
           <span>
             <span class="eyebrow">Distribuição de potência</span>

@@ -208,6 +208,15 @@ async function openEnergyDrawer(page: Page): Promise<void> {
   await expect(drawer).toHaveAttribute('open', '');
 }
 
+async function tabTo(page: Page, selector: string, maximumTabs = 30): Promise<void> {
+  const target = page.locator(selector).first();
+  for (let index = 0; index <= maximumTabs; index += 1) {
+    if (await target.evaluate((element) => element === document.activeElement)) return;
+    await page.keyboard.press('Tab');
+  }
+  throw new Error(`Não foi possível alcançar ${selector} somente com Tab.`);
+}
+
 async function approachAndBrake(page: Page, maximumDistance: number): Promise<void> {
   const root = page.locator('[data-app-root]');
   await page.locator('#game-canvas').click({ position: { x: 640, y: 360 } });
@@ -398,6 +407,11 @@ test('persiste configurações separadas do save e aplica HUD e teclas imediatam
   await expect(root).toHaveAttribute('data-reduce-camera-shake', 'true');
   await expect(page.locator('[data-setting-output="masterVolumePercent"]')).toHaveText('55%');
   await expect(page.locator('[data-setting-output="mouseSensitivity"]')).toHaveText('1,5×');
+  await expect(page.locator('[data-combat-action="select"]')).toHaveText('Selecionar (Y)');
+  await expect(page.locator('[data-combat-action="select"]')).toHaveAttribute(
+    'aria-keyshortcuts',
+    'Y',
+  );
   expect(await root.getAttribute('data-save-state')).toBe(saveStateBefore);
   expect(await countStoredSaveSnapshots(page)).toBe(snapshotsBefore);
 
@@ -427,6 +441,7 @@ test('persiste configurações separadas do save e aplica HUD e teclas imediatam
   }
 
   await departCurrentMission(page);
+  await expect(page.locator('[data-objective-text]')).toContainText('Pressione Y para selecionar');
   await expect(root).toHaveAttribute('data-contact-awareness', 'detected');
   await page.keyboard.press('KeyT');
   await expect(root).toHaveAttribute('data-target-selected', 'false');
@@ -438,6 +453,12 @@ test('persiste configurações separadas do save e aplica HUD e teclas imediatam
   ]) {
     await page.setViewportSize(viewport);
     await expectHudInsideViewport(page);
+  }
+  if (testInfo.project.name === 'Google Chrome') {
+    await page.setViewportSize({ height: 720, width: 1280 });
+    await page.locator('[data-combat-action="scan"]').focus();
+    await expectHudInsideViewport(page);
+    await page.screenshot({ path: 'docs/screenshots/p1-accessibility-hud-1280x720.png' });
   }
   expect(await countStoredSaveSnapshots(page)).toBeGreaterThan(snapshotsBefore);
 });
@@ -824,6 +845,196 @@ test('ordena o DOM tático antes de energia e sessão sem landmarks duplicados',
   await expect(page.getByRole('region', { name: 'Exploradora Aurora' })).toHaveCount(1);
   await expect(page.getByRole('navigation', { name: 'Controles táticos' })).toHaveCount(1);
   await expect(page.getByRole('navigation', { name: 'Controles da sessão' })).toHaveCount(1);
+});
+
+test('percorre menu, configurações e painéis modais com ordem de foco contida', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const root = page.locator('[data-app-root]');
+  await expect(root).toHaveAttribute('data-app-state', 'ready');
+  const initialAction = page.locator(
+    '[data-main-menu-continue]:not(:disabled), [data-main-menu-new]:not(:disabled)',
+  );
+  await expect(initialAction.first()).toBeFocused();
+
+  await tabTo(page, '[data-main-menu-open="settings"]');
+  await page.keyboard.press('Enter');
+  const firstSetting = page.locator('[data-setting="graphicsPresetId"]');
+  await expect(firstSetting).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(
+    page.locator('[data-main-menu-view="settings"] [data-main-menu-back]'),
+  ).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(firstSetting).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(root).toHaveAttribute('data-menu-state', 'home');
+
+  await tabTo(page, '[data-main-menu-open="diagnostics"]');
+  await page.keyboard.press('Enter');
+  await expect(root).toHaveAttribute('data-menu-state', 'diagnostics');
+  await expect(
+    page.locator('[data-main-menu-view="diagnostics"] [data-main-menu-back]'),
+  ).toBeFocused();
+  await page.keyboard.press('Escape');
+
+  await tabTo(page, '[data-main-menu-open="credits"]');
+  await page.keyboard.press('Enter');
+  await expect(root).toHaveAttribute('data-menu-state', 'credits');
+  await expect(page.locator('[data-main-menu-view="credits"] [data-main-menu-back]')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(root).toHaveAttribute('data-menu-state', 'home');
+});
+
+test('percorre a partida e opera o HUD apenas com teclado', async ({ page }) => {
+  await page.goto('/');
+  const root = page.locator('[data-app-root]');
+  await expect(root).toHaveAttribute('data-app-state', 'ready');
+  const initialAction = page.locator(
+    '[data-main-menu-continue]:not(:disabled), [data-main-menu-new]:not(:disabled)',
+  );
+  await expect(initialAction.first()).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-base-prepare]')).toBeFocused();
+
+  await page.keyboard.press('Enter');
+  const map = page.getByRole('dialog', { name: 'Sistema Hélios' });
+  await expect(map).toBeVisible();
+  const destination = page.locator(
+    '[data-navigation-destination][data-mission-destination="true"]',
+  );
+  await expect(destination).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(destination).toHaveAttribute('aria-pressed', 'true');
+  await tabTo(page, '[data-navigation-confirm]');
+  await page.keyboard.press('Enter');
+  await expect(root).toHaveAttribute('data-navigation-state', 'travel');
+  await expect(page.locator('[data-travel-presentation]')).toBeFocused();
+  await expect(root).toHaveAttribute('data-navigation-state', 'encounter', { timeout: 5_000 });
+  await expect(page.locator('#game-canvas')).toBeFocused();
+
+  await page.keyboard.press('KeyT');
+  await expect(root).toHaveAttribute('data-target-selected', 'true');
+  await page.keyboard.press('KeyR');
+  await expect(root).toHaveAttribute('data-scan-active', 'true');
+  await page.keyboard.press('Tab');
+  await expect(page.locator('[data-combat-action="select"]')).toBeFocused();
+  await tabTo(page, '[data-energy-panel] > summary');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-energy-panel]')).toHaveAttribute('open', '');
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Equilíbrio' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await tabTo(page, '[data-flight-pause]');
+  await page.keyboard.press('Enter');
+  await expect(root).toHaveAttribute('data-simulation-state', 'paused');
+  await expect(page.getByRole('button', { name: /Retomar/ })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(root).toHaveAttribute('data-simulation-state', 'running');
+});
+
+test('expõe nomes completos e anúncios deduplicados sem depender apenas de cor', async ({
+  page,
+}) => {
+  await enterFirstMission(page);
+  const root = page.locator('[data-app-root]');
+  await expect(page.getByRole('region', { name: 'Comando de missão' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Energia da nave' })).toBeVisible();
+  await expect(page.locator('#game-canvas')).toHaveAttribute(
+    'aria-describedby',
+    'flight-keyboard-help',
+  );
+  await expect(page.locator('[data-combat-action="select"]')).toHaveAttribute(
+    'aria-keyshortcuts',
+    'T',
+  );
+  await expect(page.locator('[data-shield-sector="front"]')).toHaveAttribute(
+    'aria-label',
+    /Escudo frontal: \d+ por cento/,
+  );
+  await expect(page.locator('[data-combat-subsystems]')).toHaveAttribute(
+    'aria-label',
+    /Motores \d+ por cento; armas \d+ por cento/,
+  );
+  await expect(page.locator('[data-energy-allocation="engines"]')).toHaveAttribute(
+    'aria-label',
+    /Energia de motores: \d+\.\d por cento/,
+  );
+  await expect(page.locator('[data-live-polite]')).toContainText('Objetivo:');
+  await expect(root).toHaveAttribute('data-last-announcement-key', /mission\|/);
+
+  const steadyStateMutations = await page.locator('[data-live-polite]').evaluate(
+    (element) =>
+      new Promise<number>((resolve) => {
+        let mutations = 0;
+        const observer = new MutationObserver((records) => {
+          mutations += records.length;
+        });
+        observer.observe(element, { characterData: true, childList: true, subtree: true });
+        window.setTimeout(() => {
+          observer.disconnect();
+          resolve(mutations);
+        }, 650);
+      }),
+  );
+  expect(steadyStateMutations).toBe(0);
+
+  await page.keyboard.press('KeyT');
+  await expect(page.locator('[data-live-polite]')).toContainText(
+    'Contato selecionado. Inicie o scan para identificar.',
+  );
+  await expect(root).toHaveAttribute('data-last-announcement-key', /combat-feedback\|/);
+});
+
+test('mantém contraste textual WCAG AA nos presets baixo, médio e alto', async ({ page }) => {
+  for (const preset of ['low', 'medium', 'high'] as const) {
+    await page.goto(`/?preset=${preset}`);
+    const root = page.locator('[data-app-root]');
+    await expect(root).toHaveAttribute('data-app-state', 'ready');
+    await expect(root).toHaveAttribute('data-graphics-preset', preset);
+    const ratios = await root.evaluate((element) => {
+      const styles = getComputedStyle(element);
+      const parseColor = (value: string): readonly [number, number, number] => {
+        const probe = document.createElement('span');
+        probe.style.color = value;
+        document.body.append(probe);
+        const resolved = getComputedStyle(probe).color;
+        probe.remove();
+        const channels = resolved
+          .match(/[\d.]+/g)
+          ?.slice(0, 3)
+          .map(Number);
+        if (channels === undefined || channels.length !== 3) {
+          throw new Error(`Cor não resolvida no teste: ${value}.`);
+        }
+        return [channels[0]!, channels[1]!, channels[2]!];
+      };
+      const luminance = (color: readonly [number, number, number]): number => {
+        const [red, green, blue] = color.map((channel) => {
+          const normalized = channel / 255;
+          return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+        });
+        return red! * 0.2126 + green! * 0.7152 + blue! * 0.0722;
+      };
+      const ratio = (foreground: string, background: string): number => {
+        const foregroundLuminance = luminance(parseColor(foreground));
+        const backgroundLuminance = luminance(parseColor(background));
+        const lighter = Math.max(foregroundLuminance, backgroundLuminance);
+        const darker = Math.min(foregroundLuminance, backgroundLuminance);
+        return (lighter + 0.05) / (darker + 0.05);
+      };
+      const panelBackground = '#06111d';
+      return {
+        data: ratio(styles.getPropertyValue('--hud-data'), panelBackground),
+        danger: ratio(styles.getPropertyValue('--hud-danger'), panelBackground),
+        secondary: ratio(styles.getPropertyValue('--hud-secondary'), panelBackground),
+        text: ratio(styles.getPropertyValue('--hud-text'), panelBackground),
+        warning: ratio(styles.getPropertyValue('--hud-warning'), panelBackground),
+      };
+    });
+    for (const value of Object.values(ratios)) expect(value).toBeGreaterThanOrEqual(4.5);
+  }
 });
 
 test('feixe, torpedo e raio trator têm resultados e restrições distintos', async ({

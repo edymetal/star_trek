@@ -1,9 +1,9 @@
 # Progresso do projeto
 
-Atualizado em: 31 de agosto de 2026  
+Atualizado em: 1 de setembro de 2026  
 Etapa atual: P1 — Vertical slice/MVP  
-Estado do código: P0.5 aprovado; P1-C concluída com configurações persistentes separadas do save  
-Próximo responsável: Senior Developer / P1-D — acessibilidade prioritária
+Estado do código: P0.5 aprovado; P1-D concluída com acessibilidade prioritária validada  
+Próximo responsável: Senior Developer / P1-E — diário de objetivos e descobertas
 
 Handoff detalhado para continuação: `docs/HANDOFF_REMAINING_WORK.md`
 
@@ -101,7 +101,9 @@ Legenda:
 - [x] Tutorial contextual e progressão segura entre missões
 - [x] Menu inicial, continuar, diagnóstico, créditos e comando da base
 - [x] Configurações persistentes, escala do HUD, redução de efeitos e remapeamento essencial
-- [ ] Áudio e acessibilidade prioritária
+- [x] Acessibilidade prioritária, teclado completo, semântica e anúncios controlados
+- [ ] Diário mínimo de objetivos e descobertas
+- [ ] Áudio e feedback final
 - [ ] Inventário de licenças
 - [ ] E2E, benchmark e revisão final do MVP
 
@@ -501,7 +503,7 @@ O estado efêmero do menu foi extraído para a aplicação, sem mover campanha, 
 - P1-E a P1-G: diário, áudio, fallback de asset e inventário formal de licenças/créditos;
 - P1-H: decisão offline/PWA, playtest, balanceamento, instalação limpa, benchmark e revisão formal final do MVP.
 
-## Último relatório — configurações persistentes P1-C
+## Relatório anterior — configurações persistentes P1-C
 
 **ETAPA:** P1 — sexta subfatia da Etapa 6  
 **STATUS:** configurações persistentes, recuperação segura e aplicação real concluídas
@@ -532,3 +534,41 @@ A configuração permanece na aplicação/plataforma: o domínio não lê DOM, a
 - P1-D: revisão de acessibilidade prioritária, teclado completo, semântica, anúncios, contraste e movimento;
 - P1-E a P1-G: diário, áudio, fallback de asset e inventário formal de licenças/créditos;
 - P1-H: decisão offline/PWA, playtest, balanceamento, instalação limpa, matriz/benchmark final e revisão formal do MVP.
+
+## Último relatório — acessibilidade prioritária P1-D
+
+**ETAPA:** P1 — sétima subfatia da Etapa 6  
+**STATUS:** teclado, foco, semântica, anúncios, contraste e layout acessível concluídos
+
+### Implementado
+
+- menu e mapa mantêm foco dentro da superfície modal e tornam o restante do jogo inerte;
+- foco segue explicitamente base → mapa → viagem → canvas e retorna ao controle de origem ao fechar;
+- canvas recebe nome, ajuda de teclado e foco visível; mapa, missão, contato e energia possuem landmarks/nome acessível;
+- escudos direcionais, subsistemas e canais de energia publicam nomes completos, percentuais e condição textual, preservando informação sem vermelho/verde;
+- regiões `aria-live` separadas anunciam objetivo, feedback novo, erro e resultado terminal por chaves deduplicadas, sem mutação durante telemetria estável;
+- teclas persistidas atualizam imediatamente botões, `aria-keyshortcuts`, feedback de chegada e instruções das três missões;
+- suporte a `prefers-reduced-motion` foi preservado e `forced-colors` recebeu foco, contorno e estados selecionados explícitos;
+- em HUD 110%, a barra tática usa duas linhas somente quando necessário para manter rótulos e atalhos visíveis.
+
+### Revisão e correções
+
+A auditoria encontrou dois problemas funcionais: atalhos remapeados funcionavam, mas a interface e o tutorial ainda exibiam as teclas padrão; após confirmar viagem, o foco podia permanecer em um botão oculto do mapa e fazer o controlador ignorar teclas por tratá-lo como alvo interativo. Tokens simbólicos no conteúdo e a transferência de foco corrigem os dois sem levar DOM ou configuração ao domínio. A primeira captura 1280×720/110% revelou truncamento LOW nos botões táticos; a barra ampliada foi reorganizada em duas linhas e reinspecionada. Um conflito inicial entre a região urgente e o seletor do alerta real de WebGL também foi corrigido mantendo `aria-live="assertive"` sem criar um segundo `role="alert"`. Nenhum achado CRITICAL/HIGH permanece.
+
+### Verificação
+
+- `npm run verify`: aprovado com 174/174 testes em 30 arquivos, formatação, lint, TypeScript e build;
+- teste sem GPU novo cobre formatação de instruções a partir dos bindings validados;
+- Playwright completo: 70/70 casos em Chrome/Edge, um worker e nenhum `skip`;
+- E2E novo cobre menu/configurações/créditos/diagnóstico, base, mapa, viagem, encontro, energia e pausa somente por teclado; foco modal; nomes; atalhos dinâmicos; anúncio de objetivo/feedback sem mutações em repouso; e contraste textual WCAG AA nos presets baixo/médio/alto;
+- perda de foco, liberação de ponteiro, reduções reais de flash/tremor/partículas e HUD 110% continuam cobertos pela matriz;
+- inspeção de `docs/screenshots/p1-accessibility-hud-1280x720.png`: rótulos completos, foco de 3 px, centro tático livre, zero scroll/interseção;
+- benchmark físico Chrome 151, UHD 620, WebGL 2, 1600×900/médio: 60,011 FPS médios, p50 16,7 ms, p95 18,2 ms e p99 20,8 ms, com 88 draw calls e 21 VFX;
+- aplicação principal: 34,16 kB gzip; engine permanece em 510,69 kB gzip; avisos conhecidos de chunk/workers continuam não bloqueantes.
+
+### Pendências do P1
+
+- P1-E: diário mínimo de objetivo e descobertas, idempotente e persistente;
+- P1-F: áudio original/licenciado, volumes, descarte e fallback visual;
+- P1-G: fallback de asset, manifesto, inventário formal de licenças e créditos;
+- P1-H: decisão offline/PWA, playtest, balanceamento, instalação limpa e revisão formal final do MVP.

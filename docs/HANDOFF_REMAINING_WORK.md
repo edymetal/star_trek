@@ -1,9 +1,9 @@
 # Handoff para finalizar o projeto
 
-Atualizado em: 31 de agosto de 2026  
+Atualizado em: 1 de setembro de 2026  
 Branch esperada: `main`  
 Baseline anterior ao P1-A: commit `f9750ee` (`feat: adicionar campanha tutorial de tres missoes`)  
-Marco atual: P1-C concluída; consulte o último relatório em `docs/PROGRESS.md`
+Marco atual: P1-D concluída; consulte o último relatório em `docs/PROGRESS.md`
 
 ## 1. Finalidade deste documento
 
@@ -20,7 +20,7 @@ Ao receber uma solicitação genérica como “continue” ou “finalize o jogo
 
 Use este texto como prompt inicial:
 
-> Continue o projeto a partir de `docs/HANDOFF_REMAINING_WORK.md`. Leia integralmente `AGENTS.md` e todas as fontes canônicas na ordem indicada antes de alterar código. Trabalhe uma fatia vertical por vez, preserve as decisões aceitas, não refaça o P0 nem as fatias P1-A/P1-B/P1-C concluídas e não adicione conteúdo de Star Trek. Implemente primeiro o P1-D e depois os itens P1 obrigatórios na ordem do handoff. Para cada fatia, crie testes sem GPU para regras, E2E em Chrome/Edge para fluxos visuais, execute `npm run verify` e os testes E2E relevantes, atualize a documentação e faça commit/push somente quando o gate estiver verde. Não publique nem faça deploy sem autorização explícita.
+> Continue o projeto a partir de `docs/HANDOFF_REMAINING_WORK.md`. Leia integralmente `AGENTS.md` e todas as fontes canônicas na ordem indicada antes de alterar código. Trabalhe uma fatia vertical por vez, preserve as decisões aceitas, não refaça o P0 nem as fatias P1-A/P1-B/P1-C/P1-D concluídas e não adicione conteúdo de Star Trek. Implemente primeiro o P1-E e depois os itens P1 obrigatórios na ordem do handoff. Para cada fatia, crie testes sem GPU para regras, E2E em Chrome/Edge para fluxos visuais, execute `npm run verify` e os testes E2E relevantes, atualize a documentação e faça commit/push somente quando o gate estiver verde. Não publique nem faça deploy sem autorização explícita.
 
 ## 3. Fontes de verdade e ordem de leitura
 
@@ -67,12 +67,14 @@ O P0 está aprovado e não deve ser reimplementado:
 - mapa acessível, apresentação de viagem e estados distintos de base/mapa/trânsito/encontro;
 - base segura e raízes gráficas fixas, sem IA, projéteis ou VFX fora da bolha tática;
 - contatos e posições próprios por missão, com checkpoints transitórios ainda retornando ao briefing.
+- configurações v1 persistentes separadas do save, HUD escalável, redução real de efeitos e remapeamento essencial;
+- acessibilidade prioritária com fluxo por teclado, foco modal, nomes completos, anúncios deduplicados, contraste AA e alternativas textuais.
 
-Gate atual verificado após o P1-C:
+Gate atual verificado após o P1-D:
 
-- testes: 173/173 em 30 arquivos;
-- Playwright: 62/62 casos em Chrome e Edge no gate P1-C;
-- benchmark físico aprovado na UHD 620/médio, 1600×900, WebGL 2: 60,012 FPS médios e p99 de 19,1 ms;
+- testes: 174/174 em 30 arquivos;
+- Playwright: 70/70 casos em Chrome e Edge no gate P1-D;
+- benchmark físico aprovado na UHD 620/médio, 1600×900, WebGL 2: 60,011 FPS médios e p99 de 20,8 ms;
 - nenhum achado CRITICAL/HIGH conhecido;
 - chunk do engine em aproximadamente 510,69 kB gzip.
 
@@ -85,7 +87,7 @@ Execute na ordem abaixo, salvo nova prioridade explícita do usuário:
 1. [x] coerência do estado de base, mapa do sistema e apresentação da viagem;
 2. [x] tela inicial e fluxo base/preparação/seleção de missão;
 3. [x] configurações persistentes e controles essenciais;
-4. acessibilidade prioritária;
+4. [x] acessibilidade prioritária;
 5. diário de objetivos e descobertas;
 6. áudio e feedback final;
 7. carregamento, manifesto e recuperação de falha de assets;
@@ -242,7 +244,7 @@ O aplicativo agora abre em menu modal próprio antes de liberar a sessão. Conti
 - redução de flashes/tremor/partículas altera entidades e câmera da cena; Chrome/Edge validam VFX limitado;
 - benchmark UHD 620/médio permanece acima do gate e a decisão arquitetural está em `DECISION-033`.
 
-## 9. Fatia P1-D — acessibilidade prioritária
+## 9. Fatia P1-D — acessibilidade prioritária — concluída
 
 ### Criar ou concluir
 
@@ -262,6 +264,16 @@ O aplicativo agora abre em menu modal próprio antes de liberar a sessão. Conti
 - nenhum estado crítico depende somente de vermelho/verde;
 - HUD em 1280×720 continua inteiramente dentro do viewport na maior escala suportada ou oferece estratégia documentada sem cobrir o centro tático;
 - testes automatizam semântica e layout possível; inspeção manual cobre movimento, flashes e leitura visual.
+
+### Gate realizado
+
+- menu, configurações, diagnóstico, créditos, base, mapa, viagem, encontro, energia e pausa foram percorridos somente por teclado em Chrome/Edge;
+- foco fica contido nas fronteiras modais e segue para viagem/canvas/base sem permanecer em controles ocultos;
+- nomes completos e valores textuais cobrem objetivo, contato, escudos, subsistemas, energia e ações; atalhos remapeados atualizam tutorial e botões;
+- anúncios de objetivo, feedback, erro e conclusão usam regiões polite/assertive deduplicadas e permanecem sem mutação em estado estável;
+- contraste textual atende AA nos três presets, `forced-colors` possui contornos explícitos e reduções de movimento/VFX continuam ligadas aos efeitos reais;
+- HUD 110% em 1280×720 foi reinspecionado após reorganizar a barra tática em duas linhas, sem scroll, overlap ou cobertura do centro;
+- decisão arquitetural registrada em `DECISION-034`, com 174/174 testes, 70/70 E2E e benchmark acima do gate.
 
 ## 10. Fatia P1-E — diário de objetivo e descobertas
 
@@ -558,6 +570,7 @@ Os nomes são sugestões; o conteúdo e os gates importam mais que a quantidade 
 - [x] configurações persistentes separadas do save;
 - [x] escala do HUD e redução de flashes/tremor/partículas funcionais;
 - [x] remapeamento essencial funcional;
+- [x] acessibilidade prioritária, teclado completo e anúncios controlados;
 - [ ] diário mínimo de objetivos/descobertas implementado;
 - [ ] áudio original/licenciado com volumes, mute e fallback;
 - [ ] falha de asset recuperável;

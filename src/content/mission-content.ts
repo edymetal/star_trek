@@ -40,7 +40,8 @@ function tutorialMission(
 export const INITIAL_TUTORIAL_MISSIONS: readonly TutorialMissionContent[] = [
   tutorialMission({
     allowedEquipment: [],
-    arrivalFeedback: 'Destino alcançado. Use T para selecionar o contato e R para iniciar o scan.',
+    arrivalFeedback:
+      'Destino alcançado. Use {select-target} para selecionar o contato e {toggle-scan} para iniciar o scan.',
     briefing:
       'Treino de sensores: localize, selecione e identifique a sonda no corredor de Nereida.',
     completedObjective: 'Sensores dominados. Dados entregues e nave revisada na base.',
@@ -52,7 +53,7 @@ export const INITIAL_TUTORIAL_MISSIONS: readonly TutorialMissionContent[] = [
     id: 'nereida-survey',
     objectiveCompleteText: 'Sonda identificada. Retorne à base com os dados do levantamento.',
     objectiveInstruction:
-      'Pressione T para selecionar, R para escanear e mantenha o contato dentro do alcance dos sensores.',
+      'Pressione {select-target} para selecionar, {toggle-scan} para escanear e mantenha o contato dentro do alcance dos sensores.',
     objectiveLabel: 'Levantamento',
     objectiveType: 'identify-contact',
     targetContactId: 'nereida-probe',
@@ -77,7 +78,7 @@ export const INITIAL_TUTORIAL_MISSIONS: readonly TutorialMissionContent[] = [
     objectiveCompleteText:
       'Alvo estabilizado pelo raio trator. Retorne à base com a equipe segura.',
     objectiveInstruction:
-      'Identifique o contato, aproxime-se a menos de 72 u, alinhe a proa e use 3. Mais auxiliares fortalecem sensores e trator.',
+      'Identifique o contato, aproxime-se a menos de 72 u, alinhe a proa e use {tractor}. Mais auxiliares fortalecem sensores e trator.',
     objectiveLabel: 'Assistência',
     objectiveType: 'tractor-lock',
     targetContactId: 'iris-research-vessel',
@@ -101,7 +102,7 @@ export const INITIAL_TUTORIAL_MISSIONS: readonly TutorialMissionContent[] = [
     id: 'vespa-combat-training',
     objectiveCompleteText: 'Ameaça neutralizada. Retorne à base para concluir o treinamento.',
     objectiveInstruction:
-      'Identifique o alvo, escolha Ataque ou Defesa e use feixe (1) e torpedos (2) até obter vitória.',
+      'Identifique o alvo, escolha Ataque ou Defesa e use feixe ({beam}) e torpedos ({torpedo}) até obter vitória.',
     objectiveLabel: 'Combate',
     objectiveType: 'combat-victory',
     targetContactId: ENEMY_CONTENT.id,

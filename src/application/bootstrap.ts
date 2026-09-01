@@ -56,7 +56,7 @@ import {
 import { selectInitialPreset } from './select-initial-preset';
 import { createGameSavePayload, type GameSavePayload } from './game-save';
 import { createSaveController, type SaveControllerStatus } from './save-controller';
-import { createDefaultGameSettings, type GameSettings } from './game-settings';
+import { createDefaultGameSettings, formatControlHints, type GameSettings } from './game-settings';
 import { createSettingsController, type SettingsControllerResult } from './settings-controller';
 import { createSessionMenu, type SessionMenuSnapshot } from './session-menu';
 import { createThrottledPublisher } from './throttled-publisher';
@@ -171,8 +171,13 @@ function createBaseHudTelemetry(
   };
 }
 
-function createMissionHudTelemetry(snapshot: TutorialCampaignSnapshot): MissionHudTelemetry {
+function createMissionHudTelemetry(
+  snapshot: TutorialCampaignSnapshot,
+  settings: GameSettings,
+): MissionHudTelemetry {
   const mission = getTutorialMissionContent(snapshot.missionId);
+  const withControlHints = (value: string): string =>
+    formatControlHints(value, settings.controlBindings);
   const shared = {
     campaignCompleted: snapshot.campaignCompleted,
     missionCount: snapshot.missionCount,
@@ -189,7 +194,7 @@ function createMissionHudTelemetry(snapshot: TutorialCampaignSnapshot): MissionH
         ...shared,
         actionEnabled: true,
         actionLabel: 'Abrir mapa do sistema',
-        objective: mission.briefing,
+        objective: withControlHints(mission.briefing),
         phaseLabel: `${snapshot.missionNumber}/${snapshot.missionCount} · Na base`,
       };
     case 'outbound':
@@ -197,7 +202,7 @@ function createMissionHudTelemetry(snapshot: TutorialCampaignSnapshot): MissionH
         ...shared,
         actionEnabled: false,
         actionLabel: `Em trânsito · ${(snapshot.transitionProgress * 100).toFixed(0)}%`,
-        objective: mission.outboundObjective,
+        objective: withControlHints(mission.outboundObjective),
         phaseLabel: `${snapshot.missionNumber}/${snapshot.missionCount} · Partida`,
       };
     case 'objective':
@@ -205,9 +210,11 @@ function createMissionHudTelemetry(snapshot: TutorialCampaignSnapshot): MissionH
         ...shared,
         actionEnabled: snapshot.objectiveCompleted,
         actionLabel: snapshot.objectiveCompleted ? 'Retornar à base' : 'Conclua o objetivo',
-        objective: snapshot.objectiveCompleted
-          ? mission.objectiveCompleteText
-          : mission.objectiveInstruction,
+        objective: withControlHints(
+          snapshot.objectiveCompleted
+            ? mission.objectiveCompleteText
+            : mission.objectiveInstruction,
+        ),
         phaseLabel: `${snapshot.missionNumber}/${snapshot.missionCount} · ${mission.objectiveLabel}`,
       };
     case 'returning':
@@ -215,7 +222,7 @@ function createMissionHudTelemetry(snapshot: TutorialCampaignSnapshot): MissionH
         ...shared,
         actionEnabled: false,
         actionLabel: `Retornando · ${(snapshot.transitionProgress * 100).toFixed(0)}%`,
-        objective: mission.returningObjective,
+        objective: withControlHints(mission.returningObjective),
         phaseLabel: `${snapshot.missionNumber}/${snapshot.missionCount} · Retorno`,
       };
     case 'completed':
@@ -225,7 +232,7 @@ function createMissionHudTelemetry(snapshot: TutorialCampaignSnapshot): MissionH
         actionLabel: snapshot.campaignCompleted
           ? 'Reiniciar treinamento pelo mapa'
           : `Preparar missão ${snapshot.missionNumber + 1}`,
-        objective: mission.completedObjective,
+        objective: withControlHints(mission.completedObjective),
         phaseLabel: `${snapshot.missionNumber}/${snapshot.missionCount} · Concluída`,
       };
   }
@@ -586,7 +593,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
           weaponHeatPercent: state.weaponHeatUnits,
           weaponRechargeUnitsPerSecond: effects.weaponRechargeUnitsPerSecond,
         },
-        mission: createMissionHudTelemetry(missionSession.getSnapshot()),
+        mission: createMissionHudTelemetry(missionSession.getSnapshot(), currentSettings),
       };
     };
     const refreshHud = (): void => {
@@ -945,7 +952,9 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
           input.releaseControls();
           flightSession.pause('mission-transition');
           resetPresentationEffects();
-          shell.setControlFeedback(content.returnFeedback);
+          shell.setControlFeedback(
+            formatControlHints(content.returnFeedback, currentSettings.controlBindings),
+          );
           refreshHud();
         }
       },
@@ -1007,7 +1016,9 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
               }
               const mission = getTutorialMissionContent(missionAfterAdvance.missionId);
               flightSession.resume();
-              shell.setControlFeedback(mission.arrivalFeedback);
+              shell.setControlFeedback(
+                formatControlHints(mission.arrivalFeedback, currentSettings.controlBindings),
+              );
             } else if (missionAfterAdvance.phase === 'completed') {
               const navigationFailure = navigationFailureMessage(navigationSession.arrive());
               if (navigationFailure !== undefined) {
@@ -1018,7 +1029,9 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
               flightSession.pause('mission-base');
               resetPresentationEffects();
               persistCheckpoint(createGameSavePayload(mission.id, 'completed'));
-              shell.setControlFeedback(mission.completionFeedback);
+              shell.setControlFeedback(
+                formatControlHints(mission.completionFeedback, currentSettings.controlBindings),
+              );
             }
           }
           const snapshot = flightSession.advance(deltaSeconds, input);
@@ -1054,7 +1067,9 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
           }
           if (objectiveEvent !== undefined && missionSession.recordObjective(objectiveEvent)) {
             const mission = getTutorialMissionContent(missionObjective.missionId);
-            shell.setControlFeedback(mission.objectiveCompleteText);
+            shell.setControlFeedback(
+              formatControlHints(mission.objectiveCompleteText, currentSettings.controlBindings),
+            );
           }
           if (pendingPresentationEffect !== undefined && snapshot.simulationSteps > 0) {
             const { encounter } = snapshot;

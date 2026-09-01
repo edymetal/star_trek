@@ -1,7 +1,7 @@
 # Arquitetura do jogo
 
-Status: aceita para P0 e P1-C  
-Versão: 1.2 — 31 de agosto de 2026
+Status: aceita para P0 e P1-D  
+Versão: 1.2 — 1 de setembro de 2026
 
 Este documento define como o produto será construído. Requisitos pertencem a [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md), prioridade a [`docs/MVP.md`](docs/MVP.md), decisões justificadas a [`docs/DECISIONS.md`](docs/DECISIONS.md) e pesquisa/orçamentos detalhados a [`PLANEJAMENTO.md`](PLANEJAMENTO.md).
 
@@ -150,6 +150,8 @@ No P1-B, o estado efêmero do menu fica em `src/application/session-menu.ts`; o 
 
 No P1-C, `src/application/game-settings.ts` valida o envelope v1 e `SettingsController` coordena defaults, carga, gravação e restauração por uma interface síncrona própria. O adaptador `localStorage` usa chave exclusiva e nunca acessa o repositório IndexedDB da campanha. A aplicação converte preferências válidas para entrada e apresentação; o shell apenas edita/exibe valores, e o engine recebe reduções de VFX sem se tornar autoridade da configuração.
 
+No P1-D, o shell DOM mantém foco dentro do menu e do mapa enquanto são modais, torna superfícies de fundo inertes e transfere foco explicitamente entre base, mapa, viagem e canvas. Um canal visual continua exibindo telemetria, enquanto duas regiões ocultas `aria-live` anunciam somente transições de objetivo, feedback alterado e resultado terminal; chaves estáveis impedem republicação a 8 Hz. Textos tutoriais usam tokens de comando formatados pela aplicação com os bindings validados, de modo que conteúdo, botões e `aria-keyshortcuts` permaneçam sincronizados sem levar entrada para o domínio.
+
 ### `platform`
 
 - entrada de teclado/mouse e futuramente gamepad;
@@ -264,7 +266,7 @@ O progresso P1 usa IndexedDB atrás de `SaveRepository`, sem acesso espalhado pe
 
 Cada gravação cria um snapshot e troca o ponteiro ativo na mesma transação, preservando o registro anterior se a operação falhar. O repositório mantém no máximo três snapshots. A campanha tutorial persiste o ID da missão atual somente em `briefing` e `completed`; estados transitórios, combate e resolução de dano nunca são checkpoints. O contrato v2 já aceita os três IDs sem alterar o formato. Save ilegível, incompatível ou com checksum inválido abre uma sessão segura, preserva o original e bloqueia autosave até recuperação explícita do jogador. Falha simulada de quota mantém o último envelope válido. O modo de benchmark não abre nem altera o save.
 
-Configurações pertencem a repositório/registro separado do progresso e continuam pendentes. Novos schemas deverão adicionar migrações sequenciais e seus testes, sem reescrever versões antigas silenciosamente.
+Configurações usam um envelope v1 em `localStorage`, atrás de repositório separado do progresso IndexedDB. Novos schemas deverão adicionar migrações sequenciais e seus testes, sem reescrever versões antigas silenciosamente.
 
 Save do cliente não é proteção antitrapaça e não precisa ser criptografado. Ele não conterá segredo nem dado pessoal.
 

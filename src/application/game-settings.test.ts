@@ -1,13 +1,30 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  controlBindingLabel,
   createDefaultGameSettings,
   createGameSettingsEnvelope,
   decodeGameSettings,
+  formatControlHints,
   parseGameSettings,
 } from './game-settings';
 
 describe('game settings', () => {
+  it('formata instruções com os atalhos ativos sem acoplar conteúdo ao teclado padrão', () => {
+    const settings = createDefaultGameSettings('medium');
+    const remapped = {
+      ...settings.controlBindings,
+      'select-target': 'KeyY',
+      tractor: 'Digit6',
+    } as const;
+
+    expect(
+      formatControlHints('Selecione com {select-target} e use trator em {tractor}.', remapped),
+    ).toBe('Selecione com Y e use trator em 6.');
+    expect(controlBindingLabel('KeyY')).toBe('Y');
+    expect(controlBindingLabel('CodeFuturo')).toBe('CodeFuturo');
+  });
+
   it('cria defaults válidos e faz round-trip do schema v1', () => {
     const settings = createDefaultGameSettings('medium');
     const envelope = createGameSettingsEnvelope(settings);
