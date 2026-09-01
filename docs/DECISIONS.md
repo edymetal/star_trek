@@ -1,6 +1,6 @@
 # Registro de decisões
 
-Atualizado em: 30 de agosto de 2026
+Atualizado em: 1 de setembro de 2026
 
 Decisões aceitas só devem ser alteradas por nova entrada que referencie a anterior, apresente evidência e descreva migração. Decisões provisórias têm gate explícito.
 
@@ -309,6 +309,15 @@ Decisões aceitas só devem ser alteradas por nova entrada que referencie a ante
 **Decisão:** menu e mapa contêm o foco por ordem DOM natural, deixam o restante inerte e restauram/transmitem foco para base, viagem ou canvas conforme a navegação. Objetivos, feedback alterado e resultado terminal alimentam regiões `aria-live` polite/assertive separadas por chaves estáveis; telemetria contínua não é republicada. O conteúdo tutorial usa tokens simbólicos formatados na aplicação a partir de bindings validados, e o shell sincroniza texto e `aria-keyshortcuts` dos botões. Escudos, subsistemas e energia recebem nomes completos e valores textuais; cores preservam contraste AA e `forced-colors` recebe geometria/foco explícitos.  
 **Motivo:** fecha teclado, semântica, remapeamento e leitor de tela com a arquitetura existente, sem dependência, novo estado persistente ou import de DOM no domínio. Deduplicação por transição evita inundar tecnologia assistiva e mantém a publicação visual idempotente.  
 **Consequências:** a escala máxima continua 110%; em 1280×720 a barra tática ampliada usa duas linhas para manter rótulos/teclas visíveis sem ocupar o centro de mira. Remapeamento ampliado, perfis de daltonismo e auditoria com usuários de tecnologias assistivas permanecem melhorias P2; P1-E pode reutilizar os mesmos landmarks e anúncios para o diário, mas não deve transformar atualizações de lista em telemetria falada contínua.
+
+## DECISION-035 — Diário mínimo é uma projeção do checkpoint seguro v2
+
+**Status:** aceita para a oitava subfatia P1 (P1-E)  
+**Problema:** o MVP exige objetivo atual, progresso e descobertas persistentes sem duplicação, mas a campanha é linear e o save v2 já identifica a missão e o checkpoint seguro. Persistir outra lista exigiria schema v3, migrações e reconciliação entre duas representações da mesma conclusão.  
+**Opções consideradas:** criar array de descobertas no schema v3; usar outro registro em `localStorage`; derivar uma entrada por definição imutável a partir do checkpoint v2.  
+**Decisão:** `mission-journal.ts` valida a coleção orientada a dados e projeta exatamente uma entrada por ID. Missões anteriores ao checkpoint, e a missão atual quando concluída, expõem sua descoberta; a próxima permanece atual e as demais bloqueadas. Objetivo e instruções usam a telemetria já formatada da missão. ID desconhecido, definição duplicada ou snapshot inconsistente produz estado `unavailable` com mensagem segura. O shell apenas renderiza a projeção idempotente no menu, acessível também pela base.  
+**Motivo:** o checkpoint linear contém toda a informação necessária para `0/3` a `3/3`; derivação elimina duplicação por reload/repetição e mantém domínio, conteúdo, persistência e DOM nas fronteiras existentes.  
+**Consequências:** o schema permanece v2 e a migração v1 → v2 não muda. Campanha ramificada, descoberta opcional independente ou reordenação retroativa exigirá novo modelo/schema antes do P2. O diário completo e catálogo expandido continuam P2; áudio P1-F pode reagir à mudança de conclusão, mas não se torna autoridade do registro.
 
 ## Decisões futuras não bloqueantes
 

@@ -72,6 +72,7 @@
               <button type="button" data-main-menu-new>Iniciar novo treinamento</button>
             </div>
             <nav class="main-menu__secondary-actions" aria-label="Opções do menu principal">
+              <button type="button" data-main-menu-open="journal">Diário de missão</button>
               <button type="button" data-main-menu-open="settings">Configurações</button>
               <button type="button" data-main-menu-open="diagnostics">Diagnóstico</button>
               <button type="button" data-main-menu-open="credits">Créditos e licenças</button>
@@ -79,6 +80,38 @@
             <button type="button" class="main-menu__close" data-main-menu-close hidden>
               Voltar à Base Aurora (Esc)
             </button>
+          </div>
+
+          <div data-main-menu-view="journal" hidden>
+            <p class="eyebrow">Registro local da campanha</p>
+            <h2 id="mission-journal-title">Diário de objetivos e descobertas</h2>
+            <section class="mission-journal" aria-labelledby="mission-journal-title">
+              <header class="mission-journal__summary">
+                <div>
+                  <span class="metric-label">Progresso registrado</span>
+                  <strong data-journal-progress>0/3 missões concluídas</strong>
+                </div>
+                <progress
+                  data-journal-progress-meter
+                  value="0"
+                  max="3"
+                  aria-label="Progresso do diário: 0 de 3 missões concluídas"
+                ></progress>
+              </header>
+              <div class="mission-journal__objective">
+                <span class="metric-label">Objetivo atual</span>
+                <p data-journal-objective>Carregando objetivo atual…</p>
+              </div>
+              <ol
+                class="mission-journal__entries"
+                data-journal-entries
+                aria-label="Descobertas das missões"
+              ></ol>
+              <p class="mission-journal__status" data-journal-status>
+                As descobertas são registradas ao concluir cada missão.
+              </p>
+            </section>
+            <button type="button" data-main-menu-back>Voltar ao menu (Esc)</button>
           </div>
 
           <div data-main-menu-view="settings" hidden>
@@ -398,6 +431,7 @@
         </ol>
         <footer class="base-dashboard__actions">
           <button type="button" data-base-prepare>Abrir mapa e preparar partida</button>
+          <button type="button" data-base-journal>Diário</button>
           <button type="button" data-base-menu>Menu principal</button>
         </footer>
       </section>

@@ -22,6 +22,7 @@ import {
 import type { GraphicsCapability, GraphicsReadiness } from '../domain/graphics-readiness';
 import type { Vector3Value } from '../domain/flight/ship-flight';
 import type { TutorialMissionPhase } from '../domain/missions/tutorial-campaign';
+import type { MissionJournalSnapshot } from '../domain/missions/mission-journal';
 import type { NavigationMode, NavigationNodeKind } from '../domain/navigation/system-navigation';
 import { conditionLabel } from './condition-label';
 
@@ -54,6 +55,7 @@ export interface AppShell {
   setGraphicsCapability(capability: GraphicsCapability): void;
   setFlightTelemetry(telemetry: FlightHudTelemetry): void;
   setMissionTelemetry(telemetry: MissionHudTelemetry): void;
+  setMissionJournalTelemetry(telemetry: MissionJournalHudTelemetry): void;
   setNavigationTelemetry(telemetry: NavigationHudTelemetry): void;
   setBaseTelemetry(telemetry: BaseHudTelemetry): void;
   setMainMenuTelemetry(telemetry: MainMenuHudTelemetry): void;
@@ -115,6 +117,7 @@ export interface NavigationControlHandlers {
 }
 
 export interface BaseControlHandlers {
+  readonly onOpenJournal: () => void;
   readonly onOpenMenu: () => void;
   readonly onPrepareMission: () => void;
 }
@@ -165,6 +168,8 @@ export interface MissionHudTelemetry {
   readonly title: string;
   readonly transitionProgress: number;
 }
+
+export type MissionJournalHudTelemetry = MissionJournalSnapshot;
 
 export interface NavigationMapNodeTelemetry {
   readonly id: string;
@@ -293,7 +298,9 @@ function isEnergyPresetId(value: string | undefined): value is EnergyPresetId {
 function isMainMenuDetailView(
   value: string | undefined,
 ): value is Exclude<SessionMenuView, 'home'> {
-  return value === 'credits' || value === 'diagnostics' || value === 'settings';
+  return (
+    value === 'credits' || value === 'diagnostics' || value === 'journal' || value === 'settings'
+  );
 }
 
 function requireElement<T extends Element>(root: ParentNode, selector: string): T {
@@ -409,6 +416,14 @@ export function createAppShell(root: HTMLElement): AppShell {
     '[data-main-menu-diagnostic-preset]',
   );
   const mainMenuFps = requireElement<HTMLElement>(mainMenu, '[data-main-menu-fps]');
+  const journalProgress = requireElement<HTMLElement>(mainMenu, '[data-journal-progress]');
+  const journalProgressMeter = requireElement<HTMLProgressElement>(
+    mainMenu,
+    '[data-journal-progress-meter]',
+  );
+  const journalObjective = requireElement<HTMLElement>(mainMenu, '[data-journal-objective]');
+  const journalEntries = requireElement<HTMLOListElement>(mainMenu, '[data-journal-entries]');
+  const journalStatus = requireElement<HTMLElement>(mainMenu, '[data-journal-status]');
   const settingsForm = requireElement<HTMLFormElement>(mainMenu, '[data-settings-form]');
   const settingsStatus = requireElement<HTMLElement>(mainMenu, '[data-settings-status]');
   const settingsReset = requireElement<HTMLButtonElement>(mainMenu, '[data-settings-reset]');
@@ -529,6 +544,7 @@ export function createAppShell(root: HTMLElement): AppShell {
   );
   const baseMissions = requireElement<HTMLOListElement>(baseDashboard, '[data-base-missions]');
   const basePrepare = requireElement<HTMLButtonElement>(baseDashboard, '[data-base-prepare]');
+  const baseJournal = requireElement<HTMLButtonElement>(baseDashboard, '[data-base-journal]');
   const baseMenu = requireElement<HTMLButtonElement>(baseDashboard, '[data-base-menu]');
   const systemMap = requireElement<HTMLElement>(root, '[data-system-map]');
   const systemMapTitle = requireElement<HTMLElement>(systemMap, '[data-system-map-title]');
@@ -609,6 +625,7 @@ export function createAppShell(root: HTMLElement): AppShell {
   );
   let lastPresentationKey = '';
   let lastBaseMissionsKey = '';
+  let lastJournalEntriesKey = '';
   let lastNavigationNodesKey = '';
   let lastMainMenuView = 'loading';
   let lastNavigationMode: NavigationMode | undefined;
@@ -778,11 +795,14 @@ export function createAppShell(root: HTMLElement): AppShell {
     fullscreenTarget: root,
     bindBaseControls(handlers) {
       const prepareListener = (): void => handlers.onPrepareMission();
+      const journalListener = (): void => handlers.onOpenJournal();
       const menuListener = (): void => handlers.onOpenMenu();
       basePrepare.addEventListener('click', prepareListener);
+      baseJournal.addEventListener('click', journalListener);
       baseMenu.addEventListener('click', menuListener);
       return () => {
         basePrepare.removeEventListener('click', prepareListener);
+        baseJournal.removeEventListener('click', journalListener);
         baseMenu.removeEventListener('click', menuListener);
       };
     },
@@ -1409,6 +1429,70 @@ export function createAppShell(root: HTMLElement): AppShell {
       setAttributeIfChanged(root, 'data-sensor-range', telemetry.sensorRangeUnits.toFixed(3));
       setAttributeIfChanged(root, 'data-active-vfx', String(telemetry.activeVfxCount));
       setAttributeIfChanged(root, 'data-draw-calls', String(telemetry.drawCalls));
+    },
+    setMissionJournalTelemetry(telemetry) {
+      const progressLabel = `${telemetry.completedMissionCount}/${telemetry.missionCount} missões concluídas`;
+      setTextIfChanged(journalProgress, progressLabel);
+      setTextIfChanged(journalObjective, telemetry.currentObjective);
+      setTextIfChanged(journalStatus, telemetry.statusMessage);
+      if (journalProgressMeter.max !== telemetry.missionCount) {
+        journalProgressMeter.max = telemetry.missionCount;
+      }
+      if (journalProgressMeter.value !== telemetry.completedMissionCount) {
+        journalProgressMeter.value = telemetry.completedMissionCount;
+      }
+      setAttributeIfChanged(
+        journalProgressMeter,
+        'aria-label',
+        `Progresso do diário: ${telemetry.completedMissionCount} de ${telemetry.missionCount} missões concluídas`,
+      );
+      setAttributeIfChanged(root, 'data-journal-state', telemetry.state);
+      setAttributeIfChanged(
+        root,
+        'data-journal-completed-count',
+        String(telemetry.completedMissionCount),
+      );
+
+      const entriesKey = telemetry.entries
+        .map(({ discovery, id, status, title }) => `${id}|${status}|${title}|${discovery ?? ''}`)
+        .join('||');
+      if (entriesKey !== lastJournalEntriesKey) {
+        journalEntries.replaceChildren(
+          ...telemetry.entries.map((entry) => {
+            const item = document.createElement('li');
+            item.dataset.journalMissionId = entry.id;
+            item.dataset.journalMissionStatus = entry.status;
+
+            const heading = document.createElement('header');
+            const title = document.createElement('strong');
+            title.textContent = entry.title;
+            const status = document.createElement('span');
+            status.textContent =
+              entry.status === 'completed'
+                ? 'Concluída · descoberta registrada'
+                : entry.status === 'current'
+                  ? 'Missão atual · descoberta pendente'
+                  : 'Bloqueada · descoberta pendente';
+            heading.append(title, status);
+
+            const discovery = document.createElement('p');
+            const label = document.createElement('span');
+            label.className = 'metric-label';
+            label.textContent = 'Descoberta';
+            const description = document.createElement('span');
+            description.textContent =
+              entry.discovery ??
+              (entry.status === 'current'
+                ? 'Conclua o objetivo atual para registrar esta descoberta.'
+                : 'Conclua as missões anteriores para liberar este registro.');
+            discovery.append(label, description);
+            item.append(heading, discovery);
+            return item;
+          }),
+        );
+        lastJournalEntriesKey = entriesKey;
+      }
+      setHiddenIfChanged(journalEntries, telemetry.state !== 'ready');
     },
     setMissionTelemetry(telemetry) {
       lastMissionTelemetry = telemetry;

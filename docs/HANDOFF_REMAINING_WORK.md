@@ -3,7 +3,7 @@
 Atualizado em: 1 de setembro de 2026  
 Branch esperada: `main`  
 Baseline anterior ao P1-A: commit `f9750ee` (`feat: adicionar campanha tutorial de tres missoes`)  
-Marco atual: P1-D concluída; consulte o último relatório em `docs/PROGRESS.md`
+Marco atual: P1-E concluída; consulte o último relatório em `docs/PROGRESS.md`
 
 ## 1. Finalidade deste documento
 
@@ -20,7 +20,7 @@ Ao receber uma solicitação genérica como “continue” ou “finalize o jogo
 
 Use este texto como prompt inicial:
 
-> Continue o projeto a partir de `docs/HANDOFF_REMAINING_WORK.md`. Leia integralmente `AGENTS.md` e todas as fontes canônicas na ordem indicada antes de alterar código. Trabalhe uma fatia vertical por vez, preserve as decisões aceitas, não refaça o P0 nem as fatias P1-A/P1-B/P1-C/P1-D concluídas e não adicione conteúdo de Star Trek. Implemente primeiro o P1-E e depois os itens P1 obrigatórios na ordem do handoff. Para cada fatia, crie testes sem GPU para regras, E2E em Chrome/Edge para fluxos visuais, execute `npm run verify` e os testes E2E relevantes, atualize a documentação e faça commit/push somente quando o gate estiver verde. Não publique nem faça deploy sem autorização explícita.
+> Continue o projeto a partir de `docs/HANDOFF_REMAINING_WORK.md`. Leia integralmente `AGENTS.md` e todas as fontes canônicas na ordem indicada antes de alterar código. Trabalhe uma fatia vertical por vez, preserve as decisões aceitas, não refaça o P0 nem as fatias P1-A/P1-B/P1-C/P1-D/P1-E concluídas e não adicione conteúdo de Star Trek. Implemente primeiro o P1-F e depois os itens P1 obrigatórios na ordem do handoff. Para cada fatia, crie testes sem GPU para regras, E2E em Chrome/Edge para fluxos visuais, execute `npm run verify` e os testes E2E relevantes, atualize a documentação e faça commit/push somente quando o gate estiver verde. Não publique nem faça deploy sem autorização explícita.
 
 ## 3. Fontes de verdade e ordem de leitura
 
@@ -69,12 +69,13 @@ O P0 está aprovado e não deve ser reimplementado:
 - contatos e posições próprios por missão, com checkpoints transitórios ainda retornando ao briefing.
 - configurações v1 persistentes separadas do save, HUD escalável, redução real de efeitos e remapeamento essencial;
 - acessibilidade prioritária com fluxo por teclado, foco modal, nomes completos, anúncios deduplicados, contraste AA e alternativas textuais.
+- diário mínimo orientado a dados com objetivo atual, progresso e três descobertas derivadas do checkpoint v2 sem duplicação.
 
-Gate atual verificado após o P1-D:
+Gate atual verificado após o P1-E:
 
-- testes: 174/174 em 30 arquivos;
-- Playwright: 70/70 casos em Chrome e Edge no gate P1-D;
-- benchmark físico aprovado na UHD 620/médio, 1600×900, WebGL 2: 60,011 FPS médios e p99 de 20,8 ms;
+- testes: 177/177 em 31 arquivos;
+- Playwright: 72/72 casos em Chrome e Edge no gate P1-E;
+- benchmark físico aprovado na UHD 620/médio, 1600×900, WebGL 2: 60,012 FPS médios e p99 de 20,3 ms;
 - nenhum achado CRITICAL/HIGH conhecido;
 - chunk do engine em aproximadamente 510,69 kB gzip.
 
@@ -88,7 +89,7 @@ Execute na ordem abaixo, salvo nova prioridade explícita do usuário:
 2. [x] tela inicial e fluxo base/preparação/seleção de missão;
 3. [x] configurações persistentes e controles essenciais;
 4. [x] acessibilidade prioritária;
-5. diário de objetivos e descobertas;
+5. [x] diário de objetivos e descobertas;
 6. áudio e feedback final;
 7. carregamento, manifesto e recuperação de falha de assets;
 8. inventário de licenças e créditos;
@@ -275,7 +276,7 @@ O aplicativo agora abre em menu modal próprio antes de liberar a sessão. Conti
 - HUD 110% em 1280×720 foi reinspecionado após reorganizar a barra tática em duas linhas, sem scroll, overlap ou cobertura do centro;
 - decisão arquitetural registrada em `DECISION-034`, com 174/174 testes, 70/70 E2E e benchmark acima do gate.
 
-## 10. Fatia P1-E — diário de objetivo e descobertas
+## 10. Fatia P1-E — diário de objetivo e descobertas — concluída
 
 ### Criar
 
@@ -295,6 +296,16 @@ Se o formato do payload mudar, criar schema v3, migração sequencial v2 → v3 
 - reload mantém as entradas sem duplicação;
 - conteúdo desconhecido produz mensagem segura;
 - domínio e migrações são testados sem GPU.
+
+### Gate realizado
+
+- `mission-journal.ts` projeta uma entrada por ID a partir do snapshot da campanha e das definições imutáveis;
+- progresso `0/3` a `3/3`, objetivo atual e três descobertas originais são apresentados em região nomeada com estados textuais;
+- menu principal e Base Aurora abrem o diário com foco contido e retorno previsível por teclado;
+- reload e publicação repetida preservam exatamente três IDs, sem acumular registros;
+- conteúdo desconhecido, duplicado ou inconsistente produz estado seguro e mantém o save preservado;
+- schema v2 e migração v1 → v2 permanecem inalterados, pois o checkpoint linear contém o progresso necessário;
+- inspeção 1280×720, 177/177 testes, 72/72 E2E e benchmark UHD 620/médio aprovam o gate; decisão registrada em `DECISION-035`.
 
 ## 11. Fatia P1-F — áudio e feedback
 
@@ -571,7 +582,7 @@ Os nomes são sugestões; o conteúdo e os gates importam mais que a quantidade 
 - [x] escala do HUD e redução de flashes/tremor/partículas funcionais;
 - [x] remapeamento essencial funcional;
 - [x] acessibilidade prioritária, teclado completo e anúncios controlados;
-- [ ] diário mínimo de objetivos/descobertas implementado;
+- [x] diário mínimo de objetivos/descobertas implementado;
 - [ ] áudio original/licenciado com volumes, mute e fallback;
 - [ ] falha de asset recuperável;
 - [ ] manifesto/inventário de licenças completo;

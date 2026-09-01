@@ -16,8 +16,8 @@ describe('createSessionMenu', () => {
     const menu = createSessionMenu(false);
 
     expect(menu.open()).toBe(true);
-    expect(menu.show('diagnostics')).toBe(true);
-    expect(menu.getSnapshot().view).toBe('diagnostics');
+    expect(menu.show('journal')).toBe(true);
+    expect(menu.getSnapshot().view).toBe('journal');
     expect(menu.back()).toBe(true);
     expect(menu.getSnapshot()).toEqual({ canClose: true, isOpen: true, view: 'home' });
     expect(menu.back()).toBe(true);

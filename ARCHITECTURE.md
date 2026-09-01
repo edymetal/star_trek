@@ -1,7 +1,7 @@
 # Arquitetura do jogo
 
-Status: aceita para P0 e P1-D  
-Versão: 1.2 — 1 de setembro de 2026
+Status: aceita para P0 e P1-E  
+Versão: 1.3 — 1 de setembro de 2026
 
 Este documento define como o produto será construído. Requisitos pertencem a [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md), prioridade a [`docs/MVP.md`](docs/MVP.md), decisões justificadas a [`docs/DECISIONS.md`](docs/DECISIONS.md) e pesquisa/orçamentos detalhados a [`PLANEJAMENTO.md`](PLANEJAMENTO.md).
 
@@ -152,6 +152,8 @@ No P1-C, `src/application/game-settings.ts` valida o envelope v1 e `SettingsCont
 
 No P1-D, o shell DOM mantém foco dentro do menu e do mapa enquanto são modais, torna superfícies de fundo inertes e transfere foco explicitamente entre base, mapa, viagem e canvas. Um canal visual continua exibindo telemetria, enquanto duas regiões ocultas `aria-live` anunciam somente transições de objetivo, feedback alterado e resultado terminal; chaves estáveis impedem republicação a 8 Hz. Textos tutoriais usam tokens de comando formatados pela aplicação com os bindings validados, de modo que conteúdo, botões e `aria-keyshortcuts` permaneçam sincronizados sem levar entrada para o domínio.
 
+No P1-E, `src/domain/missions/mission-journal.ts` projeta objetivo, progresso e uma entrada única por definição imutável a partir do snapshot autoritativo da campanha. Descobertas concluídas são um prefixo determinado pelo checkpoint sequencial, portanto reload e nova publicação não acumulam registros. O shell renderiza a projeção com `textContent`, estados textuais e chave estrutural idempotente; conteúdo ausente, duplicado ou incompatível retorna mensagem segura em vez de lançar erro na interface.
+
 ### `platform`
 
 - entrada de teclado/mouse e futuramente gamepad;
@@ -262,7 +264,7 @@ No P1-A, `src/domain/navigation` implementa a máquina de estados e valida o gra
 
 ## 9. Persistência
 
-O progresso P1 usa IndexedDB atrás de `SaveRepository`, sem acesso espalhado pelo domínio. O schema atual é v2 e contém data UTC, checksum determinístico, versão e payload validado. A migração sequencial v1 → v2 é coberta sem GPU.
+O progresso P1 usa IndexedDB atrás de `SaveRepository`, sem acesso espalhado pelo domínio. O schema atual é v2 e contém data UTC, checksum determinístico, versão e payload validado. A migração sequencial v1 → v2 é coberta sem GPU. O diário P1-E deriva conclusões e descobertas desse checkpoint e não adiciona uma segunda coleção persistida; por isso não exige schema v3.
 
 Cada gravação cria um snapshot e troca o ponteiro ativo na mesma transação, preservando o registro anterior se a operação falhar. O repositório mantém no máximo três snapshots. A campanha tutorial persiste o ID da missão atual somente em `briefing` e `completed`; estados transitórios, combate e resolução de dano nunca são checkpoints. O contrato v2 já aceita os três IDs sem alterar o formato. Save ilegível, incompatível ou com checksum inválido abre uma sessão segura, preserva o original e bloqueia autosave até recuperação explícita do jogador. Falha simulada de quota mantém o último envelope válido. O modo de benchmark não abre nem altera o save.
 

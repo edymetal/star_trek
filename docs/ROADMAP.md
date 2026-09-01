@@ -177,7 +177,7 @@ Critério de conclusão:
 
 ## Etapa 6 — Primeira fatia vertical P1
 
-**Status:** em desenvolvimento; campanha, persistência, base/mapa/viagem, menu inicial, configurações e acessibilidade prioritária concluídos; recuperação de asset ainda pendente
+**Status:** em desenvolvimento; campanha, persistência, base/mapa/viagem, menu inicial, configurações, acessibilidade prioritária e diário mínimo concluídos; recuperação de asset ainda pendente
 
 **Objetivo:** implementar uma missão ponta a ponta antes de multiplicar conteúdo.
 
@@ -248,6 +248,14 @@ Sétima subfatia concluída:
 - atalhos remapeados atualizam botões, `aria-keyshortcuts` e instruções tutoriais imediatamente;
 - contraste textual AA foi automatizado nos presets baixo/médio/alto e HUD 110% foi reinspecionado em 1280×720.
 
+Oitava subfatia concluída:
+
+- diário orientado a dados apresenta objetivo atual, progresso `0/3` a `3/3` e uma descoberta original por missão;
+- projeção pura deriva uma entrada por ID do checkpoint sequencial, sem array persistido ou alteração do schema v2;
+- reload, repetição e publicação a 8 Hz não duplicam registros; conteúdo desconhecido ou inconsistente retorna mensagem segura;
+- menu e Base Aurora oferecem acesso por teclado, com estados concluído/atual/bloqueado escritos além das bordas coloridas;
+- inspeção 1280×720, 177/177 testes, 72/72 E2E Chrome/Edge e benchmark UHD 620/médio aprovam o gate.
+
 Critério de conclusão:
 
 - ciclo completo funciona após reload;
@@ -257,7 +265,7 @@ Critério de conclusão:
 
 ## Etapa 7 — Vertical slice/MVP P1
 
-**Status:** em desenvolvimento; ciclo base–mapa–viagem–missões, variedade de contatos, tutorial, menu inicial, configurações e acessibilidade prioritária concluídos
+**Status:** em desenvolvimento; ciclo base–mapa–viagem–missões, variedade de contatos, tutorial, menu inicial, configurações, acessibilidade prioritária e diário mínimo concluídos
 
 **Objetivo:** completar variedade mínima e qualidade de demonstração.
 
@@ -265,7 +273,7 @@ Entregas:
 
 - [x] missão de assistência com raio trator e missão de combate;
 - [x] duas variações de contato/IA;
-- [~] tutorial contextual concluído; diário de objetivo/descoberta ainda parcial;
+- [x] tutorial contextual e diário mínimo de objetivo/descoberta concluídos;
 - áudio e feedback refinados;
 - [x] configurações persistentes e controles essenciais;
 - [x] acessibilidade prioritária;

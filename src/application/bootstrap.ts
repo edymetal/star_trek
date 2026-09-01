@@ -12,6 +12,7 @@ import { resolveShieldSector, type ShieldSectorId } from '../domain/combat/damag
 import { createInitialEnergyState, type EnergyAllocation } from '../domain/energy/energy-system';
 import { createInitialShipState } from '../domain/flight/ship-flight';
 import { evaluateGraphicsReadiness } from '../domain/graphics-readiness';
+import { createMissionJournal } from '../domain/missions/mission-journal';
 import {
   createTutorialCampaign,
   type TutorialCampaignSnapshot,
@@ -38,8 +39,9 @@ import type {
   CompatibilityNotice,
   EnergyHudTelemetry,
   FlightHudTelemetry,
-  MissionHudTelemetry,
   MainMenuHudTelemetry,
+  MissionHudTelemetry,
+  MissionJournalHudTelemetry,
   NavigationHudTelemetry,
   SaveHudTelemetry,
   SettingsHudTelemetry,
@@ -120,6 +122,7 @@ interface PublishedHudTelemetry {
   readonly combat: CombatHudTelemetry;
   readonly energy: EnergyHudTelemetry;
   readonly flight: FlightHudTelemetry;
+  readonly journal: MissionJournalHudTelemetry;
   readonly mission: MissionHudTelemetry;
 }
 
@@ -492,6 +495,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       shell.setCombatTelemetry(telemetry.combat);
       shell.setFlightTelemetry(telemetry.flight);
       shell.setEnergyTelemetry(telemetry.energy);
+      shell.setMissionJournalTelemetry(telemetry.journal);
       shell.setMissionTelemetry(telemetry.mission);
       shell.setNavigationTelemetry(
         createNavigationHudTelemetry(navigationSession.getSnapshot(), missionSession.getSnapshot()),
@@ -501,6 +505,8 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
     const createHudTelemetry = (snapshot = flightSession.getSnapshot()): PublishedHudTelemetry => {
       const { effects, flow, profileId, state } = snapshot.energy;
       const { contact, enemy, playerDamage } = snapshot.encounter;
+      const missionSnapshot = missionSession.getSnapshot();
+      const missionTelemetry = createMissionHudTelemetry(missionSnapshot, currentSettings);
       const baseContactLabel =
         contact.awareness === 'unknown'
           ? 'Nenhum contato'
@@ -593,7 +599,12 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
           weaponHeatPercent: state.weaponHeatUnits,
           weaponRechargeUnitsPerSecond: effects.weaponRechargeUnitsPerSecond,
         },
-        mission: createMissionHudTelemetry(missionSession.getSnapshot(), currentSettings),
+        journal: createMissionJournal(
+          INITIAL_TUTORIAL_MISSIONS,
+          missionSnapshot,
+          missionTelemetry.objective,
+        ),
+        mission: missionTelemetry,
       };
     };
     const refreshHud = (): void => {
@@ -863,6 +874,13 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       enterSession('Novo treinamento iniciado. A Base Aurora está pronta para a primeira missão.');
     };
     const unbindBaseControls = shell.bindBaseControls({
+      onOpenJournal() {
+        if (navigationSession.getSnapshot().mode !== 'base' || !menuSession.open()) return;
+        if (!menuSession.show('journal')) return;
+        input.releaseControls();
+        refreshHud();
+        refreshMainMenu();
+      },
       onOpenMenu() {
         if (navigationSession.getSnapshot().mode !== 'base' || !menuSession.open()) return;
         input.releaseControls();

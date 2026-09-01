@@ -2,8 +2,8 @@
 
 Atualizado em: 1 de setembro de 2026  
 Etapa atual: P1 — Vertical slice/MVP  
-Estado do código: P0.5 aprovado; P1-D concluída com acessibilidade prioritária validada  
-Próximo responsável: Senior Developer / P1-E — diário de objetivos e descobertas
+Estado do código: P0.5 aprovado; P1-E concluída com diário de objetivos e descobertas validado  
+Próximo responsável: Senior Developer / P1-F — áudio e feedback final
 
 Handoff detalhado para continuação: `docs/HANDOFF_REMAINING_WORK.md`
 
@@ -102,7 +102,7 @@ Legenda:
 - [x] Menu inicial, continuar, diagnóstico, créditos e comando da base
 - [x] Configurações persistentes, escala do HUD, redução de efeitos e remapeamento essencial
 - [x] Acessibilidade prioritária, teclado completo, semântica e anúncios controlados
-- [ ] Diário mínimo de objetivos e descobertas
+- [x] Diário mínimo de objetivos e descobertas
 - [ ] Áudio e feedback final
 - [ ] Inventário de licenças
 - [ ] E2E, benchmark e revisão final do MVP
@@ -535,7 +535,7 @@ A configuração permanece na aplicação/plataforma: o domínio não lê DOM, a
 - P1-E a P1-G: diário, áudio, fallback de asset e inventário formal de licenças/créditos;
 - P1-H: decisão offline/PWA, playtest, balanceamento, instalação limpa, matriz/benchmark final e revisão formal do MVP.
 
-## Último relatório — acessibilidade prioritária P1-D
+## Relatório anterior — acessibilidade prioritária P1-D
 
 **ETAPA:** P1 — sétima subfatia da Etapa 6  
 **STATUS:** teclado, foco, semântica, anúncios, contraste e layout acessível concluídos
@@ -569,6 +569,44 @@ A auditoria encontrou dois problemas funcionais: atalhos remapeados funcionavam,
 ### Pendências do P1
 
 - P1-E: diário mínimo de objetivo e descobertas, idempotente e persistente;
+- P1-F: áudio original/licenciado, volumes, descarte e fallback visual;
+- P1-G: fallback de asset, manifesto, inventário formal de licenças e créditos;
+- P1-H: decisão offline/PWA, playtest, balanceamento, instalação limpa e revisão formal final do MVP.
+
+## Último relatório — diário de objetivos e descobertas P1-E
+
+**ETAPA:** P1 — oitava subfatia da Etapa 6  
+**STATUS:** diário mínimo local, idempotente, acessível e persistente por checkpoint concluído
+
+### Implementado
+
+- projeção pura `mission-journal.ts` valida conteúdo e produz objetivo atual, progresso e uma entrada única por missão;
+- cada uma das três missões recebeu uma descoberta original em português brasileiro, liberada somente após conclusão;
+- estados concluído, atual e bloqueado usam texto explícito e não dependem apenas da cor da borda;
+- menu principal oferece `Diário de missão`; a Base Aurora abre diretamente a mesma visão por teclado ou mouse;
+- progresso e `progress` acessível mostram de `0/3` a `3/3`, com objetivo atual formatado pelos bindings ativos;
+- o shell usa `textContent` e chave estrutural para não reconstruir a lista durante publicações idênticas a 8 Hz;
+- ID desconhecido, definição duplicada ou snapshot incompatível retorna mensagem segura e não expõe/inventa registro.
+
+### Decisão de persistência
+
+O schema permanece v2. A campanha linear já persiste `missionId` e `checkpoint`; missões anteriores ao checkpoint, e a missão atual quando concluída, formam exatamente o conjunto de descobertas registradas. Não existe array paralelo para duplicar, divergir ou migrar. A migração v1 → v2 continua intacta e uma futura campanha ramificada exigirá decisão/modelo novos antes de alterar o payload.
+
+### Revisão e evidência visual
+
+A revisão não encontrou problema CRITICAL/HIGH. A captura `docs/screenshots/p1-journal-1280x720.png` confirma três cartões legíveis, objetivo, barra `3/3`, botão de retorno e ausência de corte/overlap. `p1-main-menu-1280x720.png` e `p1-base-dashboard-1600x900.png` confirmam os dois acessos sem regressão de hierarquia ou centro tático.
+
+### Verificação
+
+- `npm run verify`: aprovado com 177/177 testes em 31 arquivos, formatação, lint, TypeScript e build;
+- testes sem GPU cobrem progresso parcial, `3/3`, idempotência, IDs únicos, conteúdo desconhecido, duplicado e snapshot inconsistente;
+- Playwright completo: 72/72 casos em Chrome/Edge, um worker e nenhum `skip`;
+- E2E novo cobre `0/3`, `3/3`, associação das três descobertas, reload sem duplicação, abertura pelo menu/base e foco;
+- benchmark físico Chrome 151, UHD 620, WebGL 2, 1600×900/médio: 60,012 FPS médios, p50 16,6 ms, p95 19,0 ms e p99 20,3 ms, com 88 draw calls e 21 VFX;
+- aplicação principal: 35,18 kB gzip; engine permanece em 510,69 kB gzip; avisos conhecidos de chunk/workers continuam não bloqueantes.
+
+### Pendências do P1
+
 - P1-F: áudio original/licenciado, volumes, descarte e fallback visual;
 - P1-G: fallback de asset, manifesto, inventário formal de licenças e créditos;
 - P1-H: decisão offline/PWA, playtest, balanceamento, instalação limpa e revisão formal final do MVP.

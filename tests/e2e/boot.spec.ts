@@ -85,13 +85,17 @@ async function countStoredSaveSnapshots(page: Page): Promise<number> {
   );
 }
 
-async function seedMissionBriefing(page: Page, missionId: string): Promise<void> {
+async function seedMissionCheckpoint(
+  page: Page,
+  missionId: string,
+  checkpoint: 'briefing' | 'completed',
+): Promise<void> {
   await page.goto('/');
   const root = page.locator('[data-app-root]');
   await expect(root).toHaveAttribute('data-app-state', 'ready');
   await expect(root).toHaveAttribute('data-save-state', /created|loaded/);
   const savedAtIso = '2026-08-30T12:00:00.000Z';
-  const envelope = createGameSaveEnvelope(createGameSavePayload(missionId, 'briefing'), savedAtIso);
+  const envelope = createGameSaveEnvelope(createGameSavePayload(missionId, checkpoint), savedAtIso);
   await page.evaluate(
     async ({ activeKey, envelope, metadataStoreName, missionId, snapshotsStoreName }) => {
       const database = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -130,6 +134,10 @@ async function seedMissionBriefing(page: Page, missionId: string): Promise<void>
   await page.reload();
   await expect(root).toHaveAttribute('data-save-state', 'loaded');
   await expect(root).toHaveAttribute('data-mission-id', missionId);
+}
+
+async function seedMissionBriefing(page: Page, missionId: string): Promise<void> {
+  await seedMissionCheckpoint(page, missionId, 'briefing');
 }
 
 async function dismissMainMenu(page: Page): Promise<void> {
@@ -885,6 +893,58 @@ test('percorre menu, configurações e painéis modais com ordem de foco contida
   await expect(page.locator('[data-main-menu-view="credits"] [data-main-menu-back]')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(root).toHaveAttribute('data-menu-state', 'home');
+});
+
+test('mantém diário idempotente do progresso 0/3 a 3/3 após reload', async ({ page }, testInfo) => {
+  await page.setViewportSize({ height: 720, width: 1280 });
+  await page.goto('/');
+  const root = page.locator('[data-app-root]');
+  await expect(root).toHaveAttribute('data-app-state', 'ready');
+  await page.getByRole('button', { name: 'Diário de missão' }).click();
+  const journal = page.getByRole('region', { name: 'Diário de objetivos e descobertas' });
+  await expect(root).toHaveAttribute('data-menu-state', 'journal');
+  await expect(journal).toBeVisible();
+  await expect(page.locator('[data-journal-progress]')).toHaveText('0/3 missões concluídas');
+  await expect(page.locator('[data-journal-mission-status="current"]')).toHaveCount(1);
+  await expect(page.locator('[data-journal-mission-status="locked"]')).toHaveCount(2);
+  await expect(page.locator('[data-journal-mission-status="completed"]')).toHaveCount(0);
+  await expect(page.locator('[data-journal-objective]')).toContainText('Treino de sensores');
+
+  await seedMissionCheckpoint(page, 'vespa-combat-training', 'completed');
+  await page.getByRole('button', { name: 'Diário de missão' }).click();
+  await expect(page.locator('[data-journal-progress]')).toHaveText('3/3 missões concluídas');
+  await expect(page.locator('[data-journal-mission-status="completed"]')).toHaveCount(3);
+  await expect(page.locator('[data-journal-mission-id="nereida-survey"]')).toContainText(
+    'rota estável no corredor de Nereida',
+  );
+  await expect(page.locator('[data-journal-mission-id="iris-assistance"]')).toContainText(
+    'estabilizada a distância',
+  );
+  await expect(page.locator('[data-journal-mission-id="vespa-combat-training"]')).toContainText(
+    'defesa coordenada do corredor Aurora',
+  );
+  const entryIds = await page
+    .locator('[data-journal-mission-id]')
+    .evaluateAll((entries) =>
+      entries.map((entry) => (entry as HTMLElement).dataset.journalMissionId),
+    );
+  expect(new Set(entryIds).size).toBe(3);
+  if (testInfo.project.name === 'Google Chrome') {
+    await page.screenshot({ path: 'docs/screenshots/p1-journal-1280x720.png' });
+  }
+
+  await page.reload();
+  await expect(root).toHaveAttribute('data-save-state', 'loaded');
+  await page.getByRole('button', { name: 'Diário de missão' }).click();
+  await expect(page.locator('[data-journal-progress]')).toHaveText('3/3 missões concluídas');
+  await expect(page.locator('[data-journal-mission-id]')).toHaveCount(3);
+  await expect(page.locator('[data-journal-mission-status="completed"]')).toHaveCount(3);
+
+  await page.getByRole('button', { name: /Voltar ao menu/ }).click();
+  await page.locator('[data-main-menu-continue]').click();
+  await page.locator('[data-base-journal]').click();
+  await expect(root).toHaveAttribute('data-menu-state', 'journal');
+  await expect(page.locator('[data-main-menu-view="journal"] [data-main-menu-back]')).toBeFocused();
 });
 
 test('percorre a partida e opera o HUD apenas com teclado', async ({ page }) => {

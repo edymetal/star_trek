@@ -15,6 +15,7 @@ export interface TutorialMissionContent extends TutorialMissionDefinition {
   readonly completionFeedback: string;
   readonly contactDisplayName: string;
   readonly contactInitialPosition: Vector3Value;
+  readonly discovery: string;
   readonly encounterMode: 'hostile' | 'passive';
   readonly objectiveCompleteText: string;
   readonly objectiveInstruction: string;
@@ -49,6 +50,8 @@ export const INITIAL_TUTORIAL_MISSIONS: readonly TutorialMissionContent[] = [
     contactDisplayName: 'Sonda de Nereida',
     contactInitialPosition: { x: -18, y: 4, z: -55 },
     destinationNodeId: 'nereida-corridor',
+    discovery:
+      'A sonda confirmou uma rota estável no corredor de Nereida e registrou dados úteis para futuras pesquisas.',
     encounterMode: 'passive',
     id: 'nereida-survey',
     objectiveCompleteText: 'Sonda identificada. Retorne à base com os dados do levantamento.',
@@ -73,6 +76,8 @@ export const INITIAL_TUTORIAL_MISSIONS: readonly TutorialMissionContent[] = [
     contactDisplayName: 'Nave de pesquisa Íris',
     contactInitialPosition: { x: 12, y: -3, z: -58 },
     destinationNodeId: 'iris-ring',
+    discovery:
+      'A nave de pesquisa Íris pôde ser estabilizada a distância com energia auxiliar e um enlace de raio trator.',
     encounterMode: 'passive',
     id: 'iris-assistance',
     objectiveCompleteText:
@@ -98,6 +103,8 @@ export const INITIAL_TUTORIAL_MISSIONS: readonly TutorialMissionContent[] = [
     contactDisplayName: ENEMY_CONTENT.displayName,
     contactInitialPosition: { x: -24, y: 6, z: -61 },
     destinationNodeId: 'aurora-defense-corridor',
+    discovery:
+      'A defesa coordenada do corredor Aurora neutralizou a interceptadora sem comprometer a Base Aurora.',
     encounterMode: 'hostile',
     id: 'vespa-combat-training',
     objectiveCompleteText: 'Ameaça neutralizada. Retorne à base para concluir o treinamento.',

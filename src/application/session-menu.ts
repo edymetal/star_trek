@@ -1,4 +1,4 @@
-export type SessionMenuView = 'credits' | 'diagnostics' | 'home' | 'settings';
+export type SessionMenuView = 'credits' | 'diagnostics' | 'home' | 'journal' | 'settings';
 
 export interface SessionMenuSnapshot {
   readonly canClose: boolean;
