@@ -1,7 +1,7 @@
 # Benchmark P0.5
 
 Status: gate P0.5 aprovado na UHD 620; medição MX130 opcional  
-Atualizado em: 28 de agosto de 2026
+Atualizado em: 2 de setembro de 2026
 
 ## Como executar
 
@@ -44,8 +44,9 @@ Não preencha esta tabela com execução headless, aba em segundo plano ou rende
 | GeForce MX130 2 GB | Opcional | 1600×900 | Médio | WebGL 2 | — | — | — | — | Diagnóstico não executado |
 | Intel UHD 620 | Chrome 151.0.7922.34 | 1280×720 | Baixo | WebGL 2 | 60,010 | 16,7 | 17,9 | 18,9 | Aprovado; perfil funcional |
 | Intel UHD 620 | Chrome 151.0.7922.34 | 1280×720 | Baixo | WebGPU | 60,011 | 16,7 | 17,6 | 19,9 | Comparação; sem ganho material |
+| Intel UHD 620 | Chrome 151.0.7922.34 | 1600×900 | Médio | WebGL 2 | 60,019 | 16,7 | 20,8 | 24,3 | Regressão final P1-H aprovada |
 
-As duas medições UHD usaram janela física, 5 segundos de aquecimento, 30 segundos de coleta e renderizador acelerado `ANGLE (Intel UHD Graphics 620, D3D11)`. O perfil baixo fica validado com limiar de 30 FPS médios e p99 de até 50 ms, preservando margem observada para variação térmica e carga do sistema. Conforme `DECISION-027`, não existe gate vinculado à MX130.
+As medições UHD usaram janela física, 5 segundos de aquecimento, 30 segundos de coleta e renderizador acelerado `ANGLE (Intel UHD Graphics 620, D3D11)`. O perfil baixo fica validado com limiar de 30 FPS médios e p99 de até 50 ms, preservando margem observada para variação térmica e carga do sistema. A regressão P1-H também aprovou o preset médio em 1600×900 com 88 draw calls e 21 VFX. Conforme `DECISION-027`, não existe gate vinculado à MX130.
 
 ## Limites desta fatia
 

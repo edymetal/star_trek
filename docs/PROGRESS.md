@@ -2,8 +2,8 @@
 
 Atualizado em: 2 de setembro de 2026  
 Etapa atual: P1 — Vertical slice/MVP  
-Estado do código: P0.5 aprovado; P1-G concluída com manifesto, carregamento/fallback de asset, licenças e créditos validados  
-Próximo responsável: Senior Developer / P1-H — offline, balanceamento e gate final do MVP
+Estado do código: gate técnico P1-H concluído; MVP aguarda playtest humano de primeira experiência e revisão formal  
+Próximo responsável: usuário/testador iniciante, seguido de Product Architect / aprovação final P1
 
 Handoff detalhado para continuação: `docs/HANDOFF_REMAINING_WORK.md`
 
@@ -105,7 +105,8 @@ Legenda:
 - [x] Diário mínimo de objetivos e descobertas
 - [x] Áudio e feedback final
 - [x] Inventário de licenças
-- [ ] E2E, benchmark e revisão final do MVP
+- [x] Instalação limpa, E2E e benchmark final do MVP
+- [ ] Playtest humano iniciante e revisão formal do MVP
 
 ## P2/P3
 
@@ -642,7 +643,7 @@ O áudio permanece adaptador: não altera dano, missão, energia, navegação ou
 - P1-G: manifesto, carregamento/fallback de asset e inventário formal de licenças/créditos;
 - P1-H: decisão offline/PWA, playtest, balanceamento, instalação limpa, matriz/benchmark final e revisão formal do MVP.
 
-## Último relatório — assets, falhas, licenças e créditos P1-G
+## Relatório anterior — assets, falhas, licenças e créditos P1-G
 
 **ETAPA:** P1 — décima subfatia da Etapa 6  
 **STATUS:** manifesto, carregamento resiliente, inventário e créditos concluídos
@@ -671,3 +672,35 @@ O manifesto permanece uma fronteira de conteúdo e o carregador, um adaptador de
 ### Pendências do P1
 
 - P1-H: registrar decisão offline/PWA, executar playtest e balanceamento, validar instalação limpa, repetir matriz/benchmark final e realizar a revisão formal do MVP.
+
+## Último relatório — gate técnico final P1-H
+
+**ETAPA:** P1 — décima primeira subfatia da Etapa 6  
+**STATUS:** gate técnico aprovado; playtest humano e revisão formal pendentes
+
+### Implementado e decidido
+
+- `DECISION-038` mantém o MVP sem PWA/service worker: o jogo é servido localmente por `ABRIR_JOGO.bat`, não depende da internet em runtime e evita cache obsoleto antes de existir estratégia pública de hospedagem/atualização;
+- `npm run offline:check`, integrado ao build, valida limite de 60 MB, referências locais existentes e ausência de registro de service worker;
+- `postinstall` grava o hash do lockfile usado por `ABRIR_JOGO.bat`, de modo que uma instalação válida possa iniciar offline sem reinstalação;
+- E2E novo corta a rede após a carga, conclui a primeira missão, grava IndexedDB, reativa a conexão e confirma reload do save sem requisição externa ou erro de console;
+- teste de encontro prova vitória usando apenas o feixe e preservando os seis torpedos, garantindo alternativa quando o jogador não quiser ou não puder usar munição;
+- roteiro humano e critérios de aprovação foram registrados em `docs/PLAYTEST_P1.md`.
+
+### Revisão e correções
+
+A primeira matriz completa encontrou um caso no Chrome em que `Esc` não liberou o ponteiro: o foco permanecia no botão de captura e a entrada descartava a tecla por vir de um elemento interativo, dependendo da ação nativa do navegador. O manipulador agora prioriza `Esc` quando o canvas possui pointer lock. A correção passou três repetições no Chrome e três no Edge e depois integrou a matriz final 80/80. A revisão de softlocks confirmou feixe sem munição, reinício após derrota/vitória, retorno seguro, reload transitório, campanha reiniciável e liberação de controles. Nenhum achado CRITICAL/HIGH permanece.
+
+### Verificação técnica
+
+- instalação limpa: `npm ci` com Node 22.23.2, 138 pacotes instalados a partir do lockfile;
+- `npm run verify`: 199/199 testes em 35 arquivos, formatação, lint, TypeScript, assets, build e validação offline aprovados;
+- `npm audit --offline --audit-level=high`: zero vulnerabilidades encontradas;
+- Playwright final: 80/80 casos, Chrome 40/40 e Edge 40/40, um worker e nenhum `skip`;
+- inspeção visual: menu 1280×720 e base/HUD 1600×900 legíveis, contidos e sem sobreposição;
+- benchmark físico Chrome 151, UHD Graphics 620, WebGL 2, 1600×900/médio: 60,019 FPS médios, p50 16,7 ms, p95 20,8 ms e p99 24,3 ms, com 88 draw calls e 21 VFX;
+- build: seis arquivos, 2.187.173 bytes descompactados, aplicação 41,46 kB gzip e engine 510,69 kB gzip; dois avisos PlayCanvas/Vite conhecidos continuam não bloqueantes.
+
+### Pendência para aprovar o MVP
+
+- executar `docs/PLAYTEST_P1.md` com uma pessoa que não conheça os controles, registrar a evidência e submeter o resultado à revisão formal. Automação não substitui esse critério de compreensão.

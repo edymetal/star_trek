@@ -78,7 +78,7 @@ Concluído quando o dano lógico e visual não divergirem; não houver crescimen
 - inventário de autoria/licença de todos os assets do build;
 - cache offline/PWA somente se a medição mostrar que não complica atualizações e saves.
 
-Estado atual do P1: o Sistema Hélios já oferece base segura, mapa acessível, três destinos de missão, dois pontos de interesse e transição visual de viagem. As três missões, o retorno com reparo/reabastecimento, o save IndexedDB v2, o menu inicial, o comando da base, as configurações persistentes, a acessibilidade prioritária, o diário mínimo, o áudio procedural e o manifesto/inventário de assets com fallback também estão concluídos. A decisão offline/PWA, o balanceamento e a revisão formal P1-H continuam obrigatórios antes de declarar o MVP concluído.
+Estado atual do P1: todas as funcionalidades e o gate técnico estão concluídos. O build permanece local/offline sem service worker por `DECISION-038`; instalação limpa, 199/199 testes, 80/80 E2E Chrome/Edge, inspeção visual e benchmark UHD 620/médio estão aprovados. A automação confirma as três missões e os principais riscos de softlock, mas ainda falta o playtest exigido com uma pessoa que não conheça os controles e a revisão formal dessa evidência antes de declarar o MVP concluído.
 
 ### Gate de saída do MVP (P0 + P1)
 

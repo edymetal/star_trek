@@ -419,6 +419,49 @@ test('mantém fallback visível para asset ausente e recupera sem reiniciar o jo
   await expect(page.locator('[data-asset-retry]')).toBeHidden();
 });
 
+test('permanece jogável sem internet após a carga e não instala service worker', async ({
+  context,
+  page,
+}) => {
+  const unexpectedErrors: string[] = [];
+  const externalRequests: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') unexpectedErrors.push(message.text());
+  });
+  page.on('pageerror', (error) => unexpectedErrors.push(error.message));
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.protocol !== 'blob:' && url.origin !== 'http://127.0.0.1:4173') {
+      externalRequests.push(request.url());
+    }
+  });
+
+  await page.goto('/');
+  const root = page.locator('[data-app-root]');
+  await expect(root).toHaveAttribute('data-app-state', 'ready');
+  await expect(root).toHaveAttribute('data-asset-state', 'ready');
+  expect(
+    await page.evaluate(async () =>
+      'serviceWorker' in navigator ? (await navigator.serviceWorker.getRegistrations()).length : 0,
+    ),
+  ).toBe(0);
+
+  await context.setOffline(true);
+  await dismissMainMenu(page);
+  await departCurrentMission(page);
+  await identifyEnemy(page);
+  await expect(root).toHaveAttribute('data-mission-objective-completed', 'true');
+  await page.locator('[data-mission-action]').click();
+  await expect(root).toHaveAttribute('data-mission-phase', 'completed', { timeout: 4_000 });
+  await expect(root).toHaveAttribute('data-save-state', 'saved');
+  await context.setOffline(false);
+
+  await page.reload();
+  await expect(root).toHaveAttribute('data-save-state', 'loaded');
+  expect(externalRequests).toEqual([]);
+  expect(unexpectedErrors).toEqual([]);
+});
+
 test('persiste configurações separadas do save e aplica HUD e teclas imediatamente', async ({
   page,
 }, testInfo) => {

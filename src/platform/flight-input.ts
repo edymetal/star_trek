@@ -158,12 +158,13 @@ export function createFlightInputController(
     }
   };
   const handleKeyDown = (event: KeyboardEvent): void => {
-    if (isInteractiveTarget(event.target)) {
-      return;
-    }
     if (event.code === 'Escape' && document.pointerLockElement === options.canvas) {
+      event.preventDefault();
       releaseInput();
       releasePointer();
+      return;
+    }
+    if (isInteractiveTarget(event.target)) {
       return;
     }
     if (event.code === 'KeyP' && !event.repeat) {

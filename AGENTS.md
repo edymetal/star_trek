@@ -23,7 +23,7 @@ Em conflito, requisito mais recente e explícito do usuário vence. Atualize os 
 
 ## Estado atual
 
-P0.1 a P0.5 foram aprovados. A revisão P0.4 de 27/08/2026 foi exercida pelo coordenador sem convocar subagente Architect, conforme decisão explícita do usuário. O cenário determinístico e os presets estão em `DECISION-025`; dano visual por seção, impacto direcional e VFX limitados estão em `DECISION-026`. Em 29/08/2026, o usuário substituiu a medição obrigatória da MX130 por fluidez escalável sem personalização de GPU; `DECISION-027` aprovou o P0.5 com a medição física UHD 620/baixo de 60,010 FPS e p99 de 18,9 ms. O P1 está em desenvolvimento: `DECISION-028` implementou o primeiro ciclo de missão, `DECISION-029` adicionou save local versionado, `DECISION-030` expandiu o treinamento para três missões sequenciais, `DECISION-031` entregou mapa/viagem, `DECISION-032` separou menu inicial/base/sessão tática, `DECISION-033` entregou configurações persistentes separadas do save, `DECISION-034` concluiu a acessibilidade prioritária, `DECISION-035` entregou o diário derivado do checkpoint seguro, `DECISION-036` concluiu o áudio procedural e `DECISION-037` entregou manifesto, validação transacional, fallback de asset e inventário de licenças. O gate P1-G passa com 198/198 testes e 78/78 casos E2E Chrome/Edge; offline, balanceamento e revisão final P1-H são a próxima subfatia.
+P0.1 a P0.5 foram aprovados. A revisão P0.4 de 27/08/2026 foi exercida pelo coordenador sem convocar subagente Architect, conforme decisão explícita do usuário. O cenário determinístico e os presets estão em `DECISION-025`; dano visual por seção, impacto direcional e VFX limitados estão em `DECISION-026`. Em 29/08/2026, o usuário substituiu a medição obrigatória da MX130 por fluidez escalável sem personalização de GPU; `DECISION-027` aprovou o P0.5 com a medição física UHD 620/baixo de 60,010 FPS e p99 de 18,9 ms. O P1 está no gate final: `DECISION-028` a `DECISION-037` entregaram missão, save, campanha, navegação, menu, configurações, acessibilidade, diário, áudio e assets; `DECISION-038` mantém execução local offline sem service worker no MVP. O gate técnico P1-H passa após instalação limpa com 199/199 testes, 80/80 E2E Chrome/Edge e benchmark UHD 620/médio de 60,019 FPS e p99 de 24,3 ms. Falta somente um playtest humano com pessoa que não conheça os controles e a revisão formal dessa evidência; não declare o MVP aprovado antes disso.
 
 Versões fixadas no scaffold: Node.js 22.12 ou superior, TypeScript 6.0.3, Vite 8.2.2, PlayCanvas 2.21.4, Vitest 4.1.11, Playwright 1.62.1, ESLint 10.8.1 e Prettier 3.9.6. O motivo para manter TypeScript 6 no scaffold está em `DECISION-017`; não atualize isoladamente sem conferir a matriz do typescript-eslint.
 
@@ -86,6 +86,7 @@ O formatter/linter escolhido no P0.1 definirá detalhes mecânicos. Não adicion
 | Testes em modo único/CI | `npm run test:run` |
 | E2E de produção em Chrome/Edge | `npm run test:e2e` |
 | Validar assets e licenças de runtime | `npm run assets:check` |
+| Validar build local/offline | `npm run offline:check` |
 | Lint | `npm run lint` |
 | Formatar | `npm run format` |
 | Conferir formatação | `npm run format:check` |

@@ -3,7 +3,7 @@
 Atualizado em: 2 de setembro de 2026  
 Branch esperada: `main`  
 Baseline anterior ao P1-A: commit `f9750ee` (`feat: adicionar campanha tutorial de tres missoes`)  
-Marco atual: P1-G concluída; consulte o último relatório em `docs/PROGRESS.md`
+Marco atual: gate técnico P1-H concluído; playtest humano e revisão formal pendentes
 
 ## 1. Finalidade deste documento
 
@@ -20,7 +20,7 @@ Ao receber uma solicitação genérica como “continue” ou “finalize o jogo
 
 Use este texto como prompt inicial:
 
-> Continue o projeto a partir de `docs/HANDOFF_REMAINING_WORK.md`. Leia integralmente `AGENTS.md` e todas as fontes canônicas na ordem indicada antes de alterar código. Trabalhe uma fatia vertical por vez, preserve as decisões aceitas, não refaça o P0 nem as fatias P1-A/P1-B/P1-C/P1-D/P1-E/P1-F/P1-G concluídas e não adicione conteúdo de Star Trek. Implemente primeiro o P1-H e depois encerre apenas os itens P1 obrigatórios na ordem do handoff. Para cada fatia, crie testes sem GPU para regras, E2E em Chrome/Edge para fluxos visuais, execute `npm run verify` e os testes E2E relevantes, atualize a documentação e faça commit/push somente quando o gate estiver verde. Não publique nem faça deploy sem autorização explícita.
+> Continue o projeto a partir de `docs/HANDOFF_REMAINING_WORK.md`. Leia integralmente `AGENTS.md` e todas as fontes canônicas na ordem indicada. Não refaça o P0 nem o gate técnico P1-H. Execute o roteiro `docs/PLAYTEST_P1.md` com uma pessoa que não conheça os controles, registre a evidência e faça a revisão formal do MVP. Corrija e repita somente se surgir achado real; CRITICAL/HIGH bloqueia a aprovação. Atualize a documentação e faça commit/push após o gate verde. Não inicie P2/P3 e não publique nem faça deploy sem autorização explícita.
 
 ## 3. Fontes de verdade e ordem de leitura
 
@@ -74,14 +74,17 @@ O P0 está aprovado e não deve ser reimplementado:
 - manifesto v1 e emblema SVG original com validação de schema, caminho, tipo, tamanho, SHA-256, dependências e atribuição;
 - carregamento atômico de assets sob caminho base, fallback CSS, status acionável, retry sem reload e descarte de URLs de objeto;
 - inventário legível de assets/licenças e créditos no jogo, com validação automática integrada ao build.
+- execução local offline sem service worker, validador de composição do build e primeira missão concluída com a rede cortada após a carga;
+- gate técnico final com instalação limpa, matriz Chrome/Edge, benchmark UHD 620/médio e correção do `Esc` para pointer lock com foco interativo.
 
-Gate atual verificado após o P1-G:
+Gate técnico atual verificado após o P1-H:
 
-- testes: 198/198 em 35 arquivos;
-- Playwright: 78/78 casos em Chrome e Edge no gate P1-G;
-- benchmark físico aprovado na UHD 620/médio, 1600×900, WebGL 2: 60,011 FPS médios e p99 de 20,4 ms;
+- instalação limpa: Node 22.23.2 e `npm ci` concluído pelo lockfile;
+- testes: 199/199 em 35 arquivos;
+- Playwright: 80/80 casos, Chrome 40/40 e Edge 40/40;
+- benchmark físico aprovado na UHD 620/médio, 1600×900, WebGL 2: 60,019 FPS médios e p99 de 24,3 ms;
 - nenhum achado CRITICAL/HIGH conhecido;
-- aplicação principal em 41,46 kB gzip e chunk do engine em aproximadamente 510,69 kB gzip.
+- build offline de seis arquivos/2.187.173 bytes, aplicação em 41,46 kB gzip e engine em 510,69 kB gzip.
 
 Os totais de testes podem crescer. Eles são uma referência, não um motivo para remover ou esconder novos testes.
 
@@ -97,8 +100,8 @@ Execute na ordem abaixo, salvo nova prioridade explícita do usuário:
 6. [x] áudio e feedback final;
 7. [x] carregamento, manifesto e recuperação de falha de assets;
 8. [x] inventário de licenças e créditos;
-9. decisão medida sobre PWA/cache offline;
-10. balanceamento, benchmark de regressão, matriz E2E e revisão formal do MVP;
+9. [x] decisão medida sobre PWA/cache offline;
+10. [~] balanceamento, benchmark de regressão e matriz E2E concluídos; playtest humano/revisão formal pendentes;
 11. preparação para publicação, somente após autorização explícita.
 
 Cada item deve ser entregue como uma fatia vertical pequena, testada e documentada. Não criar diretórios vazios ou infraestrutura de fases futuras.
@@ -392,9 +395,9 @@ Os visuais 3D continuam principalmente primitivos e procedurais. O P1-G adiciono
 - créditos e `docs/ASSET_LICENSES.md` registram autoria/licenças do build, recursos procedurais, dependências e o estado `private`/`UNLICENSED`;
 - 198/198 testes, 78/78 E2E e benchmark UHD 620/médio com 60,011 FPS médios e p99 de 20,4 ms aprovam a fatia; detalhes estão em `DECISION-037` e `docs/PROGRESS.md`.
 
-## 13. Fatia P1-H — offline, balanceamento e gate final
+## 13. Fatia P1-H — offline, balanceamento e gate final — validação humana pendente
 
-### Decisão sobre offline/PWA
+### Decisão sobre offline/PWA — concluída
 
 O jogo já funciona sem serviço externo depois de servido localmente, mas não existe PWA/service worker. Antes de adicionar cache:
 
@@ -404,7 +407,7 @@ O jogo já funciona sem serviço externo depois de servido localmente, mas não 
 4. testar primeiro carregamento, atualização e execução offline;
 5. registrar a decisão em `docs/DECISIONS.md`.
 
-Se o benefício não justificar o risco no MVP, documentar a decisão de permanecer com execução local via `ABRIR_JOGO.bat`. Não adicionar service worker apenas para marcar uma caixa.
+`DECISION-038` preserva a execução local via `ABRIR_JOGO.bat` sem service worker. O `postinstall` registra o hash do lockfile para o atalho não reinstalar dependências válidas. O build de 2,19 MB usa somente referências locais, e Chrome/Edge concluem a primeira missão com a rede desativada depois da carga, preservando IndexedDB. PWA só será reconsiderada antes de uma hospedagem pública, com política de versão/atualização testada.
 
 ### Balanceamento e polimento
 
@@ -445,6 +448,19 @@ Avisos conhecidos que não devem ser ocultados artificialmente:
 - imports `node:worker_threads` de funcionalidades PlayCanvas não usadas externalizados pelo Vite.
 
 Eles são atualmente não bloqueantes. Qualquer regressão real de carregamento ou desempenho deve ser corrigida, não silenciada.
+
+### Gate técnico realizado
+
+- `npm ci`, `npm run verify`, `npm run test:e2e -- --workers=1` e `npm run test:benchmark` passaram no ambiente alvo;
+- 199/199 testes e 80/80 E2E cobrem regras, três missões, saves, falhas, acessibilidade, offline e navegadores obrigatórios;
+- benchmark UHD 620/WebGL 2 em 1600×900/médio: 60,019 FPS médios e p99 de 24,3 ms;
+- combate permanece vencível apenas com feixe; torpedos são alternativa, não condição de progresso;
+- um achado do primeiro ciclo foi corrigido: `Esc` agora libera pointer lock mesmo quando o foco está em botão; passou seis repetições focadas e a matriz final;
+- inspeções 1280×720 e 1600×900 estão aprovadas; não há CRITICAL/HIGH conhecido.
+
+### Única pendência do gate funcional
+
+Executar `docs/PLAYTEST_P1.md` com uma pessoa que não conheça os controles. Registrar dúvidas, ajuda necessária, softlocks e conclusão. A revisão formal só pode aprovar o MVP depois dessa evidência; não converter a cobertura automatizada em alegação de teste humano.
 
 ### Gate funcional do MVP
 
@@ -590,8 +606,11 @@ Os nomes são sugestões; o conteúdo e os gates importam mais que a quantidade 
 - `src/styles/global.css`: layout e tema;
 - `tests/e2e/boot.spec.ts`: matriz funcional e visual Chrome/Edge;
 - `tests/performance/benchmark.spec.ts`: medição física configurável;
+- `tools/validate-offline-build.mjs`: composição local, limite, referências e ausência de service worker;
+- `tools/write-install-lock-marker.mjs`: hash pós-instalação reutilizado pelo atalho local;
 - `public/assets/asset-manifest.json`: inventário legível pela aplicação e validado no build;
 - `docs/ASSET_LICENSES.md`: inventário humano de assets, recursos procedurais e dependências;
+- `docs/PLAYTEST_P1.md`: roteiro e registro obrigatório da primeira experiência humana;
 - `docs/BENCHMARK_P0_5.md`: baseline de desempenho;
 - `ABRIR_JOGO.bat`: execução local para o usuário.
 
@@ -611,14 +630,14 @@ Os nomes são sugestões; o conteúdo e os gates importam mais que a quantidade 
 - [x] áudio original/licenciado com volumes, mute e fallback;
 - [x] falha de asset recuperável;
 - [x] manifesto/inventário de licenças completo;
-- [ ] decisão PWA/offline registrada e, se aprovada, testada;
-- [ ] playtest e balanceamento das três missões concluídos;
-- [ ] instalação limpa aprovada;
-- [ ] `npm run verify` aprovado;
-- [ ] E2E completo Chrome/Edge aprovado;
-- [ ] benchmark físico aprovado;
-- [ ] inspeção visual 1280×720 e 1600×900 aprovada;
-- [ ] zero CRITICAL/HIGH;
+- [x] decisão PWA/offline registrada e testada;
+- [~] balanceamento automatizado concluído; playtest humano das três missões pendente;
+- [x] instalação limpa aprovada;
+- [x] `npm run verify` aprovado;
+- [x] E2E completo Chrome/Edge aprovado;
+- [x] benchmark físico aprovado;
+- [x] inspeção visual 1280×720 e 1600×900 aprovada;
+- [x] zero CRITICAL/HIGH;
 - [ ] revisão formal do MVP aprovada;
 - [ ] documentação sincronizada;
 - [ ] commit e push realizados.

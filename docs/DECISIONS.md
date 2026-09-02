@@ -337,6 +337,15 @@ Decisões aceitas só devem ser alteradas por nova entrada que referencie a ante
 **Motivo:** uma fronteira verificável torna licença, origem e integridade parte do gate sem exigir pipeline 3D prematuro. A troca atômica impede estado parcialmente carregado; o fallback preserva UC-10 e o caminho relativo preserva futura hospedagem em subdiretório.  
 **Consequências:** o projeto agora possui `public/assets/` porque existe um arquivo real de 1.107 bytes. Novos assets devem entrar no mesmo manifesto, passar `assets:check`, declarar licença e respeitar orçamento antes do commit. `LicenseRef-Project-Authored` autoriza o recurso próprio neste build privado, mas o pacote continua `private`/`UNLICENSED`; publicação ainda exige decisão do titular. O gate passou com 198/198 testes, 78/78 E2E e benchmark UHD 620/médio de 60,011 FPS e p99 20,4 ms. P1-H continua responsável por offline/PWA, balanceamento, instalação limpa e revisão formal do MVP.
 
+## DECISION-038 — MVP offline permanece sem service worker até a preparação de publicação
+
+**Status:** aceita para o gate técnico P1-H; revisão formal do MVP ainda aguarda playtest humano  
+**Problema:** o MVP precisa funcionar sem internet depois da carga, mas um service worker acrescentaria versão de cache, atualização, invalidação e interação com IndexedDB. Instalabilidade não é requisito atual, e cache antigo poderia manter HTML, chunks ou manifesto incompatíveis.  
+**Opções consideradas:** adicionar PWA/cache versionado agora; não verificar offline e depender apenas do servidor; preservar execução local por `ABRIR_JOGO.bat`, automatizar a composição do build e adiar service worker até existir hospedagem pública.  
+**Decisão:** o P1 não registra service worker. `ABRIR_JOGO.bat` continua servindo todos os recursos em `127.0.0.1`; o `postinstall` grava o SHA-256 do lockfile em `node_modules` para o atalho reutilizar a instalação válida sem acessar o registry. Chunks Vite usam hash e o manifesto local usa `no-cache` mais SHA-256. `offline:check`, integrado ao build, limita `dist/` a 60 MB, rejeita referência externa/ausente no HTML e impede registro acidental de service worker. O E2E carrega a aplicação, desativa a rede, conclui a primeira missão, grava IndexedDB, reativa a conexão e confirma reload do save, sem requisição externa nem erro de console.  
+**Motivo:** o build final contém somente seis arquivos e 2.187.173 bytes; não existe benefício proporcional em adicionar uma camada de cache antes de decidir hospedagem, headers e política de atualização. A ausência de service worker também elimina qualquer autoridade sobre IndexedDB, que permanece exclusiva dos repositórios atuais.  
+**Consequências:** uso offline exige arquivos/dependências já presentes e o servidor local ativo; a primeira instalação por `npm ci` ainda pode exigir acesso ao registry. PWA pode ser reconsiderada na preparação de publicação, com cache nomeado por versão, atualização testada e garantia explícita de não tocar em saves. O gate técnico fechou com Node 22.23.2, 199/199 testes, 80/80 E2E e benchmark UHD 620/médio de 60,019 FPS e p99 24,3 ms. O playtest humano descrito em `docs/PLAYTEST_P1.md` continua obrigatório para a aprovação formal.
+
 ## Decisões futuras não bloqueantes
 
 | Tema | Padrão até decidir | Gate |
@@ -345,6 +354,6 @@ Decisões aceitas só devem ser alteradas por nova entrada que referencie a ante
 | 30 Hz ou 60 Hz fixos | 60 Hz confirmado em `DECISION-027` | reavaliar só com evidência nova |
 | WebGPU preferencial | WebGL 2 confirmado em `DECISION-027` | reavaliar só com evidência nova |
 | GitHub ou Cloudflare Pages | apenas build local | preparação de publicação |
-| PWA/cache offline | sem service worker | P1 após medir atualização e tamanho |
+| PWA/cache offline | sem service worker por `DECISION-038` | reavaliar antes de hospedagem pública |
 | Framework de UI | DOM simples | só se complexidade de P1 justificar |
 | Rapier | cinemática/volumes simples | só com necessidade física medida |

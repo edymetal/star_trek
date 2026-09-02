@@ -206,6 +206,27 @@ describe('sessão de encontro', () => {
     expect(snapshot.contact.awareness).toBe('unknown');
   });
 
+  it('permite vencer somente com feixe sem consumir munição de torpedo', () => {
+    const harness = createHarness();
+    identifyContact(harness);
+    let snapshot = harness.session.getSnapshot();
+
+    for (let shot = 0; shot < 16 && snapshot.phase === 'active'; shot += 1) {
+      harness.setShip(
+        createInitialShipState({
+          x: snapshot.enemy.position.x,
+          y: snapshot.enemy.position.y,
+          z: snapshot.enemy.position.z + 30,
+        }),
+      );
+      snapshot = harness.advance(0.5);
+      snapshot = harness.command({ equipmentId: 'beam', type: 'use-equipment' });
+    }
+
+    expect(snapshot.phase).toBe('victory');
+    expect(snapshot.torpedoAmmo).toBe(6);
+  });
+
   it('limpa alvo explicitamente e interrompe scan', () => {
     const harness = createHarness();
     harness.advance();

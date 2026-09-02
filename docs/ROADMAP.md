@@ -177,7 +177,7 @@ Critério de conclusão:
 
 ## Etapa 6 — Primeira fatia vertical P1
 
-**Status:** em desenvolvimento; campanha, persistência, base/mapa/viagem, menu inicial, configurações, acessibilidade prioritária, diário, áudio e recuperação de asset concluídos; gate final P1-H pendente
+**Status:** gate técnico concluído; playtest humano de primeira experiência e revisão formal P1-H pendentes
 
 **Objetivo:** implementar uma missão ponta a ponta antes de multiplicar conteúdo.
 
@@ -273,6 +273,16 @@ Décima subfatia concluída:
 - créditos e `docs/ASSET_LICENSES.md` inventariam recursos próprios/procedurais, dependências diretas e a restrição `private`/`UNLICENSED`;
 - gate aprovou 198/198 testes, 78/78 E2E Chrome/Edge e benchmark UHD 620/médio de 60,011 FPS médios e p99 de 20,4 ms.
 
+Décima primeira subfatia concluída tecnicamente:
+
+- decisão medida mantém execução local offline sem service worker; build de 2.187.173 bytes não depende de origem externa;
+- `offline:check` reprova referência externa/ausente, build acima de 60 MB e registro não aprovado de service worker;
+- Chrome e Edge concluem a primeira missão com rede desativada após a carga e preservam o save IndexedDB;
+- combate só com feixe, reinício, checkpoint e duas campanhas completas automatizadas cobrem os principais riscos de softlock;
+- um achado de liberação do ponteiro pelo `Esc` com foco interativo foi corrigido e repetido seis vezes antes da matriz final;
+- instalação limpa, 199/199 testes, 80/80 E2E e benchmark UHD 620/médio de 60,019 FPS e p99 de 24,3 ms aprovam o gate técnico;
+- playtest com pessoa que não conheça os controles permanece evidência obrigatória antes da revisão formal.
+
 Critério de conclusão:
 
 - ciclo completo funciona após reload;
@@ -282,7 +292,7 @@ Critério de conclusão:
 
 ## Etapa 7 — Vertical slice/MVP P1
 
-**Status:** em desenvolvimento; ciclo base–mapa–viagem–missões, variedade de contatos, tutorial, menu inicial, configurações, acessibilidade, diário, áudio e assets/licenças concluídos; gate final P1-H pendente
+**Status:** gate técnico concluído; playtest humano e aprovação formal do MVP pendentes
 
 **Objetivo:** completar variedade mínima e qualidade de demonstração.
 
@@ -295,7 +305,8 @@ Entregas:
 - [x] configurações persistentes e controles essenciais;
 - [x] acessibilidade prioritária;
 - [x] inventário final de licenças do build;
-- testes E2E do ciclo e benchmark de regressão.
+- [x] testes E2E do ciclo e benchmark de regressão;
+- [ ] playtest humano de primeira experiência e revisão formal.
 
 Critério de conclusão:
 

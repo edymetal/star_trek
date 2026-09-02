@@ -1,7 +1,7 @@
 # Arquitetura do jogo
 
-Status: aceita para P0 e P1-G  
-Versão: 1.5 — 2 de setembro de 2026
+Status: aceita até o gate técnico P1-H  
+Versão: 1.6 — 2 de setembro de 2026
 
 Este documento define como o produto será construído. Requisitos pertencem a [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md), prioridade a [`docs/MVP.md`](docs/MVP.md), decisões justificadas a [`docs/DECISIONS.md`](docs/DECISIONS.md) e pesquisa/orçamentos detalhados a [`PLANEJAMENTO.md`](PLANEJAMENTO.md).
 
@@ -158,6 +158,8 @@ No P1-E, `src/domain/missions/mission-journal.ts` projeta objetivo, progresso e 
 No P1-F, `audio-cue-router.ts` detecta somente transições de snapshots públicos de encontro, energia, missão e navegação; não decide dano, sucesso ou progresso. O adaptador em `engine/game-audio.ts` cria Web Audio apenas após gesto explícito, sintetiza efeitos e três ambientes originais sem asset externo e mantém no máximo dez vozes lógicas de efeito. Mute, pausa, perda de foco, troca de ambiente e descarte interrompem fontes e removem referências. Falha ou ausência de Web Audio vira telemetria acionável no shell e nunca bloqueia a sessão. `GameSettings` v2 acrescenta `audioMuted`, migrando v1 sequencialmente com `false`, ainda separado do save IndexedDB.
 
 No P1-G, `content/asset-manifest.ts` valida o schema v1, IDs, caminhos locais, tipos, tamanhos, SHA-256, dependências e atribuições antes de o engine aceitar o catálogo. `engine/build-asset-loader.ts` baixa manifesto e recursos sob `document.baseURI`, valida todos os bytes e só então publica URLs temporárias como uma troca atômica; falha mantém o emblema CSS seguro e oferece retry sem interromper save, cena ou sessão. Descarte revoga as URLs. `tools/validate-build-assets.mjs` repete tamanho/hash/registro no build e confere versão/licença das dependências de runtime. O inventário humano fica em `docs/ASSET_LICENSES.md`.
+
+No P1-H, o MVP permanece sem service worker. `ABRIR_JOGO.bat` serve o build localmente e nenhuma função central depende da internet depois que as dependências foram instaladas. O `postinstall` registra o SHA-256 do lockfile em `node_modules`, permitindo ao atalho reutilizar a instalação exata sem nova consulta ao registry. Chunks de JavaScript/CSS usam nomes com hash; o manifesto substituível usa `no-cache` e SHA-256. `tools/validate-offline-build.mjs` limita `dist/` a 60 MB, rejeita referência externa ou ausente no HTML e impede registro acidental de service worker. O E2E corta a rede após a carga, conclui a primeira missão, grava IndexedDB e recarrega o save quando a conexão volta. Cache instalável só será reconsiderado na preparação de publicação, com versionamento e atualização próprios.
 
 ### `platform`
 

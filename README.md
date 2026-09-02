@@ -1,6 +1,6 @@
 # Comando Estelar — protótipo técnico
 
-Protótipo de um jogo 3D original de exploração espacial executado no navegador. O **P0 está aprovado**: arena, voo, energia, sensores, três equipamentos, escudos direcionais, dano, IA, HUD nas bordas, naves procedurais, VFX em pool e benchmark escalável. O **P1 está em desenvolvimento** e já contém campanha tutorial de três missões, save local versionado, base/mapa/viagem, configurações, acessibilidade prioritária, diário, áudio procedural e assets locais validados com fallback e inventário de licenças.
+Protótipo de um jogo 3D original de exploração espacial executado no navegador. O **P0 está aprovado**: arena, voo, energia, sensores, três equipamentos, escudos direcionais, dano, IA, HUD nas bordas, naves procedurais, VFX em pool e benchmark escalável. O **gate técnico do P1 está aprovado** e contém campanha tutorial de três missões, save local versionado, base/mapa/viagem, configurações, acessibilidade prioritária, diário, áudio procedural, assets validados e execução local offline. Um playtest humano de primeira experiência ainda antecede a aprovação formal do MVP.
 
 ## Requisitos
 
@@ -38,6 +38,7 @@ Se uma rede corporativa interceptar TLS, configure o Node para confiar no reposi
 | E2E no Chrome e Edge instalados    | `npm run test:e2e`       |
 | Benchmark físico em Chrome         | `npm run test:benchmark` |
 | Validar manifesto/assets           | `npm run assets:check`   |
+| Validar build local/offline        | `npm run offline:check`  |
 | Lint                               | `npm run lint`           |
 | Formatação                         | `npm run format`         |
 | Verificar formatação               | `npm run format:check`   |
@@ -126,6 +127,8 @@ npm run preview
 O conteúdo de `dist/` é totalmente estático e usa caminhos relativos, permanecendo compatível com hospedagem futura em subdiretório. Publicação e deploy não fazem parte desta etapa.
 
 O build executa `npm run assets:check` automaticamente. Arquivo em `public/assets/` sem registro, hash/tamanho divergente ou dependência de runtime com versão/licença inesperada interrompe o build antes da geração de `dist/`.
+
+O build também executa `npm run offline:check`: referências de outra origem, arquivos locais ausentes, tamanho inicial acima de 60 MB ou registro de service worker não aprovado interrompem o gate. O `postinstall` registra o hash do lockfile, permitindo que `ABRIR_JOGO.bat` reutilize uma instalação válida sem consultar o registry. O MVP não é uma PWA; depois de `npm ci`, o atalho serve todos os recursos no próprio computador sem depender de internet. Cache instalável será reconsiderado apenas na preparação de publicação.
 
 ## Continuação do desenvolvimento
 
