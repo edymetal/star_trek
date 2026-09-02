@@ -48,6 +48,7 @@ export interface AppShell {
   setBackend(label: string): void;
   setBenchmarkTelemetry(telemetry: BenchmarkHudTelemetry): void;
   setArenaPresentation(presentation: ArenaPresentationDto): void;
+  setAudioTelemetry(telemetry: AudioHudTelemetry): void;
   setControlFeedback(message: string): void;
   setEnergyTelemetry(telemetry: EnergyHudTelemetry): void;
   setCombatTelemetry(telemetry: CombatHudTelemetry): void;
@@ -132,6 +133,7 @@ export interface MainMenuControlHandlers {
 }
 
 export interface SettingsControlHandlers {
+  readonly onEnableAudio: () => void;
   readonly onChange: (settings: GameSettings) => void;
   readonly onReset: () => void;
 }
@@ -224,6 +226,11 @@ export interface SettingsHudTelemetry {
   readonly activePresetId: GraphicsPreset['id'];
   readonly settings: GameSettings;
   readonly status: SettingsControllerStatus | { readonly state: 'disabled' };
+}
+
+export interface AudioHudTelemetry {
+  readonly activeEffectVoices: number;
+  readonly state: 'disposed' | 'error' | 'locked' | 'muted' | 'ready' | 'suspended' | 'unavailable';
 }
 
 export interface CombatHudTelemetry {
@@ -427,6 +434,12 @@ export function createAppShell(root: HTMLElement): AppShell {
   const settingsForm = requireElement<HTMLFormElement>(mainMenu, '[data-settings-form]');
   const settingsStatus = requireElement<HTMLElement>(mainMenu, '[data-settings-status]');
   const settingsReset = requireElement<HTMLButtonElement>(mainMenu, '[data-settings-reset]');
+  const audioEnable = requireElement<HTMLButtonElement>(mainMenu, '[data-audio-enable]');
+  const audioStatus = requireElement<HTMLElement>(mainMenu, '[data-audio-status]');
+  const audioMutedSetting = requireElement<HTMLInputElement>(
+    settingsForm,
+    '[data-setting="audioMuted"]',
+  );
   const graphicsPresetSetting = requireElement<HTMLSelectElement>(
     settingsForm,
     '[data-setting="graphicsPresetId"]',
@@ -774,6 +787,7 @@ export function createAppShell(root: HTMLElement): AppShell {
 
   function readSettingsForm(): GameSettings {
     return {
+      audioMuted: audioMutedSetting.checked,
       ambienceVolumePercent: Number(ambienceVolumeSetting.value),
       controlBindings: Object.fromEntries(
         REMAPPABLE_CONTROL_IDS.map((id) => [id, bindingSettings[id].value]),
@@ -866,13 +880,16 @@ export function createAppShell(root: HTMLElement): AppShell {
       const changeListener = (): void => handlers.onChange(readSettingsForm());
       const inputListener = (): void => syncSettingsOutputs();
       const resetListener = (): void => handlers.onReset();
+      const enableAudioListener = (): void => handlers.onEnableAudio();
       settingsForm.addEventListener('change', changeListener);
       settingsForm.addEventListener('input', inputListener);
       settingsReset.addEventListener('click', resetListener);
+      audioEnable.addEventListener('click', enableAudioListener);
       return () => {
         settingsForm.removeEventListener('change', changeListener);
         settingsForm.removeEventListener('input', inputListener);
         settingsReset.removeEventListener('click', resetListener);
+        audioEnable.removeEventListener('click', enableAudioListener);
       };
     },
     bindEnergyControls(handlers) {
@@ -1327,7 +1344,9 @@ export function createAppShell(root: HTMLElement): AppShell {
             }[telemetry.profileId];
       setTextIfChanged(
         energyFeedback,
-        `Alocação conservada: ${total.toFixed(0)} de ${telemetry.allocationCapacityUnits.toFixed(0)}. Perfil ${profileLabel}.`,
+        telemetry.reservePercent <= 20
+          ? `Aviso: reserva de energia baixa em ${telemetry.reservePercent.toFixed(0)}%. Reduza o consumo ou escolha um perfil adequado.`
+          : `Alocação conservada: ${total.toFixed(0)} de ${telemetry.allocationCapacityUnits.toFixed(0)}. Perfil ${profileLabel}.`,
       );
       for (const button of presetButtons) {
         setAttributeIfChanged(
@@ -1337,6 +1356,11 @@ export function createAppShell(root: HTMLElement): AppShell {
         );
       }
       setAttributeIfChanged(root, 'data-energy-profile', telemetry.profileId);
+      setAttributeIfChanged(
+        root,
+        'data-energy-warning',
+        telemetry.reservePercent <= 20 ? 'low' : 'normal',
+      );
       setAttributeIfChanged(root, 'data-energy-total', total.toFixed(2));
     },
     setFps(fps) {
@@ -1700,6 +1724,7 @@ export function createAppShell(root: HTMLElement): AppShell {
     },
     setSettingsTelemetry(telemetry) {
       const { settings } = telemetry;
+      audioMutedSetting.checked = settings.audioMuted;
       graphicsPresetSetting.value = settings.graphicsPresetId;
       hudScaleSetting.value = String(settings.hudScalePercent);
       masterVolumeSetting.value = String(settings.masterVolumePercent);
@@ -1726,6 +1751,7 @@ export function createAppShell(root: HTMLElement): AppShell {
         invalid:
           'Configuração inválida detectada. Padrões seguros foram aplicados; restaure ou altere uma opção para substituir o registro.',
         loaded: 'Preferências locais carregadas.',
+        migrated: 'Preferências atualizadas para incluir o mute persistente.',
         reset: 'Padrões restaurados e salvos.',
         saved: 'Preferências salvas e aplicadas.',
       };
@@ -1743,6 +1769,23 @@ export function createAppShell(root: HTMLElement): AppShell {
       setAttributeIfChanged(root, 'data-reduce-camera-shake', String(settings.reduceCameraShake));
       setAttributeIfChanged(root, 'data-reduce-flashes', String(settings.reduceFlashes));
       setAttributeIfChanged(root, 'data-settings-state', telemetry.status.state);
+    },
+    setAudioTelemetry(telemetry) {
+      const labels: Readonly<Record<AudioHudTelemetry['state'], string>> = {
+        disposed: 'Áudio encerrado com a sessão.',
+        error: 'Falha ao iniciar o áudio. O jogo continua disponível; tente novamente.',
+        locked: 'Áudio aguardando interação. Use “Ativar e testar áudio” ou entre na sessão.',
+        muted: 'Áudio silenciado nas preferências.',
+        ready: 'Áudio ativo.',
+        suspended: 'Áudio suspenso durante a pausa ou perda de foco.',
+        unavailable:
+          'Web Audio indisponível. O jogo continua sem som; atualize o Chrome/Edge e tente novamente.',
+      };
+      setTextIfChanged(audioStatus, labels[telemetry.state]);
+      setAttributeIfChanged(audioStatus, 'data-audio-status', telemetry.state);
+      setAttributeIfChanged(root, 'data-audio-state', telemetry.state);
+      setAttributeIfChanged(root, 'data-audio-voices', String(telemetry.activeEffectVoices));
+      audioEnable.disabled = telemetry.state === 'disposed';
     },
     setFullscreenActive(active) {
       setAttributeIfChanged(root, 'data-fullscreen-state', active ? 'active' : 'inactive');

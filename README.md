@@ -1,6 +1,6 @@
 # Comando Estelar — protótipo técnico
 
-Protótipo de um jogo 3D original de exploração espacial executado no navegador. O **P0 está aprovado**: arena, voo, energia, sensores, três equipamentos, escudos direcionais, dano, IA, HUD nas bordas, naves procedurais, VFX em pool e benchmark escalável. O **P1 está em desenvolvimento** e já contém campanha tutorial de três missões, save local versionado, base/mapa/viagem, configurações, acessibilidade prioritária e diário de objetivos/descobertas persistente por checkpoint.
+Protótipo de um jogo 3D original de exploração espacial executado no navegador. O **P0 está aprovado**: arena, voo, energia, sensores, três equipamentos, escudos direcionais, dano, IA, HUD nas bordas, naves procedurais, VFX em pool e benchmark escalável. O **P1 está em desenvolvimento** e já contém campanha tutorial de três missões, save local versionado, base/mapa/viagem, configurações, acessibilidade prioritária, diário de objetivos/descobertas persistente por checkpoint e áudio procedural com fallback.
 
 ## Requisitos
 
@@ -70,6 +70,8 @@ O botão do painel **Comando de missão** conduz três lições em sequência:
 3. **Defesa do Corredor Aurora:** gerenciar energia, escudos e armas para neutralizar uma interceptadora hostil.
 
 O HUD mostra a instrução atual e libera equipamentos gradualmente. Ao retornar à base, o jogo repara e reabastece a nave, salva o checkpoint local e oferece a próxima missão. A terceira conclusão permanece disponível após recarregar e permite reiniciar todo o treinamento.
+
+O áudio usa síntese procedural original e só é liberado após o primeiro clique para entrar na sessão ou pelo botão **Ativar e testar áudio** em Configurações. Volume geral, efeitos, ambiente e mute são persistentes. Pausa e perda de foco suspendem o som; se Web Audio estiver indisponível, todas as informações essenciais continuam visíveis e o jogo permanece utilizável.
 
 ## Controles de energia
 

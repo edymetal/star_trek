@@ -53,6 +53,21 @@ describe('createSettingsController', () => {
     expect(repository.saved).toHaveLength(2);
   });
 
+  it('migra e persiste preferências v1 com mute seguro desativado', () => {
+    const repository = new MemorySettingsRepository();
+    const defaults = createDefaultGameSettings('medium');
+    const { audioMuted, ...legacy } = { ...defaults, masterVolumePercent: 55 };
+    expect(audioMuted).toBe(false);
+    repository.raw = { schemaVersion: 1, settings: legacy };
+
+    expect(createSettingsController(repository).initialize(defaults)).toMatchObject({
+      settings: { audioMuted: false, masterVolumePercent: 55 },
+      status: { state: 'migrated' },
+    });
+    expect(repository.saved).toHaveLength(1);
+    expect(repository.saved[0]?.schemaVersion).toBe(2);
+  });
+
   it('recupera configuração inválida com defaults e permite restauração explícita', () => {
     const repository = new MemorySettingsRepository();
     repository.raw = { schemaVersion: 1, settings: { hudScalePercent: 999 } };

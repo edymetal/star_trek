@@ -1,9 +1,9 @@
 # Handoff para finalizar o projeto
 
-Atualizado em: 1 de setembro de 2026  
+Atualizado em: 2 de setembro de 2026  
 Branch esperada: `main`  
 Baseline anterior ao P1-A: commit `f9750ee` (`feat: adicionar campanha tutorial de tres missoes`)  
-Marco atual: P1-E concluída; consulte o último relatório em `docs/PROGRESS.md`
+Marco atual: P1-F concluída; consulte o último relatório em `docs/PROGRESS.md`
 
 ## 1. Finalidade deste documento
 
@@ -20,7 +20,7 @@ Ao receber uma solicitação genérica como “continue” ou “finalize o jogo
 
 Use este texto como prompt inicial:
 
-> Continue o projeto a partir de `docs/HANDOFF_REMAINING_WORK.md`. Leia integralmente `AGENTS.md` e todas as fontes canônicas na ordem indicada antes de alterar código. Trabalhe uma fatia vertical por vez, preserve as decisões aceitas, não refaça o P0 nem as fatias P1-A/P1-B/P1-C/P1-D/P1-E concluídas e não adicione conteúdo de Star Trek. Implemente primeiro o P1-F e depois os itens P1 obrigatórios na ordem do handoff. Para cada fatia, crie testes sem GPU para regras, E2E em Chrome/Edge para fluxos visuais, execute `npm run verify` e os testes E2E relevantes, atualize a documentação e faça commit/push somente quando o gate estiver verde. Não publique nem faça deploy sem autorização explícita.
+> Continue o projeto a partir de `docs/HANDOFF_REMAINING_WORK.md`. Leia integralmente `AGENTS.md` e todas as fontes canônicas na ordem indicada antes de alterar código. Trabalhe uma fatia vertical por vez, preserve as decisões aceitas, não refaça o P0 nem as fatias P1-A/P1-B/P1-C/P1-D/P1-E/P1-F concluídas e não adicione conteúdo de Star Trek. Implemente primeiro o P1-G e depois os itens P1 obrigatórios na ordem do handoff. Para cada fatia, crie testes sem GPU para regras, E2E em Chrome/Edge para fluxos visuais, execute `npm run verify` e os testes E2E relevantes, atualize a documentação e faça commit/push somente quando o gate estiver verde. Não publique nem faça deploy sem autorização explícita.
 
 ## 3. Fontes de verdade e ordem de leitura
 
@@ -67,15 +67,16 @@ O P0 está aprovado e não deve ser reimplementado:
 - mapa acessível, apresentação de viagem e estados distintos de base/mapa/trânsito/encontro;
 - base segura e raízes gráficas fixas, sem IA, projéteis ou VFX fora da bolha tática;
 - contatos e posições próprios por missão, com checkpoints transitórios ainda retornando ao briefing.
-- configurações v1 persistentes separadas do save, HUD escalável, redução real de efeitos e remapeamento essencial;
+- configurações v2 persistentes separadas do save, com migração v1, mute, HUD escalável, redução real de efeitos e remapeamento essencial;
 - acessibilidade prioritária com fluxo por teclado, foco modal, nomes completos, anúncios deduplicados, contraste AA e alternativas textuais.
 - diário mínimo orientado a dados com objetivo atual, progresso e três descobertas derivadas do checkpoint v2 sem duplicação.
+- áudio procedural original reativo a eventos públicos, três ambientes, gesto explícito, teto de dez vozes, volumes/mute e fallback acionável.
 
-Gate atual verificado após o P1-E:
+Gate atual verificado após o P1-F:
 
-- testes: 177/177 em 31 arquivos;
-- Playwright: 72/72 casos em Chrome e Edge no gate P1-E;
-- benchmark físico aprovado na UHD 620/médio, 1600×900, WebGL 2: 60,012 FPS médios e p99 de 20,3 ms;
+- testes: 188/188 em 33 arquivos;
+- Playwright: 76/76 casos em Chrome e Edge no gate P1-F;
+- benchmark físico aprovado na UHD 620/médio, 1600×900, WebGL 2: 60,013 FPS médios e p99 de 20,1 ms;
 - nenhum achado CRITICAL/HIGH conhecido;
 - chunk do engine em aproximadamente 510,69 kB gzip.
 
@@ -90,7 +91,7 @@ Execute na ordem abaixo, salvo nova prioridade explícita do usuário:
 3. [x] configurações persistentes e controles essenciais;
 4. [x] acessibilidade prioritária;
 5. [x] diário de objetivos e descobertas;
-6. áudio e feedback final;
+6. [x] áudio e feedback final;
 7. carregamento, manifesto e recuperação de falha de assets;
 8. inventário de licenças e créditos;
 9. decisão medida sobre PWA/cache offline;
@@ -307,7 +308,7 @@ Se o formato do payload mudar, criar schema v3, migração sequencial v2 → v3 
 - schema v2 e migração v1 → v2 permanecem inalterados, pois o checkpoint linear contém o progresso necessário;
 - inspeção 1280×720, 177/177 testes, 72/72 E2E e benchmark UHD 620/médio aprovam o gate; decisão registrada em `DECISION-035`.
 
-## 11. Fatia P1-F — áudio e feedback
+## 11. Fatia P1-F — áudio e feedback — concluída
 
 ### Criar
 
@@ -338,6 +339,14 @@ Não copiar trilha, efeitos, vozes, alertas ou diálogos de Star Trek. Usar áud
 - pausar/perder foco trata áudio de modo previsível;
 - não há crescimento de fontes/vozes;
 - falha ao carregar áudio não impede o jogo e oferece feedback acionável.
+
+### Gate realizado
+
+- roteamento puro e idempotente cobre seleção/scan, feixe, torpedo, trator, impactos, energia/recarga, objetivo, vitória/derrota e viagem;
+- `AudioContext` só é criado por gesto; síntese tonal e ambientes próprios não usam arquivo, biblioteca ou propriedade intelectual externa;
+- dez vozes lógicas formam o teto e são descartadas em conclusão, mute, pausa, perda de foco, troca de ambiente e encerramento;
+- schema de preferências v2 persiste mute e migra v1 com valor seguro sem tocar no save IndexedDB;
+- jogo sem Web Audio, status acionável e alternativas visuais/textuais passam na matriz; detalhes e números estão em `DECISION-036` e `docs/PROGRESS.md`.
 
 ## 12. Fatia P1-G — assets, falhas, licenças e créditos
 
@@ -583,7 +592,7 @@ Os nomes são sugestões; o conteúdo e os gates importam mais que a quantidade 
 - [x] remapeamento essencial funcional;
 - [x] acessibilidade prioritária, teclado completo e anúncios controlados;
 - [x] diário mínimo de objetivos/descobertas implementado;
-- [ ] áudio original/licenciado com volumes, mute e fallback;
+- [x] áudio original/licenciado com volumes, mute e fallback;
 - [ ] falha de asset recuperável;
 - [ ] manifesto/inventário de licenças completo;
 - [ ] decisão PWA/offline registrada e, se aprovada, testada;

@@ -25,21 +25,32 @@ describe('game settings', () => {
     expect(controlBindingLabel('CodeFuturo')).toBe('CodeFuturo');
   });
 
-  it('cria defaults válidos e faz round-trip do schema v1', () => {
+  it('cria defaults válidos e faz round-trip do schema v2', () => {
     const settings = createDefaultGameSettings('medium');
     const envelope = createGameSettingsEnvelope(settings);
 
-    expect(envelope.schemaVersion).toBe(1);
+    expect(envelope.schemaVersion).toBe(2);
     expect(decodeGameSettings(JSON.parse(JSON.stringify(envelope)))).toEqual({
       envelope,
       status: 'ready',
     });
   });
 
+  it('migra o schema v1 para mute desativado sem perder preferências', () => {
+    const current = createDefaultGameSettings('high');
+    const { audioMuted, ...legacy } = current;
+    expect(audioMuted).toBe(false);
+
+    expect(decodeGameSettings({ schemaVersion: 1, settings: legacy })).toEqual({
+      envelope: createGameSettingsEnvelope(current),
+      status: 'migrated',
+    });
+  });
+
   it('rejeita versão futura, valores fora da faixa e opções desconhecidas', () => {
     const settings = createDefaultGameSettings('low');
 
-    expect(decodeGameSettings({ schemaVersion: 2, settings })).toEqual({
+    expect(decodeGameSettings({ schemaVersion: 3, settings })).toEqual({
       reason: 'unsupported-version',
       status: 'invalid',
     });

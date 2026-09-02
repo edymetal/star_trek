@@ -7,7 +7,7 @@ import {
 import type { SettingsRepository } from './settings-repository';
 
 export type SettingsControllerState =
-  'defaulted' | 'error' | 'invalid' | 'loaded' | 'reset' | 'saved';
+  'defaulted' | 'error' | 'invalid' | 'loaded' | 'migrated' | 'reset' | 'saved';
 
 export interface SettingsControllerStatus {
   readonly detail?: string;
@@ -71,6 +71,17 @@ export function createSettingsController(repository: SettingsRepository): Settin
           };
         }
         currentSettings = decoded.envelope.settings;
+        if (decoded.status === 'migrated') {
+          try {
+            repository.save(decoded.envelope);
+          } catch (cause: unknown) {
+            return {
+              settings: currentSettings,
+              status: { detail: describeError(cause), state: 'error' },
+            };
+          }
+          return { settings: currentSettings, status: { state: 'migrated' } };
+        }
         return { settings: currentSettings, status: { state: 'loaded' } };
       } catch (cause: unknown) {
         return {

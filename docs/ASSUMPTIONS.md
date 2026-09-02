@@ -1,6 +1,6 @@
 # Premissas de trabalho
 
-Atualizado em: 1 de setembro de 2026
+Atualizado em: 2 de setembro de 2026
 
 Estas premissas permitem avançar sem interromper o projeto por preferências que ainda podem ser validadas. Quando uma premissa for confirmada ou rejeitada, atualize seu status e, se afetar arquitetura/escopo, registre uma decisão em `docs/DECISIONS.md`.
 
@@ -44,6 +44,7 @@ Estas premissas permitem avançar sem interromper o projeto por preferências qu
 | A-036 | Um envelope pequeno em `localStorage`, separado do IndexedDB da campanha, basta para preferências síncronas do MVP. | Configurações precisam estar disponíveis antes da cena e não justificam migração ou transação junto ao progresso. | Defaults, round-trip, versão futura, valores inválidos, falha de armazenamento e recuperação passaram sem GPU; Chrome/Edge confirmaram reload e checkpoint independente. | Validada no P1-C |
 | A-037 | DOM nativo, foco explícito e regiões `aria-live` deduplicadas bastam para a acessibilidade prioritária do MVP sem biblioteca especializada. | Mantém carregamento baixo e evita outro estado de interface, desde que teclado, semântica, contraste, movimento e layout sejam testados. | 70/70 E2E em Chrome/Edge cobrem fluxo somente por teclado, foco modal, nomes, anúncios sem mutação em repouso, perda de foco e HUD 110%; contraste AA passa nos três presets e a captura 1280×720 foi inspecionada. | Validada no P1-D |
 | A-038 | A ordem linear e os checkpoints seguros da campanha bastam para reconstruir o diário mínimo sem persistir uma coleção separada. | Evita schema v3, duplicação e divergência entre conclusão, descoberta e save; só é válido enquanto o MVP mantiver missões ordenadas sem ramificação. | Projeção pura cobre `0/3`, progresso parcial, `3/3`, repetição idempotente e conteúdo inconsistente; 72/72 E2E confirmam três entradas únicas após reload em Chrome/Edge. | Validada no P1-E |
+| A-039 | Síntese Web Audio tonal e não posicional basta para o feedback do MVP sem arquivos externos. | Elimina download/licença de áudio e mantém custo/vozes mensuráveis; não pretende substituir paisagem sonora autoral futura. | Testes puros cobrem roteamento, teto de dez vozes, descarte, mute e falha; 76/76 E2E confirmam gesto, persistência, pausa e jogo sem Web Audio; benchmark permaneceu acima do gate. | Validada no P1-F |
 
 ## Premissas que exigem evidência no P0
 

@@ -28,6 +28,8 @@ import type {
   ArenaScene,
   EngineTelemetry,
 } from '../engine/create-arena-scene';
+import { createGameAudioAdapter, type GameAudioPreferences } from '../engine/game-audio';
+import { createBrowserGameAudioBackend } from '../engine/web-audio-backend';
 import { createFlightInputController, type FlightInputPreferences } from '../platform/flight-input';
 import { inspectWebGl2Capability } from '../platform/graphics-diagnostics';
 import { createIndexedDbSaveRepository } from '../platform/indexeddb-save-repository';
@@ -62,6 +64,11 @@ import { createDefaultGameSettings, formatControlHints, type GameSettings } from
 import { createSettingsController, type SettingsControllerResult } from './settings-controller';
 import { createSessionMenu, type SessionMenuSnapshot } from './session-menu';
 import { createThrottledPublisher } from './throttled-publisher';
+import {
+  ambienceModeForNavigation,
+  createGameAudioCueRouter,
+  type GameAudioFrame,
+} from './audio-cue-router';
 import { parseStartupOptions } from './startup-options';
 
 const WEBGL_UNAVAILABLE_NOTICE: CompatibilityNotice = {
@@ -114,6 +121,15 @@ function toArenaPresentationPreferences(settings: GameSettings): ArenaPresentati
     particleDensity: settings.particleDensity,
     reduceCameraShake: settings.reduceCameraShake,
     reduceFlashes: settings.reduceFlashes,
+  };
+}
+
+function toGameAudioPreferences(settings: GameSettings): GameAudioPreferences {
+  return {
+    ambienceVolumePercent: settings.ambienceVolumePercent,
+    audioMuted: settings.audioMuted,
+    effectsVolumePercent: settings.effectsVolumePercent,
+    masterVolumePercent: settings.masterVolumePercent,
   };
 }
 
@@ -374,6 +390,12 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
   };
   let currentSettings = settingsInitialization.settings;
   let currentSettingsStatus: SettingsHudTelemetry['status'] = settingsInitialization.status;
+  const gameAudio = createGameAudioAdapter({
+    createBackend: createBrowserGameAudioBackend,
+    initialPreferences: toGameAudioPreferences(currentSettings),
+    maximumEffectVoices: 10,
+    onTelemetry: (telemetry) => shell.setAudioTelemetry(telemetry),
+  });
   const preset = getGraphicsPreset(
     startupOptions.requestedPresetId ?? currentSettings.graphicsPresetId,
   );
@@ -428,6 +450,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       missionId: saveInitialization.payload.mission.missionId,
     });
     const navigationSession = createSystemNavigation(TRAINING_SYSTEM);
+    const audioCueRouter = createGameAudioCueRouter();
     const initialMissionContent = getTutorialMissionContent(missionSession.getSnapshot().missionId);
     encounterSession.setProfile({
       allowedPlayerEquipment: initialMissionContent.allowedEquipment,
@@ -448,6 +471,38 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
         }
       | undefined;
     let presentationEffectSerial = 0;
+    const createAudioFrame = (snapshot = flightSession.getSnapshot()): GameAudioFrame => ({
+      encounter: snapshot.encounter,
+      mission: missionSession.getSnapshot(),
+      navigation: navigationSession.getSnapshot(),
+      reservePercent:
+        (snapshot.energy.state.reserveUnits / PLAYER_ENERGY_DEFINITION.reserveCapacityUnits) * 100,
+      weaponCapacitorPercent:
+        (snapshot.energy.state.weaponCapacitorUnits /
+          PLAYER_ENERGY_DEFINITION.weaponCapacitorCapacityUnits) *
+        100,
+    });
+    audioCueRouter.reset(createAudioFrame());
+    gameAudio.setAmbienceMode(ambienceModeForNavigation(navigationSession.getSnapshot()));
+    const publishAudioFrame = (snapshot = flightSession.getSnapshot()): void => {
+      gameAudio.setAmbienceMode(ambienceModeForNavigation(navigationSession.getSnapshot()));
+      gameAudio.play(audioCueRouter.update(createAudioFrame(snapshot)));
+    };
+    const syncAudioPause = (): void => {
+      const pauseReason = flightSession.getSnapshot().pauseReason;
+      void gameAudio.setPaused(pauseReason === 'focus-lost' || pauseReason === 'manual');
+    };
+    const unlockAudio = (playConfirmation = false): void => {
+      void gameAudio.unlock().then((enabled) => {
+        if (enabled && playConfirmation) {
+          gameAudio.play(['ui-confirm']);
+        } else if (!enabled && playConfirmation) {
+          shell.setControlFeedback(
+            'Áudio indisponível. O jogo continua sem som; confira as permissões do navegador e tente novamente.',
+          );
+        }
+      });
+    };
     const requestPlayerEffect = (equipmentId: PlayerPresentationEquipmentId): void => {
       if (
         menuSession.getSnapshot().isOpen ||
@@ -636,6 +691,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       preferences: toFlightInputPreferences(currentSettings),
       onControlFeedback: (message) => shell.setControlFeedback(message),
       onFocusLost() {
+        void gameAudio.setPaused(true);
         if (menuSession.getSnapshot().isOpen) return;
         if (navigationSession.getSnapshot().mode === 'encounter') {
           flightSession.pause('focus-lost');
@@ -655,6 +711,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
           return;
         }
         flightSession.toggleManualPause();
+        syncAudioPause();
         refreshHud();
       },
       onTacticalAction(action) {
@@ -686,6 +743,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
     const publishSettingsResult = (result: SettingsControllerResult): void => {
       currentSettings = result.settings;
       currentSettingsStatus = result.status;
+      gameAudio.setPreferences(toGameAudioPreferences(currentSettings));
       input.setPreferences(toFlightInputPreferences(currentSettings));
       sceneForSettings.current?.setPresentationPreferences(
         toArenaPresentationPreferences(currentSettings),
@@ -697,6 +755,9 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       });
     };
     const unbindSettingsControls = shell.bindSettingsControls({
+      onEnableAudio() {
+        unlockAudio(true);
+      },
       onChange(settings) {
         if (settingsController === undefined) return;
         publishSettingsResult(settingsController.save(settings));
@@ -718,6 +779,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
           return;
         }
         flightSession.toggleManualPause();
+        syncAudioPause();
         refreshHud();
       },
       onPointerCapture: () => void input.requestPointerCapture(),
@@ -839,6 +901,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
     const enterSession = (feedback: string): void => {
       menuSession.enterSession();
       input.releaseControls();
+      syncAudioPause();
       refreshHud();
       refreshMainMenu();
       shell.setControlFeedback(feedback);
@@ -900,7 +963,10 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
         refreshHud();
         refreshMainMenu();
       },
-      onConfirmNewTraining: () => void startNewTraining(),
+      onConfirmNewTraining() {
+        unlockAudio();
+        void startNewTraining();
+      },
       onContinue() {
         const menu = menuSession.getSnapshot();
         const canContinue =
@@ -909,6 +975,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
           currentSaveTelemetry.state === 'migrated' ||
           currentSaveTelemetry.state === 'saved';
         if (!canContinue) return;
+        unlockAudio();
         enterSession('Checkpoint seguro carregado. A nave permanece atracada na Base Aurora.');
       },
       onNewTraining() {
@@ -917,6 +984,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
         if (requiresConfirmation) {
           shell.setNewTrainingConfirmation(true);
         } else {
+          unlockAudio();
           void startNewTraining();
         }
       },
@@ -993,6 +1061,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       unbindEnergyControls();
       unbindControls();
       input.dispose();
+      void gameAudio.dispose();
     };
     const { createArenaScene } = await import('../engine/create-arena-scene');
     const engineScene = await createArenaScene(
@@ -1089,6 +1158,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
               formatControlHints(mission.objectiveCompleteText, currentSettings.controlBindings),
             );
           }
+          publishAudioFrame(snapshot);
           if (pendingPresentationEffect !== undefined && snapshot.simulationSteps > 0) {
             const { encounter } = snapshot;
             const after: PlayerEffectResultView = {
@@ -1178,6 +1248,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
   } catch (cause: unknown) {
     disposeFailedBootstrap?.();
     disposeFailedBootstrap = undefined;
+    void gameAudio.dispose();
     shell.showBlocked({
       actions: [
         'Recarregue a página depois de fechar outras abas 3D.',

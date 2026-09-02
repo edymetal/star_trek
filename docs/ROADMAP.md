@@ -1,6 +1,6 @@
 # Roadmap de desenvolvimento
 
-Atualizado em: 1 de setembro de 2026
+Atualizado em: 2 de setembro de 2026
 
 O roadmap usa gates objetivos, não datas rígidas. Uma etapa só fecha com evidência de teste e revisão. Cada etapa funcional admite no máximo cinco ciclos `review → implement → test`; problemas remanescentes vão para `docs/KNOWN_ISSUES.md`, mas CRITICAL/HIGH impedem avanço.
 
@@ -177,7 +177,7 @@ Critério de conclusão:
 
 ## Etapa 6 — Primeira fatia vertical P1
 
-**Status:** em desenvolvimento; campanha, persistência, base/mapa/viagem, menu inicial, configurações, acessibilidade prioritária e diário mínimo concluídos; recuperação de asset ainda pendente
+**Status:** em desenvolvimento; campanha, persistência, base/mapa/viagem, menu inicial, configurações, acessibilidade prioritária, diário e áudio concluídos; recuperação de asset ainda pendente
 
 **Objetivo:** implementar uma missão ponta a ponta antes de multiplicar conteúdo.
 
@@ -233,7 +233,7 @@ Quinta subfatia concluída:
 
 Sexta subfatia concluída:
 
-- configurações usam repositório e schema v1 separados do save da campanha;
+- configurações usam repositório próprio separado do save da campanha; o schema v1 desta entrega migra para v2 no P1-F;
 - preset gráfico, HUD, volumes, reduções visuais, mouse e teclas essenciais sobrevivem ao reload;
 - HUD, entrada e VFX seguros mudam imediatamente; preset informa e respeita o próximo carregamento;
 - configuração inválida preserva o registro, ativa padrões seguros e exige restauração/alteração explícita;
@@ -256,6 +256,14 @@ Oitava subfatia concluída:
 - menu e Base Aurora oferecem acesso por teclado, com estados concluído/atual/bloqueado escritos além das bordas coloridas;
 - inspeção 1280×720, 177/177 testes, 72/72 E2E Chrome/Edge e benchmark UHD 620/médio aprovam o gate.
 
+Nona subfatia concluída:
+
+- roteador puro transforma somente transições públicas em sinais de seleção, scan, armas, impacto, energia, objetivo, resultado e viagem;
+- Web Audio é criado apenas por gesto e sintetiza efeitos/ambientes originais sem arquivos externos ou biblioteca adicional;
+- dez vozes lógicas formam o teto; mute, pausa, perda de foco, troca de setor e descarte encerram fontes de modo previsível;
+- preferências v2 persistem mute e migram v1 sem alterar o save IndexedDB;
+- jogo sem Web Audio, mensagens acionáveis e alternativas visuais/textuais passam em Chrome/Edge; benchmark UHD 620/médio permanece aprovado.
+
 Critério de conclusão:
 
 - ciclo completo funciona após reload;
@@ -265,7 +273,7 @@ Critério de conclusão:
 
 ## Etapa 7 — Vertical slice/MVP P1
 
-**Status:** em desenvolvimento; ciclo base–mapa–viagem–missões, variedade de contatos, tutorial, menu inicial, configurações, acessibilidade prioritária e diário mínimo concluídos
+**Status:** em desenvolvimento; ciclo base–mapa–viagem–missões, variedade de contatos, tutorial, menu inicial, configurações, acessibilidade, diário e áudio concluídos
 
 **Objetivo:** completar variedade mínima e qualidade de demonstração.
 
@@ -274,7 +282,7 @@ Entregas:
 - [x] missão de assistência com raio trator e missão de combate;
 - [x] duas variações de contato/IA;
 - [x] tutorial contextual e diário mínimo de objetivo/descoberta concluídos;
-- áudio e feedback refinados;
+- [x] áudio e feedback refinados;
 - [x] configurações persistentes e controles essenciais;
 - [x] acessibilidade prioritária;
 - inventário final de licenças do build;

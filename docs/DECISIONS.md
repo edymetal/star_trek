@@ -1,6 +1,6 @@
 # Registro de decisões
 
-Atualizado em: 1 de setembro de 2026
+Atualizado em: 2 de setembro de 2026
 
 Decisões aceitas só devem ser alteradas por nova entrada que referencie a anterior, apresente evidência e descreva migração. Decisões provisórias têm gate explícito.
 
@@ -318,6 +318,15 @@ Decisões aceitas só devem ser alteradas por nova entrada que referencie a ante
 **Decisão:** `mission-journal.ts` valida a coleção orientada a dados e projeta exatamente uma entrada por ID. Missões anteriores ao checkpoint, e a missão atual quando concluída, expõem sua descoberta; a próxima permanece atual e as demais bloqueadas. Objetivo e instruções usam a telemetria já formatada da missão. ID desconhecido, definição duplicada ou snapshot inconsistente produz estado `unavailable` com mensagem segura. O shell apenas renderiza a projeção idempotente no menu, acessível também pela base.  
 **Motivo:** o checkpoint linear contém toda a informação necessária para `0/3` a `3/3`; derivação elimina duplicação por reload/repetição e mantém domínio, conteúdo, persistência e DOM nas fronteiras existentes.  
 **Consequências:** o schema permanece v2 e a migração v1 → v2 não muda. Campanha ramificada, descoberta opcional independente ou reordenação retroativa exigirá novo modelo/schema antes do P2. O diário completo e catálogo expandido continuam P2; áudio P1-F pode reagir à mudança de conclusão, mas não se torna autoridade do registro.
+
+## DECISION-036 — Áudio procedural reage a transições públicas e só inicia por gesto
+
+**Status:** aceita para a nona subfatia P1 (P1-F)  
+**Problema:** efeitos e ambiente precisavam reforçar seleção, scan, combate, energia e missão sem copiar propriedade intelectual, iniciar contra a política do navegador, criar outra fonte de verdade ou acumular fontes ao pausar e trocar de setor. Mute também precisava sobreviver ao reload, mas o schema v1 de preferências não possuía esse campo.  
+**Opções consideradas:** importar biblioteca e arquivos de áudio externos; acoplar fontes PlayCanvas diretamente aos comandos; rotear transições públicas para um adaptador Web Audio procedural, preguiçoso e limitado.  
+**Decisão:** `audio-cue-router.ts` compara snapshots públicos e emite sinais semânticos idempotentes para seleção/scan, armas, impactos, avisos, objetivo, vitória/derrota e viagem. `game-audio.ts` limita efeitos a dez vozes lógicas, substitui ambiente ao mudar entre base/viagem/encontro e interrompe fontes em mute, pausa, perda de foco e descarte. `web-audio-backend.ts` só cria `AudioContext` dentro de `unlock()` chamado por clique, sintetiza sequências tonais próprias com osciladores e não carrega arquivo, voz ou música. Estado indisponível/erro permanece visível e o jogo segue funcional. `GameSettings` passa ao schema v2 com `audioMuted`; registros v1 migram automaticamente com mute desativado e são regravados sem alterar o save da campanha.  
+**Motivo:** a síntese reduz download, licença e memória, preserva identidade original e permite provar gesto, limite e descarte com adaptadores falsos. Transições públicas mantêm áudio, HUD e VFX alinhados sem reexecutar regra de gameplay.  
+**Consequências:** o áudio do MVP é discreto e não posicional; paisagem autoral gravada e espacialização podem ser avaliadas em P2 somente com licença e orçamento medidos. O inventário P1-G registra que não há arquivos sonoros externos. Mudanças futuras em preferências exigem migração a partir do schema v2. O benchmark continua sem criar contexto de áudio e preservou o gate na UHD 620.
 
 ## Decisões futuras não bloqueantes
 

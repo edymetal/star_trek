@@ -404,6 +404,7 @@ test('persiste configurações separadas do save e aplica HUD e teclas imediatam
   await page.locator('[data-setting="mouseSensitivity"]').fill('1.5');
   await page.locator('[data-setting="mouseSensitivity"]').dispatchEvent('change');
   await page.locator('[data-setting="invertVerticalLook"]').check();
+  await page.locator('[data-setting="audioMuted"]').check();
   await page.locator('[data-setting-binding="select-target"]').selectOption('KeyY');
 
   await expect(settingsStatus).toHaveAttribute('data-settings-status', 'saved');
@@ -435,6 +436,7 @@ test('persiste configurações separadas do save e aplica HUD e teclas imediatam
   await expect(settingsStatus).toHaveAttribute('data-requires-reload', 'false');
   await expect(page.locator('[data-setting="hudScalePercent"]')).toHaveValue('110');
   await expect(page.locator('[data-setting="masterVolumePercent"]')).toHaveValue('55');
+  await expect(page.locator('[data-setting="audioMuted"]')).toBeChecked();
   await expect(page.locator('[data-setting-binding="select-target"]')).toHaveValue('KeyY');
 
   await page.keyboard.press('Escape');
@@ -469,6 +471,79 @@ test('persiste configurações separadas do save e aplica HUD e teclas imediatam
     await page.screenshot({ path: 'docs/screenshots/p1-accessibility-hud-1280x720.png' });
   }
   expect(await countStoredSaveSnapshots(page)).toBeGreaterThan(snapshotsBefore);
+});
+
+test('só inicia Web Audio após gesto explícito e limita sua sessão por mute', async ({ page }) => {
+  await page.addInitScript(() => {
+    const trackedWindow = window as Window & { __audioContextCreations?: number };
+    trackedWindow.__audioContextCreations = 0;
+    const NativeAudioContext = window.AudioContext;
+    if (typeof NativeAudioContext !== 'function') return;
+    class CountingAudioContext extends NativeAudioContext {
+      constructor(options?: AudioContextOptions) {
+        super(options);
+        trackedWindow.__audioContextCreations = (trackedWindow.__audioContextCreations ?? 0) + 1;
+      }
+    }
+    Object.defineProperty(window, 'AudioContext', {
+      configurable: true,
+      value: CountingAudioContext,
+    });
+  });
+  await page.goto('/');
+  const root = page.locator('[data-app-root]');
+  await expect(root).toHaveAttribute('data-app-state', 'ready');
+  await expect(root).toHaveAttribute('data-audio-state', 'locked');
+  expect(
+    await page.evaluate(
+      () => (window as Window & { __audioContextCreations?: number }).__audioContextCreations,
+    ),
+  ).toBe(0);
+
+  await openSettings(page);
+  expect(
+    await page.evaluate(
+      () => (window as Window & { __audioContextCreations?: number }).__audioContextCreations,
+    ),
+  ).toBe(0);
+  await page.locator('[data-audio-enable]').click();
+  await expect(root).toHaveAttribute('data-audio-state', 'ready');
+  expect(
+    await page.evaluate(
+      () => (window as Window & { __audioContextCreations?: number }).__audioContextCreations,
+    ),
+  ).toBe(1);
+  await expect(page.locator('[data-audio-status]')).toHaveText('Áudio ativo.');
+  await expect
+    .poll(async () => Number(await root.getAttribute('data-audio-voices')))
+    .toBeLessThanOrEqual(10);
+
+  await page.locator('[data-setting="audioMuted"]').check();
+  await expect(root).toHaveAttribute('data-audio-state', 'muted');
+  await expect(root).toHaveAttribute('data-audio-voices', '0');
+  await page.reload();
+  await expect(root).toHaveAttribute('data-app-state', 'ready');
+  await openSettings(page);
+  await expect(page.locator('[data-setting="audioMuted"]')).toBeChecked();
+  await page.locator('[data-audio-enable]').click();
+  await expect(root).toHaveAttribute('data-audio-state', 'muted');
+});
+
+test('mantém o jogo utilizável quando Web Audio está indisponível', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'AudioContext', { configurable: true, value: undefined });
+  });
+  await page.goto('/');
+  const root = page.locator('[data-app-root]');
+  await expect(root).toHaveAttribute('data-app-state', 'ready');
+  await openSettings(page);
+  await page.locator('[data-audio-enable]').click();
+  await expect(root).toHaveAttribute('data-audio-state', 'unavailable');
+  await expect(page.locator('[data-audio-status]')).toContainText('jogo continua sem som');
+  await page.keyboard.press('Escape');
+  await dismissMainMenu(page);
+  await expect(page.locator('[data-base-dashboard]')).toBeVisible();
+  await expect(root).toHaveAttribute('data-navigation-state', 'base');
 });
 
 test('preserva o save ao recuperar configuração inválida por ação explícita', async ({ page }) => {
@@ -506,7 +581,7 @@ test('preserva o save ao recuperar configuração inválida por ação explícit
     ({ key }) => JSON.parse(localStorage.getItem(key) ?? 'null') as unknown,
     { key: SETTINGS_STORAGE_KEY },
   );
-  expect(recovered).toMatchObject({ schemaVersion: 1 });
+  expect(recovered).toMatchObject({ schemaVersion: 2 });
   expect(await countStoredSaveSnapshots(page)).toBe(snapshotsBefore);
 });
 
@@ -1144,6 +1219,8 @@ test('feixe, torpedo e raio trator têm resultados e restrições distintos', as
     .toBeLessThan(shieldBefore);
   await page.getByRole('button', { name: /Pausar/ }).click();
   await expect(root).toHaveAttribute('data-simulation-state', 'paused');
+  await expect(root).toHaveAttribute('data-audio-state', 'suspended');
+  await expect(root).toHaveAttribute('data-audio-voices', '0');
   await expect(root).toHaveAttribute('data-shield-impact-target', 'remote');
   await expect(root).not.toHaveAttribute('data-impact-sector', 'none');
   await expect
@@ -1151,6 +1228,7 @@ test('feixe, torpedo e raio trator têm resultados e restrições distintos', as
     .toBeGreaterThanOrEqual(4);
   await page.getByRole('button', { name: /Retomar/ }).click();
   await expect(root).toHaveAttribute('data-simulation-state', 'running');
+  await expect(root).toHaveAttribute('data-audio-state', 'ready');
   await page.getByRole('button', { name: /Torpedo/ }).click();
   await expect(page.locator('[data-combat-feedback]')).toContainText('Torpedo lançado');
   await expect(root).toHaveAttribute('data-torpedo-ammo', '5');
@@ -1184,6 +1262,7 @@ test('feixe, torpedo e raio trator têm resultados e restrições distintos', as
 });
 
 test('conclui o encontro com vitória e reinicia sem recarregar a página', async ({ page }) => {
+  test.setTimeout(60_000);
   await enterCombatMission(page);
   const root = page.locator('[data-app-root]');
   const torpedoButton = page.locator('[data-combat-action="torpedo"]');

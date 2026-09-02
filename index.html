@@ -156,6 +156,10 @@
 
               <fieldset>
                 <legend>Áudio</legend>
+                <label class="settings-form__check">
+                  <input type="checkbox" data-setting="audioMuted" />
+                  Silenciar todo o áudio
+                </label>
                 <label>
                   Volume geral · <output data-setting-output="masterVolumePercent">80%</output>
                   <input
@@ -188,7 +192,12 @@
                   />
                 </label>
                 <p class="settings-form__hint">
-                  Os volumes já são persistidos e serão consumidos pelo áudio original na P1-F.
+                  Tons e ambiente são procedurais e originais. O navegador só libera o áudio após
+                  uma ação explícita.
+                </p>
+                <button type="button" data-audio-enable>Ativar e testar áudio</button>
+                <p class="settings-form__status" data-audio-status role="status" aria-live="polite">
+                  Áudio aguardando interação.
                 </p>
               </fieldset>
 
@@ -276,9 +285,9 @@
             <p class="eyebrow">Créditos e licenças</p>
             <h2>Construção original</h2>
             <p>
-              Código, interface, nomes, formas procedurais e conteúdo do treinamento foram criados
-              para este projeto. Nenhum asset, logo, música ou personagem de Star Trek integra o
-              build.
+              Código, interface, nomes, formas e áudio procedurais, além do conteúdo do treinamento,
+              foram criados para este projeto. Nenhum asset, logo, música ou personagem de Star Trek
+              integra o build.
             </p>
             <dl class="main-menu__facts">
               <div>
@@ -291,7 +300,7 @@
               </div>
               <div>
                 <dt>Assets atuais</dt>
-                <dd>Geometria, materiais e VFX procedurais próprios</dd>
+                <dd>Geometria, materiais, VFX e síntese de áudio procedurais próprios</dd>
               </div>
             </dl>
             <p class="main-menu__note">

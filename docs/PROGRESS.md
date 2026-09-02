@@ -1,9 +1,9 @@
 # Progresso do projeto
 
-Atualizado em: 1 de setembro de 2026  
+Atualizado em: 2 de setembro de 2026  
 Etapa atual: P1 — Vertical slice/MVP  
-Estado do código: P0.5 aprovado; P1-E concluída com diário de objetivos e descobertas validado  
-Próximo responsável: Senior Developer / P1-F — áudio e feedback final
+Estado do código: P0.5 aprovado; P1-F concluída com áudio procedural, fallback e persistência validados  
+Próximo responsável: Senior Developer / P1-G — assets, falhas, licenças e créditos
 
 Handoff detalhado para continuação: `docs/HANDOFF_REMAINING_WORK.md`
 
@@ -103,7 +103,7 @@ Legenda:
 - [x] Configurações persistentes, escala do HUD, redução de efeitos e remapeamento essencial
 - [x] Acessibilidade prioritária, teclado completo, semântica e anúncios controlados
 - [x] Diário mínimo de objetivos e descobertas
-- [ ] Áudio e feedback final
+- [x] Áudio e feedback final
 - [ ] Inventário de licenças
 - [ ] E2E, benchmark e revisão final do MVP
 
@@ -573,7 +573,7 @@ A auditoria encontrou dois problemas funcionais: atalhos remapeados funcionavam,
 - P1-G: fallback de asset, manifesto, inventário formal de licenças e créditos;
 - P1-H: decisão offline/PWA, playtest, balanceamento, instalação limpa e revisão formal final do MVP.
 
-## Último relatório — diário de objetivos e descobertas P1-E
+## Relatório anterior — diário de objetivos e descobertas P1-E
 
 **ETAPA:** P1 — oitava subfatia da Etapa 6  
 **STATUS:** diário mínimo local, idempotente, acessível e persistente por checkpoint concluído
@@ -610,3 +610,34 @@ A revisão não encontrou problema CRITICAL/HIGH. A captura `docs/screenshots/p1
 - P1-F: áudio original/licenciado, volumes, descarte e fallback visual;
 - P1-G: fallback de asset, manifesto, inventário formal de licenças e créditos;
 - P1-H: decisão offline/PWA, playtest, balanceamento, instalação limpa e revisão formal final do MVP.
+
+## Último relatório — áudio e feedback P1-F
+
+**ETAPA:** P1 — nona subfatia da Etapa 6  
+**STATUS:** áudio procedural original, limitado, persistente e recuperável concluído
+
+### Implementado
+
+- roteador puro observa apenas snapshots públicos e emite sinais idempotentes para seleção, scan concluído, feixe, lançamento/impacto de torpedo, trator, escudo/casco, energia/recarga, objetivo, vitória/derrota, partida, viagem e retorno;
+- backend Web Audio preguiçoso cria o contexto somente em gesto explícito e sintetiza sequências próprias com osciladores, sem arquivo, voz, música, biblioteca ou conteúdo de Star Trek;
+- ambientes discretos de base, viagem e encontro são substituídos sem sobreposição; efeitos têm teto rígido de dez vozes lógicas;
+- mute, pausa, perda de foco, mudança de estado e descarte encerram fontes e removem referências; falha ou API ausente mantém o jogo ativo e mostra orientação;
+- volumes geral/efeitos/ambiente alimentam ganhos separados; `audioMuted` persistente elevou preferências ao schema v2 com migração automática e segura do v1;
+- reserva baixa ganhou aviso textual explícito; feedback, HUD, transição, objetivo e resultado continuam alternativas visuais para os sinais importantes.
+
+### Revisão e correções
+
+O áudio permanece adaptador: não altera dano, missão, energia, navegação ou save. O primeiro gate completo revelou somente que o cenário E2E de vitória, já próximo do limite global quando executado em paralelo, terminava as asserções após 30 s nos dois navegadores; a página já havia vencido e reiniciado. O caso longo recebeu limite explícito de 60 s, sem afrouxar nenhuma asserção, e passou novamente. A inspeção da tela de configurações em 1280×720 confirmou controles e status legíveis, sem sobreposição. Nenhum achado CRITICAL/HIGH permanece.
+
+### Verificação
+
+- `npm run verify`: aprovado com 188/188 testes em 33 arquivos, formatação, lint, TypeScript e build;
+- testes sem GPU cobrem transições/deduplicação, limites de energia, teto e descarte de vozes, mute, pausa, backend ausente/falho, schema v2 e migração v1 → v2;
+- Playwright completo: 76/76 casos em Chrome/Edge, sem `skip`; criação zero antes do gesto, ativação, mute/reload, ausência de Web Audio, pausa e jogo completo permanecem cobertos;
+- benchmark físico Chrome 151, UHD 620, WebGL 2, 1600×900/médio: 60,013 FPS médios, p50 16,7 ms, p95 18,8 ms e p99 20,1 ms, com 88 draw calls e 21 VFX;
+- aplicação principal: 38,54 kB gzip; engine permanece em 510,69 kB gzip; nenhum asset externo ou dependência foi adicionado.
+
+### Pendências do P1
+
+- P1-G: manifesto, carregamento/fallback de asset e inventário formal de licenças/créditos;
+- P1-H: decisão offline/PWA, playtest, balanceamento, instalação limpa, matriz/benchmark final e revisão formal do MVP.

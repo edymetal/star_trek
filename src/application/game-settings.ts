@@ -1,6 +1,6 @@
 import type { GraphicsPresetId } from '../content/graphics-presets';
 
-export const GAME_SETTINGS_SCHEMA_VERSION = 1 as const;
+export const GAME_SETTINGS_SCHEMA_VERSION = 2 as const;
 
 export const REMAPPABLE_CONTROL_IDS = [
   'select-target',
@@ -14,6 +14,7 @@ export type RemappableControlId = (typeof REMAPPABLE_CONTROL_IDS)[number];
 export type ParticleDensity = 'full' | 'minimal' | 'reduced';
 
 export interface GameSettings {
+  readonly audioMuted: boolean;
   readonly ambienceVolumePercent: number;
   readonly controlBindings: Readonly<Record<RemappableControlId, string>>;
   readonly effectsVolumePercent: number;
@@ -34,6 +35,7 @@ export interface GameSettingsEnvelope {
 
 export type DecodeGameSettingsResult =
   | { readonly envelope: GameSettingsEnvelope; readonly status: 'ready' }
+  | { readonly envelope: GameSettingsEnvelope; readonly status: 'migrated' }
   | {
       readonly reason: 'invalid-envelope' | 'invalid-settings' | 'unsupported-version';
       readonly status: 'invalid';
@@ -114,7 +116,9 @@ function parseControlBindings(
   return Object.fromEntries(entries) as Readonly<Record<RemappableControlId, string>>;
 }
 
-export function parseGameSettings(value: unknown): GameSettings | undefined {
+type GameSettingsV1 = Omit<GameSettings, 'audioMuted'>;
+
+function parseGameSettingsV1(value: unknown): GameSettingsV1 | undefined {
   if (!isRecord(value)) return undefined;
   const controlBindings = parseControlBindings(value.controlBindings);
   if (
@@ -148,8 +152,17 @@ export function parseGameSettings(value: unknown): GameSettings | undefined {
   };
 }
 
+export function parseGameSettings(value: unknown): GameSettings | undefined {
+  if (!isRecord(value) || typeof value.audioMuted !== 'boolean') return undefined;
+  const legacySettings = parseGameSettingsV1(value);
+  return legacySettings === undefined
+    ? undefined
+    : { ...legacySettings, audioMuted: value.audioMuted };
+}
+
 export function createDefaultGameSettings(graphicsPresetId: GraphicsPresetId): GameSettings {
   return {
+    audioMuted: false,
     ambienceVolumePercent: 65,
     controlBindings: {
       beam: 'Digit1',
@@ -179,6 +192,14 @@ export function createGameSettingsEnvelope(settings: GameSettings): GameSettings
 export function decodeGameSettings(value: unknown): DecodeGameSettingsResult {
   if (!isRecord(value) || typeof value.schemaVersion !== 'number') {
     return { reason: 'invalid-envelope', status: 'invalid' };
+  }
+  if (value.schemaVersion === 1) {
+    const settings = parseGameSettingsV1(value.settings);
+    if (settings === undefined) return { reason: 'invalid-settings', status: 'invalid' };
+    return {
+      envelope: createGameSettingsEnvelope({ ...settings, audioMuted: false }),
+      status: 'migrated',
+    };
   }
   if (value.schemaVersion !== GAME_SETTINGS_SCHEMA_VERSION) {
     return { reason: 'unsupported-version', status: 'invalid' };

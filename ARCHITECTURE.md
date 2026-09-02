@@ -1,7 +1,7 @@
 # Arquitetura do jogo
 
-Status: aceita para P0 e P1-E  
-Versão: 1.3 — 1 de setembro de 2026
+Status: aceita para P0 e P1-F  
+Versão: 1.4 — 2 de setembro de 2026
 
 Este documento define como o produto será construído. Requisitos pertencem a [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md), prioridade a [`docs/MVP.md`](docs/MVP.md), decisões justificadas a [`docs/DECISIONS.md`](docs/DECISIONS.md) e pesquisa/orçamentos detalhados a [`PLANEJAMENTO.md`](PLANEJAMENTO.md).
 
@@ -153,6 +153,8 @@ No P1-C, `src/application/game-settings.ts` valida o envelope v1 e `SettingsCont
 No P1-D, o shell DOM mantém foco dentro do menu e do mapa enquanto são modais, torna superfícies de fundo inertes e transfere foco explicitamente entre base, mapa, viagem e canvas. Um canal visual continua exibindo telemetria, enquanto duas regiões ocultas `aria-live` anunciam somente transições de objetivo, feedback alterado e resultado terminal; chaves estáveis impedem republicação a 8 Hz. Textos tutoriais usam tokens de comando formatados pela aplicação com os bindings validados, de modo que conteúdo, botões e `aria-keyshortcuts` permaneçam sincronizados sem levar entrada para o domínio.
 
 No P1-E, `src/domain/missions/mission-journal.ts` projeta objetivo, progresso e uma entrada única por definição imutável a partir do snapshot autoritativo da campanha. Descobertas concluídas são um prefixo determinado pelo checkpoint sequencial, portanto reload e nova publicação não acumulam registros. O shell renderiza a projeção com `textContent`, estados textuais e chave estrutural idempotente; conteúdo ausente, duplicado ou incompatível retorna mensagem segura em vez de lançar erro na interface.
+
+No P1-F, `audio-cue-router.ts` detecta somente transições de snapshots públicos de encontro, energia, missão e navegação; não decide dano, sucesso ou progresso. O adaptador em `engine/game-audio.ts` cria Web Audio apenas após gesto explícito, sintetiza efeitos e três ambientes originais sem asset externo e mantém no máximo dez vozes lógicas de efeito. Mute, pausa, perda de foco, troca de ambiente e descarte interrompem fontes e removem referências. Falha ou ausência de Web Audio vira telemetria acionável no shell e nunca bloqueia a sessão. `GameSettings` v2 acrescenta `audioMuted`, migrando v1 sequencialmente com `false`, ainda separado do save IndexedDB.
 
 ### `platform`
 

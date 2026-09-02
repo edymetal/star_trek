@@ -539,6 +539,18 @@ h2 {
   border-left-color: var(--hud-warning);
 }
 
+[data-audio-status] {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+[data-audio-status='error'],
+[data-audio-status='unavailable'] {
+  color: var(--hud-warning);
+  background: rgb(255 209 102 / 8%);
+  border-left-color: var(--hud-warning);
+}
+
 .settings-form__actions {
   display: flex;
   gap: var(--space-2);
