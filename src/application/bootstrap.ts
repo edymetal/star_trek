@@ -29,6 +29,7 @@ import type {
   EngineTelemetry,
 } from '../engine/create-arena-scene';
 import { createGameAudioAdapter, type GameAudioPreferences } from '../engine/game-audio';
+import { createBuildAssetController, type BuildAssetSnapshot } from '../engine/build-asset-loader';
 import { createBrowserGameAudioBackend } from '../engine/web-audio-backend';
 import { createFlightInputController, type FlightInputPreferences } from '../platform/flight-input';
 import { inspectWebGl2Capability } from '../platform/graphics-diagnostics';
@@ -36,6 +37,7 @@ import { createIndexedDbSaveRepository } from '../platform/indexeddb-save-reposi
 import { createLocalStorageSettingsRepository } from '../platform/local-storage-settings-repository';
 import type {
   AppShell,
+  AssetHudTelemetry,
   BaseHudTelemetry,
   CombatHudTelemetry,
   CompatibilityNotice,
@@ -325,6 +327,20 @@ function toSaveHudTelemetry(status: SaveControllerStatus): SaveHudTelemetry {
   return { ...(status.detail === undefined ? {} : { detail: status.detail }), state: status.state };
 }
 
+function toAssetHudTelemetry(snapshot: BuildAssetSnapshot): AssetHudTelemetry {
+  const brandMarkUrl = snapshot.assetUrls.get('ui.brand-mark');
+  return {
+    ...(brandMarkUrl === undefined ? {} : { brandMarkUrl }),
+    detail: snapshot.detail,
+    loadedAssetCount: snapshot.loadedAssetCount,
+    loadedBytes: snapshot.loadedBytes,
+    ...(snapshot.manifestVersion === undefined
+      ? {}
+      : { manifestVersion: snapshot.manifestVersion }),
+    state: snapshot.state,
+  };
+}
+
 function createMainMenuHudTelemetry(
   menu: SessionMenuSnapshot,
   save: SaveHudTelemetry,
@@ -361,6 +377,7 @@ function createMainMenuHudTelemetry(
 
 export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene | undefined> {
   let disposeFailedBootstrap: (() => void) | undefined;
+  let disposeBuildAssets: (() => void) | undefined;
   const startupOptions = parseStartupOptions(window.location.search);
   const persistenceEnabled = startupOptions.benchmark === undefined;
   const capability = inspectWebGl2Capability();
@@ -413,6 +430,20 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
   }
 
   try {
+    const buildAssets = createBuildAssetController({
+      baseUrl: document.baseURI,
+      onChange: (snapshot) => shell.setAssetTelemetry(toAssetHudTelemetry(snapshot)),
+    });
+    const unbindAssetControls = shell.bindAssetControls({
+      onRetry() {
+        void buildAssets.load();
+      },
+    });
+    disposeBuildAssets = () => {
+      unbindAssetControls();
+      buildAssets.dispose();
+    };
+    await buildAssets.load();
     const menuSession = createSessionMenu(persistenceEnabled);
     const defaultSavePayload = createGameSavePayload(FIRST_TUTORIAL_MISSION.id, 'briefing');
     const saveController = createSaveController({
@@ -1051,6 +1082,8 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       },
     });
     disposeFailedBootstrap = () => {
+      disposeBuildAssets?.();
+      disposeBuildAssets = undefined;
       unbindSettingsControls();
       unbindMainMenuControls();
       unbindBaseControls();
@@ -1248,6 +1281,8 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
   } catch (cause: unknown) {
     disposeFailedBootstrap?.();
     disposeFailedBootstrap = undefined;
+    disposeBuildAssets?.();
+    disposeBuildAssets = undefined;
     void gameAudio.dispose();
     shell.showBlocked({
       actions: [

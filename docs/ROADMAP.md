@@ -177,7 +177,7 @@ Critério de conclusão:
 
 ## Etapa 6 — Primeira fatia vertical P1
 
-**Status:** em desenvolvimento; campanha, persistência, base/mapa/viagem, menu inicial, configurações, acessibilidade prioritária, diário e áudio concluídos; recuperação de asset ainda pendente
+**Status:** em desenvolvimento; campanha, persistência, base/mapa/viagem, menu inicial, configurações, acessibilidade prioritária, diário, áudio e recuperação de asset concluídos; gate final P1-H pendente
 
 **Objetivo:** implementar uma missão ponta a ponta antes de multiplicar conteúdo.
 
@@ -264,6 +264,15 @@ Nona subfatia concluída:
 - preferências v2 persistem mute e migram v1 sem alterar o save IndexedDB;
 - jogo sem Web Audio, mensagens acionáveis e alternativas visuais/textuais passam em Chrome/Edge; benchmark UHD 620/médio permanece aprovado.
 
+Décima subfatia concluída:
+
+- manifesto v1 registra o emblema original distribuído com ID lógico, caminho, tipo, tamanho, SHA-256, dependências, autoria, origem, licença e data;
+- validações estritas no conteúdo e no build rejeitam schema, caminho, tipo, tamanho, hash, licença, dependência ou arquivo não inventariado inválido;
+- carregamento atômico resolve URLs sob caminho base, só publica recursos após validar todo o lote e revoga URLs ao descartar;
+- falha de manifesto ou asset mantém o jogo disponível com substituto CSS, mensagem visível e tentativa novamente sem reload;
+- créditos e `docs/ASSET_LICENSES.md` inventariam recursos próprios/procedurais, dependências diretas e a restrição `private`/`UNLICENSED`;
+- gate aprovou 198/198 testes, 78/78 E2E Chrome/Edge e benchmark UHD 620/médio de 60,011 FPS médios e p99 de 20,4 ms.
+
 Critério de conclusão:
 
 - ciclo completo funciona após reload;
@@ -273,7 +282,7 @@ Critério de conclusão:
 
 ## Etapa 7 — Vertical slice/MVP P1
 
-**Status:** em desenvolvimento; ciclo base–mapa–viagem–missões, variedade de contatos, tutorial, menu inicial, configurações, acessibilidade, diário e áudio concluídos
+**Status:** em desenvolvimento; ciclo base–mapa–viagem–missões, variedade de contatos, tutorial, menu inicial, configurações, acessibilidade, diário, áudio e assets/licenças concluídos; gate final P1-H pendente
 
 **Objetivo:** completar variedade mínima e qualidade de demonstração.
 
@@ -285,7 +294,7 @@ Entregas:
 - [x] áudio e feedback refinados;
 - [x] configurações persistentes e controles essenciais;
 - [x] acessibilidade prioritária;
-- inventário final de licenças do build;
+- [x] inventário final de licenças do build;
 - testes E2E do ciclo e benchmark de regressão.
 
 Critério de conclusão:

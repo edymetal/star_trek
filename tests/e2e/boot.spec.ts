@@ -93,6 +93,10 @@ async function seedMissionCheckpoint(
   await page.goto('/');
   const root = page.locator('[data-app-root]');
   await expect(root).toHaveAttribute('data-app-state', 'ready');
+  await expect(root).toHaveAttribute('data-asset-state', 'ready');
+  await expect(root).toHaveAttribute('data-asset-count', '1');
+  await expect(root).toHaveAttribute('data-asset-bytes', '1107');
+  await expect(page.locator('[data-brand-mark]')).toBeVisible();
   await expect(root).toHaveAttribute('data-save-state', /created|loaded/);
   const savedAtIso = '2026-08-30T12:00:00.000Z';
   const envelope = createGameSaveEnvelope(createGameSavePayload(missionId, checkpoint), savedAtIso);
@@ -355,6 +359,8 @@ test('abre o menu principal acessível e entra na base preparada', async ({ page
   await page.getByRole('button', { name: /Voltar ao menu/ }).click();
   await page.getByRole('button', { name: 'Créditos e licenças' }).click();
   await expect(menu).toContainText('Nenhum asset, logo, música ou personagem de Star Trek');
+  await expect(menu).toContainText('PlayCanvas Engine 2.21.4 · licença MIT');
+  await expect(menu).toContainText('Manifesto v1: 1 asset, 1107 bytes');
   await page.keyboard.press('Escape');
 
   if (testInfo.project.name === 'Google Chrome') {
@@ -378,6 +384,39 @@ test('abre o menu principal acessível e entra na base preparada', async ({ page
   await expect(root).toHaveAttribute('data-simulation-state', 'paused');
   await expect(page.locator('[data-flight-lod]')).toContainText('Base Aurora');
   await expect(page.locator('[data-combat-panel]')).toBeHidden();
+});
+
+test('mantém fallback visível para asset ausente e recupera sem reiniciar o jogo', async ({
+  page,
+}) => {
+  let manifestUnavailable = true;
+  await page.route('**/assets/asset-manifest.json', async (route) => {
+    if (manifestUnavailable) {
+      await route.fulfill({
+        body: '{"error":"falha simulada"}',
+        contentType: 'application/json',
+        status: 503,
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto('/');
+  const root = page.locator('[data-app-root]');
+  await expect(root).toHaveAttribute('data-app-state', 'ready');
+  await expect(root).toHaveAttribute('data-asset-state', 'fallback');
+  await expect(page.locator('[data-asset-status]')).toContainText('Substituto seguro ativo');
+  await expect(page.locator('[data-asset-status]')).toContainText('HTTP 503');
+  await expect(page.locator('[data-brand-mark]')).toBeHidden();
+  await expect(page.locator('[data-brand-mark-fallback]')).toBeVisible();
+
+  manifestUnavailable = false;
+  await page.locator('[data-asset-retry]').click();
+  await expect(root).toHaveAttribute('data-asset-state', 'ready');
+  await expect(root).toHaveAttribute('data-asset-count', '1');
+  await expect(page.locator('[data-brand-mark]')).toBeVisible();
+  await expect(page.locator('[data-asset-retry]')).toBeHidden();
 });
 
 test('persiste configurações separadas do save e aplica HUD e teclas imediatamente', async ({

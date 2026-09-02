@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "auditedAt": "2026-09-02",
+  "assets": [
+    {
+      "id": "ui.brand-mark",
+      "path": "assets/stellar-command-mark.svg",
+      "type": "image/svg+xml",
+      "sizeBytes": 1107,
+      "sha256": "0abcba8da0cfb4d91507d943eba83aa943e0ba1f0c952f1a2e965fa428971dbf",
+      "dependencies": [],
+      "attribution": {
+        "title": "Emblema do Comando Estelar",
+        "author": "Projeto Comando Estelar",
+        "origin": "Criação original em public/assets/stellar-command-mark.svg",
+        "license": "LicenseRef-Project-Authored",
+        "createdAt": "2026-09-02"
+      }
+    }
+  ]
+}

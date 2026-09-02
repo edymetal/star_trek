@@ -46,12 +46,26 @@
         <div class="main-menu__backdrop" aria-hidden="true"></div>
         <div class="main-menu__panel hud-card">
           <header class="main-menu__header">
-            <div>
-              <p class="eyebrow">Experiência original para navegador</p>
-              <h1 id="main-menu-title">Comando Estelar</h1>
+            <div class="main-menu__brand">
+              <span class="main-menu__brand-mark" aria-hidden="true">
+                <img data-brand-mark alt="" hidden />
+                <span data-brand-mark-fallback>CE</span>
+              </span>
+              <div>
+                <p class="eyebrow">Experiência original para navegador</p>
+                <h1 id="main-menu-title">Comando Estelar</h1>
+              </div>
             </div>
             <span class="main-menu__status-chip" data-main-menu-status-chip>Inicializando</span>
           </header>
+
+          <section class="asset-health" data-asset-status role="status" aria-live="polite">
+            <div>
+              <strong data-asset-status-title>Validando recursos locais</strong>
+              <p data-asset-status-detail>Conferindo o catálogo do build…</p>
+            </div>
+            <button type="button" data-asset-retry hidden>Tentar carregar novamente</button>
+          </section>
 
           <div data-main-menu-view="loading">
             <p class="main-menu__lead">Preparando a Base Aurora e verificando o save local…</p>
@@ -292,20 +306,31 @@
             <dl class="main-menu__facts">
               <div>
                 <dt>Motor</dt>
-                <dd>PlayCanvas Engine</dd>
+                <dd>PlayCanvas Engine 2.21.4 · licença MIT</dd>
               </div>
               <div>
                 <dt>Distribuição</dt>
-                <dd>Jogo estático, gratuito e sem serviço externo em runtime</dd>
+                <dd>Projeto privado e UNLICENSED; publicação ainda não autorizada</dd>
               </div>
               <div>
-                <dt>Assets atuais</dt>
+                <dt>Asset distribuído</dt>
+                <dd>
+                  Emblema vetorial original · LicenseRef-Project-Authored · hash SHA-256 verificado
+                </dd>
+              </div>
+              <div>
+                <dt>Recursos gerados</dt>
                 <dd>Geometria, materiais, VFX e síntese de áudio procedurais próprios</dd>
               </div>
             </dl>
+            <p class="main-menu__note" data-credit-assets-status>
+              Manifesto local aguardando validação. O jogo mantém um símbolo seguro se o asset não
+              puder ser usado.
+            </p>
             <p class="main-menu__note">
-              O inventário final de dependências e licenças será auditado na etapa P1-G antes da
-              publicação.
+              Fontes são do sistema, não há arquivos de áudio externos e as ferramentas de
+              desenvolvimento não integram o build. O inventário completo está em
+              docs/ASSET_LICENSES.md no repositório.
             </p>
             <button type="button" data-main-menu-back>Voltar ao menu (Esc)</button>
           </div>

@@ -36,6 +36,7 @@ export interface CompatibilityNotice {
 export interface AppShell {
   readonly canvas: HTMLCanvasElement;
   readonly fullscreenTarget: HTMLElement;
+  bindAssetControls(handlers: AssetControlHandlers): () => void;
   bindEnergyControls(handlers: EnergyControlHandlers): () => void;
   bindFlightControls(handlers: FlightControlHandlers): () => void;
   bindCombatControls(handlers: CombatControlHandlers): () => void;
@@ -48,6 +49,7 @@ export interface AppShell {
   setBackend(label: string): void;
   setBenchmarkTelemetry(telemetry: BenchmarkHudTelemetry): void;
   setArenaPresentation(presentation: ArenaPresentationDto): void;
+  setAssetTelemetry(telemetry: AssetHudTelemetry): void;
   setAudioTelemetry(telemetry: AudioHudTelemetry): void;
   setControlFeedback(message: string): void;
   setEnergyTelemetry(telemetry: EnergyHudTelemetry): void;
@@ -69,6 +71,10 @@ export interface AppShell {
   showBlocked(notice: CompatibilityNotice): void;
   showReady(readiness: GraphicsReadiness): void;
   showWarning(notice: CompatibilityNotice): void;
+}
+
+export interface AssetControlHandlers {
+  readonly onRetry: () => void;
 }
 
 export interface BenchmarkHudTelemetry {
@@ -231,6 +237,15 @@ export interface SettingsHudTelemetry {
 export interface AudioHudTelemetry {
   readonly activeEffectVoices: number;
   readonly state: 'disposed' | 'error' | 'locked' | 'muted' | 'ready' | 'suspended' | 'unavailable';
+}
+
+export interface AssetHudTelemetry {
+  readonly brandMarkUrl?: string;
+  readonly detail: string;
+  readonly loadedAssetCount: number;
+  readonly loadedBytes: number;
+  readonly manifestVersion?: number;
+  readonly state: 'disposed' | 'fallback' | 'loading' | 'ready';
 }
 
 export interface CombatHudTelemetry {
@@ -405,6 +420,13 @@ export function createAppShell(root: HTMLElement): AppShell {
     ]),
   );
   const mainMenuStatusChip = requireElement<HTMLElement>(mainMenu, '[data-main-menu-status-chip]');
+  const brandMark = requireElement<HTMLImageElement>(mainMenu, '[data-brand-mark]');
+  const brandMarkFallback = requireElement<HTMLElement>(mainMenu, '[data-brand-mark-fallback]');
+  const assetStatus = requireElement<HTMLElement>(mainMenu, '[data-asset-status]');
+  const assetStatusTitle = requireElement<HTMLElement>(mainMenu, '[data-asset-status-title]');
+  const assetStatusDetail = requireElement<HTMLElement>(mainMenu, '[data-asset-status-detail]');
+  const assetRetry = requireElement<HTMLButtonElement>(mainMenu, '[data-asset-retry]');
+  const creditAssetsStatus = requireElement<HTMLElement>(mainMenu, '[data-credit-assets-status]');
   const mainMenuProgress = requireElement<HTMLElement>(mainMenu, '[data-main-menu-progress]');
   const mainMenuSaveDetail = requireElement<HTMLElement>(mainMenu, '[data-main-menu-save-detail]');
   const mainMenuContinue = requireElement<HTMLButtonElement>(mainMenu, '[data-main-menu-continue]');
@@ -807,6 +829,11 @@ export function createAppShell(root: HTMLElement): AppShell {
   return {
     canvas,
     fullscreenTarget: root,
+    bindAssetControls(handlers) {
+      const retryListener = (): void => handlers.onRetry();
+      assetRetry.addEventListener('click', retryListener);
+      return () => assetRetry.removeEventListener('click', retryListener);
+    },
     bindBaseControls(handlers) {
       const prepareListener = (): void => handlers.onPrepareMission();
       const journalListener = (): void => handlers.onOpenJournal();
@@ -1127,6 +1154,36 @@ export function createAppShell(root: HTMLElement): AppShell {
         'transform',
         `rotate(${Math.atan2(deltaY, deltaX).toFixed(5)}rad)`,
       );
+    },
+    setAssetTelemetry(telemetry) {
+      const titles: Readonly<Record<AssetHudTelemetry['state'], string>> = {
+        disposed: 'Recursos encerrados',
+        fallback: 'Substituto seguro ativo',
+        loading: 'Validando recursos locais',
+        ready: 'Assets locais verificados',
+      };
+      setTextIfChanged(assetStatusTitle, titles[telemetry.state]);
+      setTextIfChanged(assetStatusDetail, telemetry.detail);
+      assetStatus.dataset.assetStatus = telemetry.state;
+      setHiddenIfChanged(assetRetry, telemetry.state !== 'fallback');
+      assetRetry.disabled = telemetry.state === 'loading' || telemetry.state === 'disposed';
+      const useBrandAsset = telemetry.state === 'ready' && telemetry.brandMarkUrl !== undefined;
+      if (useBrandAsset) {
+        if (brandMark.src !== telemetry.brandMarkUrl) brandMark.src = telemetry.brandMarkUrl;
+      } else {
+        brandMark.removeAttribute('src');
+      }
+      setHiddenIfChanged(brandMark, !useBrandAsset);
+      setHiddenIfChanged(brandMarkFallback, useBrandAsset);
+      setTextIfChanged(
+        creditAssetsStatus,
+        telemetry.state === 'ready'
+          ? `Manifesto v${telemetry.manifestVersion ?? 1}: ${telemetry.loadedAssetCount} asset, ${telemetry.loadedBytes} bytes, tipo, tamanho e SHA-256 conferidos localmente.`
+          : `${telemetry.detail} Nenhum recurso remoto é solicitado.`,
+      );
+      setAttributeIfChanged(root, 'data-asset-state', telemetry.state);
+      setAttributeIfChanged(root, 'data-asset-count', String(telemetry.loadedAssetCount));
+      setAttributeIfChanged(root, 'data-asset-bytes', String(telemetry.loadedBytes));
     },
     setControlFeedback(message) {
       setTextIfChanged(controlFeedback, message);

@@ -1,7 +1,7 @@
 # Arquitetura do jogo
 
-Status: aceita para P0 e P1-F  
-Versão: 1.4 — 2 de setembro de 2026
+Status: aceita para P0 e P1-G  
+Versão: 1.5 — 2 de setembro de 2026
 
 Este documento define como o produto será construído. Requisitos pertencem a [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md), prioridade a [`docs/MVP.md`](docs/MVP.md), decisões justificadas a [`docs/DECISIONS.md`](docs/DECISIONS.md) e pesquisa/orçamentos detalhados a [`PLANEJAMENTO.md`](PLANEJAMENTO.md).
 
@@ -19,6 +19,7 @@ Entrada ──> Aplicação ──> Domínio/simulação ──> Estado e evento
                       áudio, VFX e telemetria
 
 Dados validados ──> definições de nave, arma, missão e setor
+Manifesto local ──> validação de asset ──> URL temporária ou fallback seguro
 IndexedDB <───────> snapshots versionados da campanha (P1)
 localStorage <────> preferências versionadas separadas (P1-C)
 ```
@@ -156,6 +157,8 @@ No P1-E, `src/domain/missions/mission-journal.ts` projeta objetivo, progresso e 
 
 No P1-F, `audio-cue-router.ts` detecta somente transições de snapshots públicos de encontro, energia, missão e navegação; não decide dano, sucesso ou progresso. O adaptador em `engine/game-audio.ts` cria Web Audio apenas após gesto explícito, sintetiza efeitos e três ambientes originais sem asset externo e mantém no máximo dez vozes lógicas de efeito. Mute, pausa, perda de foco, troca de ambiente e descarte interrompem fontes e removem referências. Falha ou ausência de Web Audio vira telemetria acionável no shell e nunca bloqueia a sessão. `GameSettings` v2 acrescenta `audioMuted`, migrando v1 sequencialmente com `false`, ainda separado do save IndexedDB.
 
+No P1-G, `content/asset-manifest.ts` valida o schema v1, IDs, caminhos locais, tipos, tamanhos, SHA-256, dependências e atribuições antes de o engine aceitar o catálogo. `engine/build-asset-loader.ts` baixa manifesto e recursos sob `document.baseURI`, valida todos os bytes e só então publica URLs temporárias como uma troca atômica; falha mantém o emblema CSS seguro e oferece retry sem interromper save, cena ou sessão. Descarte revoga as URLs. `tools/validate-build-assets.mjs` repete tamanho/hash/registro no build e confere versão/licença das dependências de runtime. O inventário humano fica em `docs/ASSET_LICENSES.md`.
+
 ### `platform`
 
 - entrada de teclado/mouse e futuramente gamepad;
@@ -270,7 +273,7 @@ O progresso P1 usa IndexedDB atrás de `SaveRepository`, sem acesso espalhado pe
 
 Cada gravação cria um snapshot e troca o ponteiro ativo na mesma transação, preservando o registro anterior se a operação falhar. O repositório mantém no máximo três snapshots. A campanha tutorial persiste o ID da missão atual somente em `briefing` e `completed`; estados transitórios, combate e resolução de dano nunca são checkpoints. O contrato v2 já aceita os três IDs sem alterar o formato. Save ilegível, incompatível ou com checksum inválido abre uma sessão segura, preserva o original e bloqueia autosave até recuperação explícita do jogador. Falha simulada de quota mantém o último envelope válido. O modo de benchmark não abre nem altera o save.
 
-Configurações usam um envelope v1 em `localStorage`, atrás de repositório separado do progresso IndexedDB. Novos schemas deverão adicionar migrações sequenciais e seus testes, sem reescrever versões antigas silenciosamente.
+Configurações usam um envelope v2 em `localStorage`, atrás de repositório separado do progresso IndexedDB, com migração sequencial do v1. Novos schemas deverão adicionar migrações e seus testes, sem reescrever versões antigas silenciosamente.
 
 Save do cliente não é proteção antitrapaça e não precisa ser criptografado. Ele não conterá segredo nem dado pessoal.
 
@@ -282,6 +285,8 @@ Save do cliente não é proteção antitrapaça e não precisa ser criptografado
 - asteroides instanciados e efeitos reutilizados por pools limitados;
 - carregamento por arena/setor e descarte explícito de recursos;
 - manifesto registra tamanho, hash, tipo, dependências e licença;
+- o build rejeita arquivo público não registrado, divergência de integridade e licença de runtime incompatível;
+- recursos substituíveis só se tornam visíveis depois da validação completa e mantêm fallback acionável;
 - shaders críticos são aquecidos no carregamento quando isso reduzir stutter mensurável.
 
 Estados de dano combinam máscaras/variantes preparadas, decalques limitados, emissivos, partículas e poucas peças destacáveis. Corte arbitrário de malha não faz parte da arquitetura.

@@ -227,6 +227,34 @@ h2 {
   border-bottom: 1px solid var(--hud-border-soft);
 }
 
+.main-menu__brand {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  min-width: 0;
+}
+
+.main-menu__brand-mark {
+  display: grid;
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  overflow: hidden;
+  color: var(--hud-data);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  background: rgb(116 213 255 / 8%);
+  border: 1px solid rgb(116 213 255 / 46%);
+  border-radius: 9px;
+}
+
+.main-menu__brand-mark img {
+  width: 100%;
+  height: 100%;
+}
+
 .main-menu__header h1 {
   color: var(--hud-text);
   font-size: clamp(26px, 4vw, 38px);
@@ -245,6 +273,44 @@ h2 {
   background: rgb(255 209 102 / 10%);
   border: 1px solid rgb(255 209 102 / 42%);
   border-radius: 999px;
+}
+
+.asset-health {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  margin: calc(var(--space-3) * -1) 0 var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  color: var(--hud-secondary);
+  background: rgb(112 224 162 / 7%);
+  border-left: 3px solid var(--hud-success);
+}
+
+.asset-health strong,
+.asset-health p {
+  display: block;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.asset-health strong {
+  color: var(--hud-success);
+}
+
+.asset-health button {
+  flex: 0 0 auto;
+  font-size: 10px;
+}
+
+.asset-health[data-asset-status='fallback'] {
+  background: rgb(255 209 102 / 8%);
+  border-left-color: var(--hud-warning);
+}
+
+.asset-health[data-asset-status='fallback'] strong {
+  color: var(--hud-warning);
 }
 
 .main-menu__lead {

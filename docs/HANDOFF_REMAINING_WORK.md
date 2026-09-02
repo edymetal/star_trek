@@ -3,7 +3,7 @@
 Atualizado em: 2 de setembro de 2026  
 Branch esperada: `main`  
 Baseline anterior ao P1-A: commit `f9750ee` (`feat: adicionar campanha tutorial de tres missoes`)  
-Marco atual: P1-F concluída; consulte o último relatório em `docs/PROGRESS.md`
+Marco atual: P1-G concluída; consulte o último relatório em `docs/PROGRESS.md`
 
 ## 1. Finalidade deste documento
 
@@ -20,7 +20,7 @@ Ao receber uma solicitação genérica como “continue” ou “finalize o jogo
 
 Use este texto como prompt inicial:
 
-> Continue o projeto a partir de `docs/HANDOFF_REMAINING_WORK.md`. Leia integralmente `AGENTS.md` e todas as fontes canônicas na ordem indicada antes de alterar código. Trabalhe uma fatia vertical por vez, preserve as decisões aceitas, não refaça o P0 nem as fatias P1-A/P1-B/P1-C/P1-D/P1-E/P1-F concluídas e não adicione conteúdo de Star Trek. Implemente primeiro o P1-G e depois os itens P1 obrigatórios na ordem do handoff. Para cada fatia, crie testes sem GPU para regras, E2E em Chrome/Edge para fluxos visuais, execute `npm run verify` e os testes E2E relevantes, atualize a documentação e faça commit/push somente quando o gate estiver verde. Não publique nem faça deploy sem autorização explícita.
+> Continue o projeto a partir de `docs/HANDOFF_REMAINING_WORK.md`. Leia integralmente `AGENTS.md` e todas as fontes canônicas na ordem indicada antes de alterar código. Trabalhe uma fatia vertical por vez, preserve as decisões aceitas, não refaça o P0 nem as fatias P1-A/P1-B/P1-C/P1-D/P1-E/P1-F/P1-G concluídas e não adicione conteúdo de Star Trek. Implemente primeiro o P1-H e depois encerre apenas os itens P1 obrigatórios na ordem do handoff. Para cada fatia, crie testes sem GPU para regras, E2E em Chrome/Edge para fluxos visuais, execute `npm run verify` e os testes E2E relevantes, atualize a documentação e faça commit/push somente quando o gate estiver verde. Não publique nem faça deploy sem autorização explícita.
 
 ## 3. Fontes de verdade e ordem de leitura
 
@@ -71,14 +71,17 @@ O P0 está aprovado e não deve ser reimplementado:
 - acessibilidade prioritária com fluxo por teclado, foco modal, nomes completos, anúncios deduplicados, contraste AA e alternativas textuais.
 - diário mínimo orientado a dados com objetivo atual, progresso e três descobertas derivadas do checkpoint v2 sem duplicação.
 - áudio procedural original reativo a eventos públicos, três ambientes, gesto explícito, teto de dez vozes, volumes/mute e fallback acionável.
+- manifesto v1 e emblema SVG original com validação de schema, caminho, tipo, tamanho, SHA-256, dependências e atribuição;
+- carregamento atômico de assets sob caminho base, fallback CSS, status acionável, retry sem reload e descarte de URLs de objeto;
+- inventário legível de assets/licenças e créditos no jogo, com validação automática integrada ao build.
 
-Gate atual verificado após o P1-F:
+Gate atual verificado após o P1-G:
 
-- testes: 188/188 em 33 arquivos;
-- Playwright: 76/76 casos em Chrome e Edge no gate P1-F;
-- benchmark físico aprovado na UHD 620/médio, 1600×900, WebGL 2: 60,013 FPS médios e p99 de 20,1 ms;
+- testes: 198/198 em 35 arquivos;
+- Playwright: 78/78 casos em Chrome e Edge no gate P1-G;
+- benchmark físico aprovado na UHD 620/médio, 1600×900, WebGL 2: 60,011 FPS médios e p99 de 20,4 ms;
 - nenhum achado CRITICAL/HIGH conhecido;
-- chunk do engine em aproximadamente 510,69 kB gzip.
+- aplicação principal em 41,46 kB gzip e chunk do engine em aproximadamente 510,69 kB gzip.
 
 Os totais de testes podem crescer. Eles são uma referência, não um motivo para remover ou esconder novos testes.
 
@@ -92,8 +95,8 @@ Execute na ordem abaixo, salvo nova prioridade explícita do usuário:
 4. [x] acessibilidade prioritária;
 5. [x] diário de objetivos e descobertas;
 6. [x] áudio e feedback final;
-7. carregamento, manifesto e recuperação de falha de assets;
-8. inventário de licenças e créditos;
+7. [x] carregamento, manifesto e recuperação de falha de assets;
+8. [x] inventário de licenças e créditos;
 9. decisão medida sobre PWA/cache offline;
 10. balanceamento, benchmark de regressão, matriz E2E e revisão formal do MVP;
 11. preparação para publicação, somente após autorização explícita.
@@ -348,20 +351,20 @@ Não copiar trilha, efeitos, vozes, alertas ou diálogos de Star Trek. Usar áud
 - schema de preferências v2 persiste mute e migra v1 com valor seguro sem tocar no save IndexedDB;
 - jogo sem Web Audio, status acionável e alternativas visuais/textuais passam na matriz; detalhes e números estão em `DECISION-036` e `docs/PROGRESS.md`.
 
-## 12. Fatia P1-G — assets, falhas, licenças e créditos
+## 12. Fatia P1-G — assets, falhas, licenças e créditos — concluída
 
-### Estado atual
+### Situação resolvida
 
-Os visuais são principalmente primitivas e materiais procedurais. Ainda não existe `public/assets/`, manifesto final nem pipeline necessário para assets reais. Não criar essas estruturas até existir um asset distribuído de fato.
+Os visuais 3D continuam principalmente primitivos e procedurais. O P1-G adicionou o primeiro asset distribuído real: um emblema SVG original, registrado em manifesto v1 e usado no menu. O build agora valida todo arquivo em `public/assets/`; a aplicação carrega o lote de forma atômica e oferece substituto seguro e retry quando a entrega está ausente ou adulterada.
 
-### Criar quando houver assets reais
+### Entregue
 
 - catálogo/manifesto com ID lógico, caminho, tipo, tamanho, hash, dependências, autor, origem, licença e data;
 - carregamento transacional dos assets essenciais;
 - fallback visível para asset ausente, inválido ou incompatível;
 - opção de tentar novamente ou continuar com substituto seguro quando possível;
 - descarregamento de recursos do setor anterior;
-- validação de glTF/GLB e orçamento antes de incluir no build;
+- suporte atual restrito ao SVG validado; glTF/GLB só pode ser habilitado após acrescentar validação estrutural e orçamento próprio;
 - créditos acessíveis dentro do jogo;
 - inventário humano legível, por exemplo `docs/ASSET_LICENSES.md`.
 
@@ -379,6 +382,15 @@ Os visuais são principalmente primitivas e materiais procedurais. Ainda não ex
 - URLs funcionam sob caminho base/subdiretório;
 - build inicial permanece abaixo do orçamento de 60 MB compactados;
 - memória, draw calls e tempo de carga não rompem o benchmark.
+
+### Gate realizado
+
+- manifesto e schema rejeitam campos extras, IDs/caminhos inválidos, tipo/tamanho/hash divergentes, dependências ausentes/cíclicas e orçamento acima de 60 MB;
+- `npm run assets:check` é executado automaticamente pelo build e também reprova arquivos não inventariados;
+- carregador resolve URLs por `document.baseURI`, só expõe o lote depois da validação completa e revoga URLs de objeto no descarte;
+- fallback CSS, mensagem acessível e nova tentativa sem reload passam na matriz Chrome/Edge enquanto o restante do jogo continua funcional;
+- créditos e `docs/ASSET_LICENSES.md` registram autoria/licenças do build, recursos procedurais, dependências e o estado `private`/`UNLICENSED`;
+- 198/198 testes, 78/78 E2E e benchmark UHD 620/médio com 60,011 FPS médios e p99 de 20,4 ms aprovam a fatia; detalhes estão em `DECISION-037` e `docs/PROGRESS.md`.
 
 ## 13. Fatia P1-H — offline, balanceamento e gate final
 
@@ -563,12 +575,14 @@ Os nomes são sugestões; o conteúdo e os gates importam mais que a quantidade 
 - `src/application/encounter-session.ts`: sensores, equipamento, IA, dano e perfis passivo/hostil;
 - `src/application/game-save.ts`: envelope e migração do save;
 - `src/application/save-controller.ts`: inicialização, gravação e recuperação;
-- `src/application/game-settings.ts`: envelope v1 e validação estrita das preferências;
+- `src/application/game-settings.ts`: envelope v2, migração v1 e validação estrita das preferências;
 - `src/application/settings-controller.ts`: defaults, carga, gravação e restauração de configuração;
 - `src/content/mission-content.ts`: as três missões e textos tutoriais;
+- `src/content/asset-manifest.ts`: schema, validação e orçamento do manifesto de assets;
 - `src/domain/missions/tutorial-campaign.ts`: ordem e fases da campanha;
 - `src/domain/flight/`, `energy/` e `combat/`: regras puras já testadas;
 - `src/engine/create-arena-scene.ts`: cena PlayCanvas, materiais, corpos, naves, dano, VFX, LOD e benchmark;
+- `src/engine/build-asset-loader.ts`: carregamento atômico, integridade, URLs sob caminho base e descarte de assets;
 - `src/platform/indexeddb-save-repository.ts`: persistência do progresso;
 - `src/platform/local-storage-settings-repository.ts`: persistência separada das preferências;
 - `src/platform/flight-input.ts`: teclado, mouse, foco e tela cheia;
@@ -576,6 +590,8 @@ Os nomes são sugestões; o conteúdo e os gates importam mais que a quantidade 
 - `src/styles/global.css`: layout e tema;
 - `tests/e2e/boot.spec.ts`: matriz funcional e visual Chrome/Edge;
 - `tests/performance/benchmark.spec.ts`: medição física configurável;
+- `public/assets/asset-manifest.json`: inventário legível pela aplicação e validado no build;
+- `docs/ASSET_LICENSES.md`: inventário humano de assets, recursos procedurais e dependências;
 - `docs/BENCHMARK_P0_5.md`: baseline de desempenho;
 - `ABRIR_JOGO.bat`: execução local para o usuário.
 
@@ -593,8 +609,8 @@ Os nomes são sugestões; o conteúdo e os gates importam mais que a quantidade 
 - [x] acessibilidade prioritária, teclado completo e anúncios controlados;
 - [x] diário mínimo de objetivos/descobertas implementado;
 - [x] áudio original/licenciado com volumes, mute e fallback;
-- [ ] falha de asset recuperável;
-- [ ] manifesto/inventário de licenças completo;
+- [x] falha de asset recuperável;
+- [x] manifesto/inventário de licenças completo;
 - [ ] decisão PWA/offline registrada e, se aprovada, testada;
 - [ ] playtest e balanceamento das três missões concluídos;
 - [ ] instalação limpa aprovada;

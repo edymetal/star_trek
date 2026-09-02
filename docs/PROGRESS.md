@@ -2,8 +2,8 @@
 
 Atualizado em: 2 de setembro de 2026  
 Etapa atual: P1 — Vertical slice/MVP  
-Estado do código: P0.5 aprovado; P1-F concluída com áudio procedural, fallback e persistência validados  
-Próximo responsável: Senior Developer / P1-G — assets, falhas, licenças e créditos
+Estado do código: P0.5 aprovado; P1-G concluída com manifesto, carregamento/fallback de asset, licenças e créditos validados  
+Próximo responsável: Senior Developer / P1-H — offline, balanceamento e gate final do MVP
 
 Handoff detalhado para continuação: `docs/HANDOFF_REMAINING_WORK.md`
 
@@ -104,7 +104,7 @@ Legenda:
 - [x] Acessibilidade prioritária, teclado completo, semântica e anúncios controlados
 - [x] Diário mínimo de objetivos e descobertas
 - [x] Áudio e feedback final
-- [ ] Inventário de licenças
+- [x] Inventário de licenças
 - [ ] E2E, benchmark e revisão final do MVP
 
 ## P2/P3
@@ -611,7 +611,7 @@ A revisão não encontrou problema CRITICAL/HIGH. A captura `docs/screenshots/p1
 - P1-G: fallback de asset, manifesto, inventário formal de licenças e créditos;
 - P1-H: decisão offline/PWA, playtest, balanceamento, instalação limpa e revisão formal final do MVP.
 
-## Último relatório — áudio e feedback P1-F
+## Relatório anterior — áudio e feedback P1-F
 
 **ETAPA:** P1 — nona subfatia da Etapa 6  
 **STATUS:** áudio procedural original, limitado, persistente e recuperável concluído
@@ -641,3 +641,33 @@ O áudio permanece adaptador: não altera dano, missão, energia, navegação ou
 
 - P1-G: manifesto, carregamento/fallback de asset e inventário formal de licenças/créditos;
 - P1-H: decisão offline/PWA, playtest, balanceamento, instalação limpa, matriz/benchmark final e revisão formal do MVP.
+
+## Último relatório — assets, falhas, licenças e créditos P1-G
+
+**ETAPA:** P1 — décima subfatia da Etapa 6  
+**STATUS:** manifesto, carregamento resiliente, inventário e créditos concluídos
+
+### Implementado
+
+- `public/assets/asset-manifest.json` registra o primeiro asset real do build, um emblema SVG original do Comando Estelar, com ID lógico, caminho relativo, tipo, tamanho, SHA-256, dependências, autoria, origem, licença e data;
+- schema TypeScript estrito valida campos exatos, versão, IDs, caminhos seguros, tipos permitidos, tamanho, hash, datas, dependências existentes/sem ciclo e orçamento total de 60 MB;
+- carregador atômico resolve manifesto e arquivos por `document.baseURI`, valida HTTP, MIME, bytes e SHA-256 antes de publicar URLs de objeto, deduplica cargas concorrentes e revoga recursos no descarte;
+- falha de manifesto/asset não bloqueia cena, save ou menus: o emblema usa substituto CSS, o status explica a falha e a interface oferece nova tentativa sem recarregar a página;
+- `npm run assets:check`, integrado ao build, reprova asset ausente, extra, adulterado, incompatível ou sem atribuição e verifica licença compatível da dependência direta de runtime;
+- créditos acessíveis e `docs/ASSET_LICENSES.md` inventariam o SVG próprio, recursos procedurais, PlayCanvas e dependências diretas, deixando explícito que o projeto continua `private` e `UNLICENSED` e não contém conteúdo de Star Trek.
+
+### Revisão e correções
+
+O manifesto permanece uma fronteira de conteúdo e o carregador, um adaptador de engine; domínio e save não ganharam dependência de DOM, rede ou PlayCanvas. A carga é transacional: nenhuma URL parcial fica disponível quando um item falha. Caminhos absolutos, travessia, tipo divergente, tamanho/hash adulterados e ciclos são rejeitados. A inspeção real do menu em 1280×720 confirmou emblema, fallback textual, status e créditos legíveis, sem sobreposição. Os nove screenshots E2E foram regenerados com o build aprovado. Nenhum achado CRITICAL/HIGH permanece; os avisos conhecidos de workers externalizados e chunk do engine continuam não bloqueantes.
+
+### Verificação
+
+- `npm run verify`: aprovado com 198/198 testes em 35 arquivos, formatação, lint, TypeScript, validação de assets e build;
+- testes focados: 10/10 cobrem schema, dependências, adulteração, lote atômico, deduplicação, descarte, retry e resolução sob caminho base;
+- Playwright completo: 78/78 casos em Chrome/Edge, sem `skip`; o novo fluxo simula manifesto indisponível, confirma jogo operacional/fallback e recupera o asset sem reload;
+- benchmark físico Chrome 151, UHD Graphics 620, WebGL 2, 1600×900/médio: 60,011 FPS médios, p50 16,6 ms, p95 18,3 ms e p99 20,4 ms, com 88 draw calls e 21 VFX;
+- build distribuído: 1 asset de 1.107 bytes verificado; total descompactado de 2.187.154 bytes; aplicação principal 41,46 kB gzip e engine 510,69 kB gzip.
+
+### Pendências do P1
+
+- P1-H: registrar decisão offline/PWA, executar playtest e balanceamento, validar instalação limpa, repetir matriz/benchmark final e realizar a revisão formal do MVP.

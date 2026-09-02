@@ -1,6 +1,6 @@
 # Comando Estelar — protótipo técnico
 
-Protótipo de um jogo 3D original de exploração espacial executado no navegador. O **P0 está aprovado**: arena, voo, energia, sensores, três equipamentos, escudos direcionais, dano, IA, HUD nas bordas, naves procedurais, VFX em pool e benchmark escalável. O **P1 está em desenvolvimento** e já contém campanha tutorial de três missões, save local versionado, base/mapa/viagem, configurações, acessibilidade prioritária, diário de objetivos/descobertas persistente por checkpoint e áudio procedural com fallback.
+Protótipo de um jogo 3D original de exploração espacial executado no navegador. O **P0 está aprovado**: arena, voo, energia, sensores, três equipamentos, escudos direcionais, dano, IA, HUD nas bordas, naves procedurais, VFX em pool e benchmark escalável. O **P1 está em desenvolvimento** e já contém campanha tutorial de três missões, save local versionado, base/mapa/viagem, configurações, acessibilidade prioritária, diário, áudio procedural e assets locais validados com fallback e inventário de licenças.
 
 ## Requisitos
 
@@ -37,6 +37,7 @@ Se uma rede corporativa interceptar TLS, configure o Node para confiar no reposi
 | Testes unitários em execução única | `npm run test:run`       |
 | E2E no Chrome e Edge instalados    | `npm run test:e2e`       |
 | Benchmark físico em Chrome         | `npm run test:benchmark` |
+| Validar manifesto/assets           | `npm run assets:check`   |
 | Lint                               | `npm run lint`           |
 | Formatação                         | `npm run format`         |
 | Verificar formatação               | `npm run format:check`   |
@@ -73,6 +74,8 @@ O HUD mostra a instrução atual e libera equipamentos gradualmente. Ao retornar
 
 O áudio usa síntese procedural original e só é liberado após o primeiro clique para entrar na sessão ou pelo botão **Ativar e testar áudio** em Configurações. Volume geral, efeitos, ambiente e mute são persistentes. Pausa e perda de foco suspendem o som; se Web Audio estiver indisponível, todas as informações essenciais continuam visíveis e o jogo permanece utilizável.
 
+O emblema vetorial original é carregado pelo manifesto local depois da conferência de caminho, tipo, tamanho e SHA-256. Se o manifesto ou o arquivo falhar, o menu mostra um símbolo CSS seguro e oferece **Tentar carregar novamente** sem bloquear a cena. A autoria, a licença MIT do PlayCanvas e os recursos próprios estão detalhados em [`docs/ASSET_LICENSES.md`](docs/ASSET_LICENSES.md).
+
 ## Controles de energia
 
 Use os botões **Equilibrado**, **Ataque**, **Defesa** e **Fuga** para aplicar presets completos. Os botões `−` e `+` de cada canal ajustam motores, escudos, armas ou auxiliares/sensores em cinco pontos; os demais canais são redistribuídos automaticamente para conservar o total de 100. Todos os controles são botões nativos e funcionam por teclado.
@@ -103,9 +106,10 @@ Se aparecer renderização por software ou a GPU integrada:
 ## Estrutura atual
 
 - `src/application`: composição do boot, sessão e loop de passo fixo;
-- `src/content`: definições imutáveis de presets, arena, nave e energia;
+- `public/assets`: manifesto e arquivos distribuídos com autoria, licença e integridade;
+- `src/content`: definições imutáveis e validação do catálogo de assets;
 - `src/domain`: prontidão gráfica e regras puras de voo, energia, sensores, armas, dano, linha de visão e IA, sem DOM/GPU;
-- `src/engine`: adaptação PlayCanvas, arena, câmera, instancing e LOD;
+- `src/engine`: adaptação PlayCanvas, arena, câmera, instancing, LOD e carregamento transacional de assets;
 - `src/platform`: diagnóstico, medição local, IndexedDB e entrada segura de teclado/mouse;
 - `src/ui`: shell e HUD DOM acessíveis;
 - `tests/e2e`: boot, recuperação, controle, pausa e foco em Chrome/Edge.
@@ -120,6 +124,8 @@ npm run preview
 ```
 
 O conteúdo de `dist/` é totalmente estático e usa caminhos relativos, permanecendo compatível com hospedagem futura em subdiretório. Publicação e deploy não fazem parte desta etapa.
+
+O build executa `npm run assets:check` automaticamente. Arquivo em `public/assets/` sem registro, hash/tamanho divergente ou dependência de runtime com versão/licença inesperada interrompe o build antes da geração de `dist/`.
 
 ## Continuação do desenvolvimento
 
