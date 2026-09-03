@@ -737,6 +737,20 @@ A primeira matriz completa encontrou um caso no Chrome em que `Esc` não liberou
 - os avisos conhecidos de workers externalizados e tamanho do chunk PlayCanvas permanecem
   não bloqueantes. Nenhum achado CRITICAL/HIGH foi introduzido.
 
+### Correção subsequente — teclado após retomada pelo botão
+
+O feedback de uso real revelou que clicar em **Retomar** recapturava o mouse, mas mantinha o foco
+DOM no botão. Como o adaptador de entrada protege elementos interativos contra atalhos de voo,
+`W/A/S/D` eram ignorados até o canvas receber foco novamente. Toda solicitação de captura agora
+foca o canvas antes de pedir pointer lock, cobrindo retomada, entrada no voo e reinício sem remover
+a proteção dos menus.
+
+- `npm run verify`: 200/200 testes em 35 arquivos e todos os gates locais aprovados;
+- Playwright focado: 2/2 em Chrome/Edge, validando foco no canvas e movimento real com `W`
+  imediatamente após clicar em **Retomar**;
+- build offline: seis arquivos e 2.187.404 bytes; aplicação principal 41,55 kB gzip e engine
+  510,69 kB gzip.
+
 ### Pendência para aprovar o MVP
 
 - o playtest humano iniciante e a revisão formal continuam obrigatórios; esta correção não altera

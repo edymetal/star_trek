@@ -273,6 +273,7 @@ export function createFlightInputController(
       releasePointer();
     },
     async requestPointerCapture() {
+      options.canvas.focus();
       if (document.pointerLockElement === options.canvas) {
         return true;
       }

@@ -234,7 +234,6 @@ async function resumeFlightFromUi(page: Page): Promise<void> {
   await page.getByRole('button', { name: /Retomar/ }).click();
   await expect(root).toHaveAttribute('data-simulation-state', 'running');
   await expect(root).toHaveAttribute('data-pointer-state', 'captured');
-  await page.locator('#game-canvas').focus();
 }
 
 async function tabTo(page: Page, selector: string, maximumTabs = 30): Promise<void> {
@@ -1650,6 +1649,19 @@ test('pausa e retoma sem mover a nave durante a pausa', async ({ page }) => {
   await page.keyboard.press('Escape');
   await expect(root).toHaveAttribute('data-simulation-state', 'running');
   await expect(root).toHaveAttribute('data-pointer-state', 'captured');
+
+  await page.keyboard.press('KeyP');
+  await expect(root).toHaveAttribute('data-simulation-state', 'paused');
+  const beforeButtonResumeZ = Number(await root.getAttribute('data-ship-z'));
+  await page.getByRole('button', { name: /Retomar/ }).click();
+  await expect(root).toHaveAttribute('data-simulation-state', 'running');
+  await expect(root).toHaveAttribute('data-pointer-state', 'captured');
+  await expect(page.locator('#game-canvas')).toBeFocused();
+  await page.keyboard.down('KeyW');
+  await expect
+    .poll(async () => Number(await root.getAttribute('data-ship-z')))
+    .not.toBe(beforeButtonResumeZ);
+  await page.keyboard.up('KeyW');
 });
 
 test('A guina para a esquerda e D guina para a direita', async ({ page }) => {
