@@ -22,8 +22,9 @@
       ></canvas>
       <p class="visually-hidden" id="flight-keyboard-help">
         Use W e S para acelerar ou recuar, A e D para guinar, setas para inclinar, Q e E para rolar,
-        Shift para impulso, Espaço para frear e P para pausar. Os comandos táticos ativos aparecem
-        nos botões e podem ser remapeados nas configurações.
+        Shift para impulso, Espaço para frear e Esc ou P para pausar. Ao retomar, o mouse é
+        recapturado. Os comandos táticos ativos aparecem nos botões e podem ser remapeados nas
+        configurações.
       </p>
       <div class="visually-hidden" data-live-announcements>
         <p
@@ -502,7 +503,9 @@
             >Iniciando…</span
           >
           <div class="flight-actions">
-            <button type="button" data-flight-pause aria-keyshortcuts="P">Pausar (P)</button>
+            <button type="button" data-flight-pause aria-keyshortcuts="Escape P">
+              Pausar (Esc/P)
+            </button>
             <button type="button" data-flight-capture>Capturar mouse</button>
             <button type="button" data-flight-fullscreen aria-keyshortcuts="F">
               Tela cheia (F)
@@ -602,8 +605,8 @@
               </div>
             </dl>
             <p>
-              W/S acelera; A/D guina; setas inclinam; Q/E rola; Shift dá impulso; Espaço freia; Esc
-              libera o mouse.
+              W/S acelera; A/D e setas esquerda/direita guinam; setas cima/baixo inclinam; Q/E rola;
+              Shift dá impulso; Espaço freia; Esc/P pausam ou retomam.
             </p>
           </details>
         </section>

@@ -716,6 +716,23 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       const operation = recover ? saveController.recover(payload) : saveController.save(payload);
       void operation.then(publishSaveStatus);
     };
+    function toggleManualPause(): void {
+      if (menuSession.getSnapshot().isOpen) return;
+      if (navigationSession.getSnapshot().mode !== 'encounter') {
+        shell.setControlFeedback(
+          'Pausa manual e controles de voo só ficam disponíveis dentro da bolha tática.',
+        );
+        return;
+      }
+      flightSession.toggleManualPause();
+      if (flightSession.getSnapshot().paused) {
+        input.releaseControls();
+      } else {
+        void input.requestPointerCapture();
+      }
+      syncAudioPause();
+      refreshHud();
+    }
     const input = createFlightInputController({
       canvas: shell.canvas,
       fullscreenTarget: shell.fullscreenTarget,
@@ -734,14 +751,17 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
         shell.setControlFeedback(active ? 'Tela cheia ativada.' : 'Tela cheia desativada.');
       },
       onPauseToggle() {
-        if (menuSession.getSnapshot().isOpen) return;
-        if (navigationSession.getSnapshot().mode !== 'encounter') {
-          shell.setControlFeedback(
-            'Pausa manual e controles de voo só ficam disponíveis dentro da bolha tática.',
-          );
+        toggleManualPause();
+      },
+      onPointerCaptureLost() {
+        if (
+          menuSession.getSnapshot().isOpen ||
+          navigationSession.getSnapshot().mode !== 'encounter' ||
+          flightSession.getSnapshot().paused
+        ) {
           return;
         }
-        flightSession.toggleManualPause();
+        flightSession.pause('manual');
         syncAudioPause();
         refreshHud();
       },
@@ -766,7 +786,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
       onPointerCaptureChange(active) {
         shell.setPointerCaptured(active);
         shell.setControlFeedback(
-          active ? 'Mouse capturado. Pressione Esc para liberar.' : 'Mouse liberado.',
+          active ? 'Mouse capturado. Pressione Esc ou P para pausar.' : 'Mouse liberado.',
         );
       },
     });
@@ -801,17 +821,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
     const unbindControls = shell.bindFlightControls({
       onFullscreen: () => void input.toggleFullscreen(),
       onPause() {
-        input.releaseControls();
-        if (menuSession.getSnapshot().isOpen) return;
-        if (navigationSession.getSnapshot().mode !== 'encounter') {
-          shell.setControlFeedback(
-            'Pausa manual e controles de voo só ficam disponíveis dentro da bolha tática.',
-          );
-          return;
-        }
-        flightSession.toggleManualPause();
-        syncAudioPause();
-        refreshHud();
+        toggleManualPause();
       },
       onPointerCapture: () => void input.requestPointerCapture(),
     });
@@ -846,6 +856,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
         flightSession.restartEncounter();
         presentationEffectRetainer.clear();
         pendingPresentationEffect = undefined;
+        void input.requestPointerCapture();
         refreshHud();
       },
       onSelectTarget: () => {
@@ -923,6 +934,7 @@ export async function bootstrapApplication(shell: AppShell): Promise<ArenaScene 
         disposition: mission.encounterMode,
       });
       input.releaseControls();
+      void input.requestPointerCapture();
       flightSession.restartEncounter();
       flightSession.pause('mission-transition');
       resetPresentationEffects();

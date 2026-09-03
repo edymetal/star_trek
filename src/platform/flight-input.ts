@@ -61,7 +61,7 @@ export function deriveContinuousFlightInput(
     pitch: axis(['ArrowUp'], ['ArrowDown']),
     roll: axis(['KeyE'], ['KeyQ']),
     throttle: axis(['KeyW'], ['KeyS']),
-    yaw: axis(['KeyD', 'ArrowRight'], ['KeyA', 'ArrowLeft']),
+    yaw: axis(['KeyA', 'ArrowLeft'], ['KeyD', 'ArrowRight']),
   };
 }
 
@@ -109,6 +109,7 @@ export interface FlightInputControllerOptions {
   readonly onFocusLost: () => void;
   readonly onFullscreenChange: (active: boolean) => void;
   readonly onPauseToggle: () => void;
+  readonly onPointerCaptureLost: () => void;
   readonly onPointerCaptureChange: (active: boolean) => void;
   readonly onTacticalAction: (action: TacticalInputAction) => void;
   readonly preferences?: FlightInputPreferences;
@@ -142,6 +143,8 @@ export function createFlightInputController(
 ): FlightInputController {
   const pressedCodes = new Set<string>();
   let pointerDelta: PointerFlightDelta = { x: 0, y: 0 };
+  let pointerCaptured = document.pointerLockElement === options.canvas;
+  let pointerReleaseRequested = false;
   let preferences: FlightInputPreferences = options.preferences ?? {
     controlBindings: DEFAULT_TACTICAL_BINDINGS,
     invertVerticalLook: false,
@@ -154,24 +157,24 @@ export function createFlightInputController(
   };
   const releasePointer = (): void => {
     if (document.pointerLockElement === options.canvas) {
+      pointerReleaseRequested = true;
       document.exitPointerLock();
     }
   };
   const handleKeyDown = (event: KeyboardEvent): void => {
-    if (event.code === 'Escape' && document.pointerLockElement === options.canvas) {
-      event.preventDefault();
-      releaseInput();
-      releasePointer();
-      return;
-    }
-    if (isInteractiveTarget(event.target)) {
-      return;
-    }
-    if (event.code === 'KeyP' && !event.repeat) {
+    const pauseKey = event.code === 'Escape' || event.code === 'KeyP';
+    if (
+      pauseKey &&
+      !event.repeat &&
+      (event.code === 'Escape' || !isInteractiveTarget(event.target))
+    ) {
       event.preventDefault();
       releaseInput();
       releasePointer();
       options.onPauseToggle();
+      return;
+    }
+    if (isInteractiveTarget(event.target)) {
       return;
     }
     if (event.code === 'KeyF' && !event.repeat) {
@@ -213,10 +216,18 @@ export function createFlightInputController(
     }
   };
   const handlePointerLockChange = (): void => {
-    if (document.pointerLockElement !== options.canvas) {
+    const active = document.pointerLockElement === options.canvas;
+    const unexpectedlyLost = pointerCaptured && !active && !pointerReleaseRequested;
+    pointerCaptured = active;
+    pointerReleaseRequested = false;
+    if (!active) {
       pointerDelta = { x: 0, y: 0 };
     }
-    options.onPointerCaptureChange(document.pointerLockElement === options.canvas);
+    if (unexpectedlyLost) {
+      releaseInput();
+      options.onPointerCaptureLost();
+    }
+    options.onPointerCaptureChange(active);
   };
   const handleFullscreenChange = (): void => {
     options.onFullscreenChange(document.fullscreenElement === options.fullscreenTarget);

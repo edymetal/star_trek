@@ -13,7 +13,8 @@ Confirmar que uma pessoa que ainda não conhece os controles consegue aprender p
 - a primeira missão foi concluída com a rede desativada após a carga, sem requisição externa, service worker ou erro de console;
 - combate pode ser vencido usando apenas o feixe, sem consumir torpedos;
 - derrota permite reiniciar; base restaura casco, energia e seis torpedos;
-- pausa, perda de foco e `Esc` liberam comandos e ponteiro; o caso de `Esc` com foco no botão foi corrigido e repetido três vezes por navegador;
+- a entrada no voo captura o mouse; `Esc` e `P` pausam, liberam comandos e ponteiro e
+  recapturam o mouse ao retomar; perda de foco também pausa e libera controles;
 - objetivos impossíveis, equipamento bloqueado, alvo errado, save corrompido e checkpoints transitórios têm saídas seguras testadas;
 - a campanha completa foi executada uma vez por navegador no gate final, além dos ciclos anteriores.
 

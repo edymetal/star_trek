@@ -1,6 +1,6 @@
 # Progresso do projeto
 
-Atualizado em: 2 de setembro de 2026  
+Atualizado em: 3 de setembro de 2026  
 Etapa atual: P1 — Vertical slice/MVP  
 Estado do código: gate técnico P1-H concluído; MVP aguarda playtest humano de primeira experiência e revisão formal  
 Próximo responsável: usuário/testador iniciante, seguido de Product Architect / aprovação final P1
@@ -673,7 +673,7 @@ O manifesto permanece uma fronteira de conteúdo e o carregador, um adaptador de
 
 - P1-H: registrar decisão offline/PWA, executar playtest e balanceamento, validar instalação limpa, repetir matriz/benchmark final e realizar a revisão formal do MVP.
 
-## Último relatório — gate técnico final P1-H
+## Relatório anterior — gate técnico final P1-H
 
 **ETAPA:** P1 — décima primeira subfatia da Etapa 6  
 **STATUS:** gate técnico aprovado; playtest humano e revisão formal pendentes
@@ -704,3 +704,40 @@ A primeira matriz completa encontrou um caso no Chrome em que `Esc` não liberou
 ### Pendência para aprovar o MVP
 
 - executar `docs/PLAYTEST_P1.md` com uma pessoa que não conheça os controles, registrar a evidência e submeter o resultado à revisão formal. Automação não substitui esse critério de compreensão.
+
+## Último relatório — captura, pausa e direção lateral
+
+**ETAPA:** P1 — correção de controles após o gate técnico  
+**STATUS:** implementação e regressão Chrome/Edge concluídas; playtest humano continua pendente
+
+### Implementado
+
+- a confirmação da viagem solicita a captura do mouse dentro do gesto permitido pelo navegador e
+  mantém o pointer lock para a entrada no voo;
+- `Esc` e `P` compartilham a mesma transição: pausam, limpam comandos e liberam o ponteiro;
+  ao retomar, solicitam novamente a captura;
+- uma perda nativa de pointer lock consumida pelo navegador também pausa de forma idempotente;
+- retomada pelo botão e reinício do encontro recapturam o mouse;
+- `A`/seta esquerda e `D`/seta direita passaram a produzir yaw visual para o lado indicado;
+- textos visíveis, ajuda acessível, README, especificação e roteiro de playtest foram sincronizados.
+
+### Revisão e verificação
+
+- `npm run verify`: aprovado com 200/200 testes em 35 arquivos, formatação, lint, TypeScript,
+  assets, build e validação offline;
+- `npm run test:e2e -- --workers=1`: 82/82 casos, Chrome 41/41 e Edge 41/41, sem `skip`;
+- regressões novas cobrem captura automática na entrada do voo, pausa/liberação e
+  retomada/recaptura por `Esc` e `P`, além do deslocamento lateral real para os dois lados;
+- os fluxos que acionam HUD com mouse agora pausam e liberam o ponteiro antes do clique, como
+  exige o novo contrato, e a campanha integral continua concluível;
+- capturas oficiais foram regeneradas; a inspeção em 1280×720 confirmou os rótulos sem
+  truncamento novo, centro tático livre e ausência de sobreposição;
+- build offline: seis arquivos e 2.187.387 bytes; aplicação principal 41,54 kB gzip e engine
+  510,69 kB gzip;
+- os avisos conhecidos de workers externalizados e tamanho do chunk PlayCanvas permanecem
+  não bloqueantes. Nenhum achado CRITICAL/HIGH foi introduzido.
+
+### Pendência para aprovar o MVP
+
+- o playtest humano iniciante e a revisão formal continuam obrigatórios; esta correção não altera
+  esse gate.

@@ -220,6 +220,23 @@ async function openEnergyDrawer(page: Page): Promise<void> {
   await expect(drawer).toHaveAttribute('open', '');
 }
 
+async function pauseFlightForUi(page: Page): Promise<void> {
+  const root = page.locator('[data-app-root]');
+  if ((await root.getAttribute('data-simulation-state')) === 'running') {
+    await page.keyboard.press('Escape');
+  }
+  await expect(root).toHaveAttribute('data-simulation-state', 'paused');
+  await expect(root).toHaveAttribute('data-pointer-state', 'released');
+}
+
+async function resumeFlightFromUi(page: Page): Promise<void> {
+  const root = page.locator('[data-app-root]');
+  await page.getByRole('button', { name: /Retomar/ }).click();
+  await expect(root).toHaveAttribute('data-simulation-state', 'running');
+  await expect(root).toHaveAttribute('data-pointer-state', 'captured');
+  await page.locator('#game-canvas').focus();
+}
+
 async function tabTo(page: Page, selector: string, maximumTabs = 30): Promise<void> {
   const target = page.locator(selector).first();
   for (let index = 0; index <= maximumTabs; index += 1) {
@@ -231,7 +248,7 @@ async function tabTo(page: Page, selector: string, maximumTabs = 30): Promise<vo
 
 async function approachAndBrake(page: Page, maximumDistance: number): Promise<void> {
   const root = page.locator('[data-app-root]');
-  await page.locator('#game-canvas').click({ position: { x: 640, y: 360 } });
+  await page.locator('#game-canvas').focus();
   await page.keyboard.down('KeyW');
   await expect
     .poll(
@@ -252,13 +269,13 @@ async function approachAndBrake(page: Page, maximumDistance: number): Promise<vo
 async function alignSelectedTarget(page: Page): Promise<void> {
   const marker = page.locator('[data-target-tracker]');
   await expect(marker).toBeVisible();
-  await page.locator('#game-canvas').click({ position: { x: 640, y: 360 } });
+  await page.locator('#game-canvas').focus();
   for (let attempt = 0; attempt < 50; attempt += 1) {
     const box = await marker.boundingBox();
     if (box === null) throw new Error('Marcador de alvo deixou de estar visível.');
     const deltaX = box.x + box.width / 2 - page.viewportSize()!.width / 2;
     if (Math.abs(deltaX) < 80) return;
-    const key = deltaX < 0 ? 'KeyD' : 'KeyA';
+    const key = deltaX < 0 ? 'KeyA' : 'KeyD';
     await page.keyboard.down(key);
     await page.waitForTimeout(60);
     await page.keyboard.up(key);
@@ -451,6 +468,7 @@ test('permanece jogável sem internet após a carga e não instala service worke
   await departCurrentMission(page);
   await identifyEnemy(page);
   await expect(root).toHaveAttribute('data-mission-objective-completed', 'true');
+  await pauseFlightForUi(page);
   await page.locator('[data-mission-action]').click();
   await expect(root).toHaveAttribute('data-mission-phase', 'completed', { timeout: 4_000 });
   await expect(root).toHaveAttribute('data-save-state', 'saved');
@@ -465,6 +483,7 @@ test('permanece jogável sem internet após a carga e não instala service worke
 test('persiste configurações separadas do save e aplica HUD e teclas imediatamente', async ({
   page,
 }, testInfo) => {
+  test.setTimeout(60_000);
   await page.goto('/');
   const root = page.locator('[data-app-root]');
   await expect(root).toHaveAttribute('data-app-state', 'ready');
@@ -679,13 +698,13 @@ test('reduções visuais limitam os VFX reais do raio trator', async ({ page }) 
   await departCurrentMission(page);
   await identifyEnemy(page);
   await approachAndBrake(page, 68);
-  await page.getByRole('button', { name: /Raio trator/ }).click();
+  await page.keyboard.press('Digit3');
   if ((await root.getAttribute('data-tractor-active')) !== 'true') {
     await alignSelectedTarget(page);
     await expect
       .poll(async () => Number(await root.getAttribute('data-weapon-charge')))
       .toBeGreaterThanOrEqual(2);
-    await page.getByRole('button', { name: /Raio trator/ }).click();
+    await page.keyboard.press('Digit3');
   }
   await expect(root).toHaveAttribute('data-tractor-active', 'true');
   await expect(root).toHaveAttribute('data-vfx-kind', 'tractor');
@@ -826,6 +845,7 @@ test('mantém a base segura e percorre mapa, viagem, encontro e retorno', async 
   await identifyEnemy(page);
   await expect(root).toHaveAttribute('data-mission-objective-completed', 'true');
 
+  await pauseFlightForUi(page);
   await missionAction.click();
   await expect(root).toHaveAttribute('data-navigation-state', 'travel');
   await expect(root).toHaveAttribute('data-mission-phase', 'returning');
@@ -1264,17 +1284,17 @@ test('feixe, torpedo e raio trator têm resultados e restrições distintos', as
   await identifyEnemy(page);
   await expect(root).toHaveAttribute('data-remote-visual-damage', 'intact');
 
-  await page.getByRole('button', { name: /Raio trator/ }).click();
+  await page.keyboard.press('Digit3');
   await expect(page.locator('[data-combat-feedback]')).toContainText('fora do alcance');
 
   await approachAndBrake(page, 68);
-  await page.getByRole('button', { name: /Raio trator/ }).click();
+  await page.keyboard.press('Digit3');
   if ((await root.getAttribute('data-tractor-active')) !== 'true') {
     await alignSelectedTarget(page);
     await expect
       .poll(async () => Number(await root.getAttribute('data-weapon-charge')))
       .toBeGreaterThanOrEqual(2);
-    await page.getByRole('button', { name: /Raio trator/ }).click();
+    await page.keyboard.press('Digit3');
   }
   await expect(root).toHaveAttribute('data-tractor-active', 'true');
   await expect(root).toHaveAttribute('data-vfx-kind', 'tractor');
@@ -1287,19 +1307,21 @@ test('feixe, torpedo e raio trator têm resultados e restrições distintos', as
   await dismissMainMenu(page);
   await departCurrentMission(page);
   await identifyEnemy(page);
+  await pauseFlightForUi(page);
   await openEnergyDrawer(page);
   await page.getByRole('button', { name: 'Ataque' }).click();
+  await resumeFlightFromUi(page);
   await approachAndBrake(page, 70);
   await alignSelectedTarget(page);
   await expect
     .poll(async () => Number(await root.getAttribute('data-weapon-charge')))
     .toBeGreaterThanOrEqual(8);
   const shieldBefore = Number(await root.getAttribute('data-enemy-shields'));
-  await page.getByRole('button', { name: /Feixe/ }).click();
+  await page.keyboard.press('Digit1');
   await expect
     .poll(async () => Number(await root.getAttribute('data-enemy-shields')))
     .toBeLessThan(shieldBefore);
-  await page.getByRole('button', { name: /Pausar/ }).click();
+  await page.keyboard.press('KeyP');
   await expect(root).toHaveAttribute('data-simulation-state', 'paused');
   await expect(root).toHaveAttribute('data-audio-state', 'suspended');
   await expect(root).toHaveAttribute('data-audio-voices', '0');
@@ -1311,7 +1333,8 @@ test('feixe, torpedo e raio trator têm resultados e restrições distintos', as
   await page.getByRole('button', { name: /Retomar/ }).click();
   await expect(root).toHaveAttribute('data-simulation-state', 'running');
   await expect(root).toHaveAttribute('data-audio-state', 'ready');
-  await page.getByRole('button', { name: /Torpedo/ }).click();
+  await page.locator('#game-canvas').focus();
+  await page.keyboard.press('Digit2');
   await expect(page.locator('[data-combat-feedback]')).toContainText('Torpedo lançado');
   await expect(root).toHaveAttribute('data-torpedo-ammo', '5');
   await expect(root).toHaveAttribute('data-projectile-count', '1');
@@ -1323,7 +1346,7 @@ test('feixe, torpedo e raio trator têm resultados e restrições distintos', as
     .toBeLessThanOrEqual(36);
   await expect(root).toHaveAttribute('data-projectile-count', '0', { timeout: 5_000 });
   await expect(page.locator('[data-combat-feedback]')).toContainText('Torpedo impactou');
-  await page.getByRole('button', { name: /Pausar/ }).click();
+  await page.keyboard.press('KeyP');
   await expect(root).toHaveAttribute('data-simulation-state', 'paused');
   await expect
     .poll(async () =>
@@ -1347,19 +1370,20 @@ test('conclui o encontro com vitória e reinicia sem recarregar a página', asyn
   test.setTimeout(60_000);
   await enterCombatMission(page);
   const root = page.locator('[data-app-root]');
-  const torpedoButton = page.locator('[data-combat-action="torpedo"]');
   await identifyEnemy(page);
+  await pauseFlightForUi(page);
   await openEnergyDrawer(page);
   const increaseSensors = page.getByRole('button', {
     name: 'Aumentar energia de auxiliares e sensores',
   });
   await increaseSensors.click();
   await increaseSensors.click();
+  await resumeFlightFromUi(page);
 
   for (const expectedAmmo of ['5', '4', '3']) {
     await approachAndBrake(page, 70);
     await alignSelectedTarget(page);
-    await torpedoButton.click();
+    await page.keyboard.press('Digit2');
     await expect(root).toHaveAttribute('data-torpedo-ammo', expectedAmmo);
     await expect(root).toHaveAttribute('data-projectile-count', '0', { timeout: 5_000 });
     if (expectedAmmo !== '3') await page.waitForTimeout(1_200);
@@ -1370,6 +1394,7 @@ test('conclui o encontro com vitória e reinicia sem recarregar a página', asyn
   await expect(root).toHaveAttribute('data-enemy-condition', 'destruído');
   await expect(page.locator('[data-combat-enemy-state]')).toContainText('0% · destruído');
 
+  await pauseFlightForUi(page);
   await page.getByRole('button', { name: 'Reiniciar encontro (N)' }).click();
   await expect(root).toHaveAttribute('data-combat-phase', 'active');
   await expect(root).toHaveAttribute('data-torpedo-ammo', '6');
@@ -1414,6 +1439,7 @@ test('persiste a primeira missão concluída e a retoma após reload', async ({ 
   await expect(missionAction).toHaveText('Retornar à base');
   await expect(missionAction).toBeEnabled();
 
+  await pauseFlightForUi(page);
   await missionAction.click();
   await expect(root).toHaveAttribute('data-mission-phase', 'returning');
   await expect(root).toHaveAttribute('data-mission-phase', 'completed', { timeout: 4_000 });
@@ -1440,7 +1466,7 @@ test('persiste a primeira missão concluída e a retoma após reload', async ({ 
 });
 
 test('conclui as três missões iniciais do tutorial em sequência', async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   await enterBase(page);
   const root = page.locator('[data-app-root]');
   const missionAction = page.locator('[data-mission-action]');
@@ -1455,6 +1481,7 @@ test('conclui as três missões iniciais do tutorial em sequência', async ({ pa
   await expect(torpedoButton).toBeDisabled();
   await identifyEnemy(page);
   await expect(root).toHaveAttribute('data-mission-objective-completed', 'true');
+  await pauseFlightForUi(page);
   await missionAction.click();
   await expect(root).toHaveAttribute('data-mission-phase', 'completed', { timeout: 4_000 });
 
@@ -1465,13 +1492,14 @@ test('conclui as três missões iniciais do tutorial em sequência', async ({ pa
   await expect(torpedoButton).toBeDisabled();
   await identifyEnemy(page);
   await approachAndBrake(page, 68);
-  await tractorButton.click();
+  await page.keyboard.press('Digit3');
   if ((await root.getAttribute('data-tractor-active')) !== 'true') {
     await alignSelectedTarget(page);
-    await tractorButton.click();
+    await page.keyboard.press('Digit3');
   }
   await expect(root).toHaveAttribute('data-tractor-active', 'true');
   await expect(root).toHaveAttribute('data-mission-objective-completed', 'true');
+  await pauseFlightForUi(page);
   await missionAction.click();
   await expect(root).toHaveAttribute('data-mission-phase', 'completed', { timeout: 4_000 });
 
@@ -1483,13 +1511,14 @@ test('conclui as três missões iniciais do tutorial em sequência', async ({ pa
   for (const expectedAmmo of ['5', '4', '3']) {
     await approachAndBrake(page, 70);
     await alignSelectedTarget(page);
-    await torpedoButton.click();
+    await page.keyboard.press('Digit2');
     await expect(root).toHaveAttribute('data-torpedo-ammo', expectedAmmo);
     await expect(root).toHaveAttribute('data-projectile-count', '0', { timeout: 5_000 });
     if (expectedAmmo !== '3') await page.waitForTimeout(1_200);
   }
   await expect(root).toHaveAttribute('data-combat-phase', 'victory', { timeout: 5_000 });
   await expect(root).toHaveAttribute('data-mission-objective-completed', 'true');
+  await pauseFlightForUi(page);
   await missionAction.click();
   await expect(root).toHaveAttribute('data-mission-phase', 'completed', { timeout: 4_000 });
   await expect(root).toHaveAttribute('data-tutorial-completed', 'true');
@@ -1560,6 +1589,7 @@ test('presets e ajuste manual alteram efeitos imediatamente sem perder energia',
 }) => {
   await enterFirstMission(page);
   const root = page.locator('[data-app-root]');
+  await pauseFlightForUi(page);
   await openEnergyDrawer(page);
   await expect(root).toHaveAttribute('data-energy-profile', 'balanced');
   const balancedEngine = Number(await root.getAttribute('data-engine-multiplier'));
@@ -1590,6 +1620,7 @@ test('presets e ajuste manual alteram efeitos imediatamente sem perder energia',
 
   await page.getByRole('button', { name: 'Ataque' }).click();
   const weaponBefore = Number(await root.getAttribute('data-weapon-charge'));
+  await resumeFlightFromUi(page);
   await expect
     .poll(async () => Number(await root.getAttribute('data-weapon-charge')))
     .toBeGreaterThan(weaponBefore);
@@ -1598,17 +1629,57 @@ test('presets e ajuste manual alteram efeitos imediatamente sem perder energia',
 test('pausa e retoma sem mover a nave durante a pausa', async ({ page }) => {
   await enterFirstMission(page);
   const root = page.locator('[data-app-root]');
+  await expect(root).toHaveAttribute('data-pointer-state', 'captured');
   await page.keyboard.down('KeyW');
   await page.waitForTimeout(250);
   await page.keyboard.up('KeyW');
   await page.keyboard.press('KeyP');
   await expect(root).toHaveAttribute('data-simulation-state', 'paused');
+  await expect(root).toHaveAttribute('data-pointer-state', 'released');
   const pausedZ = await root.getAttribute('data-ship-z');
   await page.waitForTimeout(300);
   await expect(root).toHaveAttribute('data-ship-z', pausedZ ?? '');
 
   await page.keyboard.press('KeyP');
   await expect(root).toHaveAttribute('data-simulation-state', 'running');
+  await expect(root).toHaveAttribute('data-pointer-state', 'captured');
+
+  await page.keyboard.press('Escape');
+  await expect(root).toHaveAttribute('data-simulation-state', 'paused');
+  await expect(root).toHaveAttribute('data-pointer-state', 'released');
+  await page.keyboard.press('Escape');
+  await expect(root).toHaveAttribute('data-simulation-state', 'running');
+  await expect(root).toHaveAttribute('data-pointer-state', 'captured');
+});
+
+test('A guina para a esquerda e D guina para a direita', async ({ page }) => {
+  await enterFirstMission(page);
+  const root = page.locator('[data-app-root]');
+  const initialX = Number(await root.getAttribute('data-ship-x'));
+
+  await page.keyboard.down('KeyD');
+  await page.waitForTimeout(300);
+  await page.keyboard.up('KeyD');
+  await page.keyboard.down('KeyW');
+  await page.waitForTimeout(450);
+  await page.keyboard.up('KeyW');
+
+  await expect
+    .poll(async () => Number(await root.getAttribute('data-ship-x')))
+    .toBeGreaterThan(initialX);
+
+  await page.keyboard.press('KeyN');
+  await expect(root).toHaveAttribute('data-ship-x', initialX.toFixed(4));
+  await page.keyboard.down('KeyA');
+  await page.waitForTimeout(300);
+  await page.keyboard.up('KeyA');
+  await page.keyboard.down('KeyW');
+  await page.waitForTimeout(450);
+  await page.keyboard.up('KeyW');
+
+  await expect
+    .poll(async () => Number(await root.getAttribute('data-ship-x')))
+    .toBeLessThan(initialX);
 });
 
 test('descarta comandos táticos recebidos durante a pausa', async ({ page }) => {
@@ -1841,6 +1912,7 @@ test('mantém o mapa navegável e contido em 1280x720 e 1600x900', async ({ page
 });
 
 test('mantém todos os painéis dentro do viewport nos estados de apresentação', async ({ page }) => {
+  test.setTimeout(60_000);
   for (const viewport of [
     { height: 720, width: 1280 },
     { height: 900, width: 1600 },
@@ -1849,16 +1921,16 @@ test('mantém todos os painéis dentro do viewport nos estados de apresentação
     await enterFirstMission(page);
     await expectHudInsideViewport(page);
 
+    await pauseFlightForUi(page);
     await openEnergyDrawer(page);
     await expect(page.locator('.objective-card')).toBeHidden();
     await expectHudInsideViewport(page);
     await page.locator('[data-energy-panel] > summary').click();
 
-    await page.getByRole('button', { name: /Pausar/ }).click();
     await expectHudInsideViewport(page);
     await page.getByRole('button', { name: /Retomar/ }).click();
 
-    await page.locator('#game-canvas').click({ position: { x: 640, y: 360 } });
+    await page.locator('#game-canvas').focus();
     await page.keyboard.press('KeyT');
     await page.keyboard.down('KeyS');
     await expect(page.locator('[data-app-root]')).toHaveAttribute(
@@ -1904,6 +1976,11 @@ test('tela cheia preserva canvas e HUD, e o ponteiro pode ser capturado e libera
   const root = page.locator('[data-app-root]');
   const hud = page.locator('[data-flight-hud]');
 
+  await expect(root).toHaveAttribute('data-pointer-state', 'captured');
+  await page.keyboard.press('Escape');
+  await expect(root).toHaveAttribute('data-simulation-state', 'paused');
+  await expect(root).toHaveAttribute('data-pointer-state', 'released');
+
   await page.getByRole('button', { name: 'Tela cheia (F)' }).click();
   await expect(root).toHaveAttribute('data-fullscreen-state', 'active');
   await expect(hud).toBeVisible();
@@ -1917,9 +1994,11 @@ test('tela cheia preserva canvas e HUD, e o ponteiro pode ser capturado e libera
   await page.getByRole('button', { name: 'Sair da tela cheia (F)' }).click();
   await expect(root).toHaveAttribute('data-fullscreen-state', 'inactive');
 
-  await page.getByRole('button', { name: 'Capturar mouse' }).click();
+  await page.getByRole('button', { name: /Retomar/ }).click();
+  await expect(root).toHaveAttribute('data-simulation-state', 'running');
   await expect(root).toHaveAttribute('data-pointer-state', 'captured');
   await page.keyboard.press('Escape');
+  await expect(root).toHaveAttribute('data-simulation-state', 'paused');
   await expect(root).toHaveAttribute('data-pointer-state', 'released');
 });
 

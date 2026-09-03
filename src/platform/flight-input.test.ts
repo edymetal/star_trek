@@ -32,6 +32,13 @@ describe('deriveContinuousFlightInput', () => {
     expect(pointer).toEqual({ pitchDegrees: 8, yawDegrees: -8 });
   });
 
+  it('guina para o mesmo lado indicado por A/D e pelas setas laterais', () => {
+    expect(deriveContinuousFlightInput(new Set(['KeyA'])).yaw).toBe(1);
+    expect(deriveContinuousFlightInput(new Set(['ArrowLeft'])).yaw).toBe(1);
+    expect(deriveContinuousFlightInput(new Set(['KeyD'])).yaw).toBe(-1);
+    expect(deriveContinuousFlightInput(new Set(['ArrowRight'])).yaw).toBe(-1);
+  });
+
   it('aplica sensibilidade e inversão vertical ao mouse com limite seguro', () => {
     const adjusted = pointerPixelsToLookDelta({ x: 20, y: -20 }, 1.5, true);
     expect(adjusted.pitchDegrees).toBeCloseTo(-2.4);

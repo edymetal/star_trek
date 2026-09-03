@@ -57,9 +57,9 @@ Se uma rede corporativa interceptar TLS, configure o Node para confiar no reposi
 - `Q`/`E`: rolar;
 - `Shift`: impulso;
 - `Espaço`: freio assistido;
-- `P`: pausar/retomar;
+- `Esc` ou `P`: pausar/retomar, liberando o mouse durante a pausa e recapturando ao voltar;
 - `F`: entrar/sair de tela cheia;
-- botão **Capturar mouse**: usar mouse para guinada/inclinação; `Esc` libera.
+- a captura do mouse é ativada ao entrar no voo; o botão **Capturar mouse** permite tentar novamente caso o navegador recuse a solicitação.
 
 Perder foco ou ocultar a aba limpa todas as entradas, libera o ponteiro e mantém a sessão pausada até o jogador retomar.
 

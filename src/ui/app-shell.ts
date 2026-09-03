@@ -1488,7 +1488,7 @@ export function createAppShell(root: HTMLElement): AppShell {
           ? 'Controle de missão ativo'
           : telemetry.paused
             ? 'Retomar (P)'
-            : 'Pausar (P)',
+            : 'Pausar (Esc/P)',
       );
       if (pauseButton.disabled !== missionLocked) pauseButton.disabled = missionLocked;
       setAttributeIfChanged(root, 'data-simulation-state', telemetry.paused ? 'paused' : 'running');
@@ -1850,7 +1850,7 @@ export function createAppShell(root: HTMLElement): AppShell {
     },
     setPointerCaptured(active) {
       setAttributeIfChanged(root, 'data-pointer-state', active ? 'captured' : 'released');
-      setTextIfChanged(captureButton, active ? 'Mouse capturado · Esc libera' : 'Capturar mouse');
+      setTextIfChanged(captureButton, active ? 'Mouse ativo' : 'Capturar mouse');
       if (captureButton.disabled !== active) {
         captureButton.disabled = active;
       }

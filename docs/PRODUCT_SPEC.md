@@ -168,7 +168,8 @@ O HUD será HTML/CSS sobre o canvas. Deve funcionar em 1280×720 ou mais, com es
 
 - regras de combate usam passo fixo e resultado independente da taxa de renderização;
 - objetos fora da bolha tática não recebem simulação visual completa;
-- pausa congela a simulação e libera captura de ponteiro/controles;
+- `Esc` ou `P` pausam e retomam; a pausa congela a simulação e libera captura de
+  ponteiro/controles, e a retomada recaptura o mouse;
 - o jogo deve ser reproduzível em testes quando uma semente explícita for fornecida.
 
 ### Dados e saves
